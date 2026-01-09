@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 // FastAPI server configuration
-const FASTAPI_BASE_URL = 'http://127.0.0.1:8000';
+const FASTAPI_BASE_URL = process.env.FASTAPI_BASE_URL || 'http://127.0.0.1:8000';
 
 /**
  * Generate PDF via FastAPI server

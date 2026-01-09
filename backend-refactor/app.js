@@ -25,9 +25,13 @@ app.use('/answersheets', express.static(path.join(__dirname, 'answersheets')));
 
 // Session configuration
 app.use(session({
-  secret: 'your-secret-key',  // TODO: Use environment variable in production
+  secret: process.env.SESSION_SECRET || 'fallback-secret-key',
   resave: false,
-  saveUninitialized: true
+  saveUninitialized: true,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
 }));
 
 // Register API route modules
