@@ -114,4 +114,13 @@ app.post('/login', (req, res) => {
   }
 });
 
+// Error handling middleware (must be last)
+const { errorHandler, notFoundHandler } = require('./middleware/error.middleware');
+
+// 404 handler for undefined routes
+app.use(notFoundHandler);
+
+// Centralized error handler
+app.use(errorHandler);
+
 module.exports = app;

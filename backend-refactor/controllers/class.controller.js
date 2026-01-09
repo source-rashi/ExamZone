@@ -1,11 +1,9 @@
 const classService = require('../services/class.service');
+const { AppError } = require('../middleware/error.middleware');
 
 // Create a new class with derived title and icon
-exports.createClass = async (req, res) => {
+exports.createClass = async (req, res, next) => {
   const { code } = req.body;
-  
-  // Validate request
-  if (!code) return res.status(400).json({ error: 'Class code is required' });
 
   try {
     // Call service to create class
@@ -21,18 +19,15 @@ exports.createClass = async (req, res) => {
       lastActive: newClass.lastActive
     });
   } catch (err) {
-    console.error('🚨 Backend error:', err);
-    
     if (err.message === 'Class already exists') {
-      return res.status(409).json({ error: 'Class already exists' });
+      return next(new AppError('Class already exists', 409));
     }
-    
-    res.status(500).json({ error: 'Server error' });
+    next(err);
   }
 };
 
 // Student joins a class
-exports.joinClass = async (req, res) => {
+exports.joinClass = async (req, res, next) => {
   const { classCode, rollNumber, name } = req.body;
 
   try {
@@ -40,7 +35,7 @@ exports.joinClass = async (req, res) => {
     const classDoc = await classService.findClassByCode(classCode);
 
     if (!classDoc) {
-      return res.status(404).json({ success: false, message: 'Class not found!' });
+      return next(new AppError('Class not found!', 404));
     }
 
     // Add student to class
@@ -53,7 +48,6 @@ exports.joinClass = async (req, res) => {
     // Return response
     res.json({ success: true, message: `Successfully joined class ${classCode}!` });
   } catch (error) {
-    console.error('Error joining class:', error);
-    res.status(500).json({ success: false, message: 'Internal Server Error' });
+    next(error);
   }
 };

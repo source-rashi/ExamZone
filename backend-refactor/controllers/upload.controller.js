@@ -1,15 +1,16 @@
 const classService = require('../services/class.service');
 const pdfService = require('../services/pdf.service');
+const { AppError } = require('../middleware/error.middleware');
 
 // Upload student list PDF and extract students
-exports.uploadStudentList = async (req, res) => {
+exports.uploadStudentList = async (req, res, next) => {
   const classCode = req.body.classCode;
   const filePath = req.file.path;
 
   try {
     // Find class
     const classDoc = await classService.findClassByCode(classCode);
-    if (!classDoc) return res.status(404).send("❌ Class not found");
+    if (!classDoc) return next(new AppError('Class not found', 404));
 
     // Parse PDF and extract students
     const data = await pdfService.parsePDF(filePath);
@@ -21,20 +22,19 @@ exports.uploadStudentList = async (req, res) => {
     // Return response
     res.send("✅ Students added successfully!");
   } catch (err) {
-    console.error("❌ PDF Error:", err);
-    res.status(500).send("❌ Failed to process PDF");
+    next(err);
   }
 };
 
 // Upload student answer sheet
-exports.uploadAnswerSheet = async (req, res) => {
+exports.uploadAnswerSheet = async (req, res, next) => {
   const { classCode, roll } = req.body;
   const filePath = `answersheets/${req.file.filename}`;
 
   try {
     // Find class
     const classDoc = await classService.findClassByCode(classCode);
-    if (!classDoc) return res.status(404).send("❌ Class not found");
+    if (!classDoc) return next(new AppError('Class not found', 404));
 
     // Update student's answer sheet
     await classService.updateStudentAnswerSheet(classDoc, roll, filePath);
@@ -44,12 +44,9 @@ exports.uploadAnswerSheet = async (req, res) => {
     // Return response
     res.send("✅ Answer sheet uploaded and saved successfully!");
   } catch (error) {
-    console.error("❌ Upload Error:", error);
-    
     if (error.message === 'Student not found') {
-      return res.status(404).send("❌ Student not found");
+      return next(new AppError('Student not found', 404));
     }
-    
-    res.status(500).send("Something went wrong while uploading.");
+    next(error);
   }
 };

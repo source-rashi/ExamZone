@@ -1,9 +1,10 @@
 const classService = require('../services/class.service');
 const pdfService = require('../services/pdf.service');
 const aiService = require('../services/ai.service');
+const { AppError } = require('../middleware/error.middleware');
 
 // Fetch PDF from FastAPI server and store in database
-exports.generatePDF = async (req, res) => {
+exports.generatePDF = async (req, res, next) => {
   const { classCode, roll, questions } = req.body;
 
   try {
@@ -13,7 +14,7 @@ exports.generatePDF = async (req, res) => {
     // Find class
     const classDoc = await classService.findClassByCode(classCode);
     if (!classDoc) {
-      return res.status(404).send('❌ Class not found');
+      return next(new AppError('Class not found', 404));
     }
 
     // Store PDF buffer in database
@@ -28,28 +29,22 @@ exports.generatePDF = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error generating PDF:', error.message);
-    
     if (error.message === 'Student not found') {
-      return res.status(404).send('❌ Student not found');
+      return next(new AppError('Student not found', 404));
     }
-    
-    res.status(500).json({
-      error: 'Failed to generate PDF',
-      details: error.message
-    });
+    next(error);
   }
 };
 
 // Retrieve PDF from database
-exports.getPDF = async (req, res) => {
+exports.getPDF = async (req, res, next) => {
   const { classCode, roll } = req.query;
 
   try {
     // Find class
     const classDoc = await classService.findClassByCode(classCode);
     if (!classDoc) {
-      return res.status(404).send("❌ Class not found");
+      return next(new AppError('Class not found', 404));
     }
 
     // Get PDF buffer from service
@@ -61,16 +56,14 @@ exports.getPDF = async (req, res) => {
     res.send(pdfBuffer);
 
   } catch (err) {
-    console.error("❌ Error retrieving PDF:", err);
-    
     if (err.message === 'Student not found') {
-      return res.status(404).send("❌ Student not found");
+      return next(new AppError('Student not found', 404));
     }
     
     if (err.message === 'PDF not yet generated') {
-      return res.status(404).send("❌ PDF not yet generated");
+      return next(new AppError('PDF not yet generated', 404));
     }
     
-    res.status(500).send("❌ Server error");
+    next(err);
   }
 };
