@@ -1,20 +1,25 @@
-const Class = require('../models/Class');
+const classService = require('../services/class.service');
+const pdfService = require('../services/pdf.service');
 
 // Get student PDF link
 exports.studentAccess = async (req, res) => {
   const { classCode, roll } = req.body;
 
   try {
-    const classDoc = await Class.findOne({ code: classCode });
+    // Find class
+    const classDoc = await classService.findClassByCode(classCode);
     if (!classDoc) return res.status(404).send("❌ Class not found");
 
-    const student = classDoc.students.find(s => s.roll === roll);
+    // Find student
+    const student = classService.findStudent(classDoc, roll);
     if (!student) return res.status(404).send("❌ Student not found");
 
-    if (!student.pdfData) {
+    // Check if PDF exists
+    if (!pdfService.hasPDFData(student)) {
       return res.status(404).send("❌ PDF not generated yet. Please generate the PDF first.");
     }
 
+    // Return response
     res.send(`✅ <a href="/get-pdf?classCode=${classCode}&roll=${roll}" target="_blank">${roll}.pdf</a>`);
   } catch (err) {
     console.error("❌ Error:", err);
@@ -27,22 +32,25 @@ exports.getAnswers = async (req, res) => {
   const { classCode, roll } = req.body;
 
   try {
-    const classDoc = await Class.findOne({ code: classCode });
+    // Find class
+    const classDoc = await classService.findClassByCode(classCode);
     if (!classDoc) return res.status(404).send("❌ Class not found");
 
+    // Build response HTML
     let resultHtml = `<h2>📚 Answer Sheets for Class ${classCode}</h2><ul>`;
 
-    if (roll) {
-      const student = classDoc.students.find(s => s.roll === roll && s.answerPdf);
-      if (!student) return res.send("❌ No answer sheet for this roll number");
-      resultHtml += `<li><a href="/${student.answerPdf}" target="_blank">${roll}.pdf</a></li>`;
-    } else {
-      const submitted = classDoc.students.filter(s => s.answerPdf);
-      if (submitted.length === 0) return res.send("❌ No answer sheets submitted yet.");
-      submitted.forEach(s => {
-        resultHtml += `<li><a href="/${s.answerPdf}" target="_blank">${s.roll}.pdf</a></li>`;
-      });
+    // Get students with answer sheets
+    const studentsWithAnswers = classService.getStudentsWithAnswers(classDoc, roll);
+
+    if (studentsWithAnswers.length === 0) {
+      const message = roll ? "❌ No answer sheet for this roll number" : "❌ No answer sheets submitted yet.";
+      return res.send(message);
     }
+
+    // Build HTML list
+    studentsWithAnswers.forEach(s => {
+      resultHtml += `<li><a href="/${s.answerPdf}" target="_blank">${s.roll}.pdf</a></li>`;
+    });
 
     resultHtml += `</ul><br><a href="/">🔙 Back to Home</a>`;
     res.send(resultHtml);

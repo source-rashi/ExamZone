@@ -1,6 +1,5 @@
-const pdfParse = require('pdf-parse');
-const fs = require('fs');
-const Class = require('../models/Class');
+const classService = require('../services/class.service');
+const pdfService = require('../services/pdf.service');
 
 // Upload student list PDF and extract students
 exports.uploadStudentList = async (req, res) => {
@@ -8,24 +7,18 @@ exports.uploadStudentList = async (req, res) => {
   const filePath = req.file.path;
 
   try {
-    const classDoc = await Class.findOne({ code: classCode });
+    // Find class
+    const classDoc = await classService.findClassByCode(classCode);
     if (!classDoc) return res.status(404).send("❌ Class not found");
 
-    const data = await pdfParse(fs.readFileSync(filePath));
-    const lines = data.text.split('\n');
+    // Parse PDF and extract students
+    const data = await pdfService.parsePDF(filePath);
+    const students = pdfService.extractStudentsFromPDF(data.text);
 
-    const students = lines.map(line => {
-      const parts = line.trim().split(/\s+/);
-      return {
-        roll: parts[0],
-        name: parts.slice(1).join(' '),
-        pdfPath: `pdfs/${parts[0]}.pdf`
-      };
-    }).filter(s => s.roll && s.name);
+    // Add students to class
+    await classService.addMultipleStudents(classDoc, students);
 
-    classDoc.students.push(...students);
-    await classDoc.save();
-
+    // Return response
     res.send("✅ Students added successfully!");
   } catch (err) {
     console.error("❌ PDF Error:", err);
@@ -39,20 +32,24 @@ exports.uploadAnswerSheet = async (req, res) => {
   const filePath = `answersheets/${req.file.filename}`;
 
   try {
-    const classDoc = await Class.findOne({ code: classCode });
+    // Find class
+    const classDoc = await classService.findClassByCode(classCode);
     if (!classDoc) return res.status(404).send("❌ Class not found");
 
-    const studentIndex = classDoc.students.findIndex(s => s.roll === roll);
-    if (studentIndex === -1) return res.status(404).send("❌ Student not found");
-
-    // Update answerPdf field
-    classDoc.students[studentIndex].answerPdf = filePath;
-    await classDoc.save();
+    // Update student's answer sheet
+    await classService.updateStudentAnswerSheet(classDoc, roll, filePath);
 
     console.log(`✅ Answer sheet path saved: ${filePath}`);
+    
+    // Return response
     res.send("✅ Answer sheet uploaded and saved successfully!");
   } catch (error) {
     console.error("❌ Upload Error:", error);
+    
+    if (error.message === 'Student not found') {
+      return res.status(404).send("❌ Student not found");
+    }
+    
     res.status(500).send("Something went wrong while uploading.");
   }
 };
