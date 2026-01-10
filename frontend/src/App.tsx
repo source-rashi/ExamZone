@@ -10,6 +10,12 @@ import ExamPage from './pages/ExamPage';
 import ProtectedRoute from './auth/ProtectedRoute';
 import RoleRoute from './auth/RoleRoute';
 
+// Teacher pages
+import Dashboard from './pages/teacher/Dashboard';
+import CreateClass from './pages/teacher/CreateClass';
+import ClassDetails from './pages/teacher/ClassDetails';
+import CreateExam from './pages/teacher/CreateExam';
+
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 function App() {
@@ -32,9 +38,11 @@ function App() {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<TeacherDashboard />} />
-              <Route path="classes" element={<div className="p-4">Classes placeholder</div>} />
-              <Route path="exams" element={<div className="p-4">Exams placeholder</div>} />
+              <Route index element={<Navigate to="/teacher/dashboard" replace />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="create-class" element={<CreateClass />} />
+              <Route path="class/:id" element={<ClassDetails />} />
+              <Route path="class/:id/create-exam" element={<CreateExam />} />
             </Route>
 
             {/* Student routes */}
