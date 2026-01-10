@@ -40,11 +40,16 @@ async function checkAttemptLimit(studentId, examId) {
 
 /**
  * Start a new exam attempt
- * @param {ObjectId} studentId - Student ID
- * @param {ObjectId} examId - Exam ID
+ * @param {Object} data - Attempt data {studentId, examId, questionPaperId}
  * @returns {Promise<Object>} Created attempt
  */
-async function startAttempt(studentId, examId) {
+async function startAttempt(data) {
+  const { studentId, examId, questionPaperId } = data;
+
+  if (!studentId || !examId) {
+    throw new Error('studentId and examId are required');
+  }
+
   // Validate student exists
   const student = await User.findById(studentId);
   if (!student) {
@@ -110,8 +115,9 @@ async function startAttempt(studentId, examId) {
   const attempt = await Attempt.create({
     examId,
     studentId,
+    questionPaperId: questionPaperId || null,
     attemptNumber,
-    startTime: new Date(),
+    startedAt: new Date(),
     status: 'started',
     tabSwitchCount: 0,
     focusLossCount: 0

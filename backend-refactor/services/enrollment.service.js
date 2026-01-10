@@ -9,11 +9,12 @@ const User = require('../models/User');
 
 /**
  * Enroll a student in a class
- * @param {ObjectId} classId - Class ID
- * @param {ObjectId} studentId - Student ID
+ * @param {Object} data - Enrollment data {classId, studentId, enrolledBy}
  * @returns {Promise<Object>} Enrollment document
  */
-async function enrollStudent(classId, studentId) {
+async function enrollStudent(data) {
+  const { classId, studentId, enrolledBy } = data;
+
   // Validate class exists
   const classDoc = await Class.findById(classId);
   if (!classDoc) {
@@ -30,6 +31,19 @@ async function enrollStudent(classId, studentId) {
     throw new Error('Only students can enroll in classes');
   }
 
+  // Validate enrolledBy (teacher authorization)
+  if (enrolledBy) {
+    const enrollingUser = await User.findById(enrolledBy);
+    if (!enrollingUser) {
+      throw new Error('Enrolling user not found');
+    }
+    
+    // Check if enrolling user is the class teacher or an admin
+    if (enrollingUser.role !== 'teacher' && enrollingUser.role !== 'admin') {
+      throw new Error('Only teachers can enroll students');
+    }
+  }
+
   // Check for existing enrollment
   const existingEnrollment = await Enrollment.findOne({ classId, studentId });
   if (existingEnrollment) {
@@ -43,6 +57,7 @@ async function enrollStudent(classId, studentId) {
   const enrollment = await Enrollment.create({
     classId,
     studentId,
+    enrolledBy: enrolledBy || studentId, // Self-enrollment if no enrolledBy provided
     status: 'active'
   });
 

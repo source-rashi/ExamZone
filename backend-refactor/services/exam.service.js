@@ -9,14 +9,18 @@ const User = require('../models/User');
 
 /**
  * Create a new exam
- * @param {ObjectId} teacherId - ID of the teacher creating the exam
- * @param {ObjectId} classId - ID of the class
- * @param {Object} examData - Exam data
+ * @param {Object} data - Exam data {classId, title, createdBy, ...}
  * @returns {Promise<Object>} Created exam
  */
-async function createExam(teacherId, classId, examData) {
+async function createExam(data) {
+  const { classId, title, createdBy, ...examData } = data;
+
+  if (!classId || !title || !createdBy) {
+    throw new Error('classId, title, and createdBy are required');
+  }
+
   // Validate teacher exists
-  const teacher = await User.findById(teacherId);
+  const teacher = await User.findById(createdBy);
   if (!teacher) {
     throw new Error('Teacher not found');
   }
@@ -31,16 +35,16 @@ async function createExam(teacherId, classId, examData) {
     throw new Error('Class not found');
   }
 
-  if (classDoc.teacherId?.toString() !== teacherId.toString() && 
-      classDoc.teacher?.toString() !== teacherId.toString()) {
+  if (classDoc.teacherId?.toString() !== createdBy.toString() && 
+      classDoc.teacher?.toString() !== createdBy.toString()) {
     throw new Error('Unauthorized: You do not own this class');
   }
 
   // Create exam with default status "draft"
   const exam = await Exam.create({
     classId,
-    createdBy: teacherId,
-    title: examData.title,
+    createdBy,
+    title,
     description: examData.description || '',
     duration: examData.duration || 60,
     totalMarks: examData.totalMarks || 100,
@@ -50,9 +54,9 @@ async function createExam(teacherId, classId, examData) {
     endTime: examData.endTime,
     status: 'draft',
     settings: {
-      tabSwitchLimit: examData.settings?.tabSwitchLimit || 3,
-      allowPdfUpload: examData.settings?.allowPdfUpload !== false,
-      allowEditor: examData.settings?.allowEditor || false
+      tabSwitchLimit: examData.tabSwitchLimit || 3,
+      allowPdfUpload: examData.allowPdfUpload !== false,
+      allowEditor: examData.allowEditor || false
     }
   });
 

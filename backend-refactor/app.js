@@ -3,11 +3,17 @@ const path = require('path');
 const session = require('express-session');
 const connectDB = require('./config/db');
 
-// Import route modules
+// Import V1 route modules (legacy)
 const pdfRoutes = require('./routes/pdf.routes');
 const classRoutes = require('./routes/class.routes');
 const uploadRoutes = require('./routes/upload.routes');
 const studentRoutes = require('./routes/student.routes');
+
+// Import V2 route modules
+const classRoutesV2 = require('./routes/class.routes.v2');
+const enrollmentRoutes = require('./routes/enrollment.routes');
+const examRoutes = require('./routes/exam.routes');
+const attemptRoutes = require('./routes/attempt.routes');
 
 const app = express();
 
@@ -34,11 +40,17 @@ app.use(session({
   }
 }));
 
-// Register API route modules
+// Register V1 API routes (legacy)
 app.use('/', pdfRoutes);
 app.use('/', classRoutes);
 app.use('/', uploadRoutes);
 app.use('/', studentRoutes);
+
+// Register V2 API routes
+app.use('/api/v2/classes', classRoutesV2);
+app.use('/api/v2/enrollments', enrollmentRoutes);
+app.use('/api/v2/exams', examRoutes);
+app.use('/api/v2/attempts', attemptRoutes);
 
 // Static page routes
 

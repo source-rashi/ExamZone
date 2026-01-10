@@ -168,11 +168,20 @@ exports.getStudentsWithAnswerSheets = (classDoc, roll = null) => {
 
 /**
  * Create a new class with teacher validation (Phase 3)
- * @param {ObjectId} teacherId - ID of the teacher creating the class
- * @param {Object} data - Class data
+ * @param {Object} data - Class data including teacherId
  * @returns {Promise<Object>} Created class
  */
-exports.createClassV2 = async (teacherId, data) => {
+exports.createClassV2 = async (data) => {
+  const { teacherId, title, description, subject, code, icon } = data;
+
+  if (!teacherId) {
+    throw new Error('teacherId is required');
+  }
+
+  if (!title) {
+    throw new Error('title is required');
+  }
+
   // Validate teacher exists
   const teacher = await User.findById(teacherId);
   if (!teacher) {
@@ -183,22 +192,25 @@ exports.createClassV2 = async (teacherId, data) => {
     throw new Error('Only teachers can create classes');
   }
 
+  // Generate class code (simple random 6-char code)
+  const classCode = code || Math.random().toString(36).substring(2, 8).toUpperCase();
+
   // Check if class code already exists
-  const existingClass = await Class.findOne({ code: data.code });
+  const existingClass = await Class.findOne({ code: classCode });
   if (existingClass) {
     throw new Error('Class with this code already exists');
   }
 
   // Auto-derive title and icon if not provided
-  const derivedInfo = exports.deriveClassInfo(data.code);
+  const derivedInfo = exports.deriveClassInfo(classCode);
 
   // Create new class
   const classData = {
-    code: data.code,
-    title: data.title || derivedInfo.title,
-    description: data.description || '',
-    subject: data.subject || '',
-    icon: data.icon || derivedInfo.icon,
+    code: classCode,
+    title: title,
+    description: description || '',
+    subject: subject || '',
+    icon: icon || derivedInfo.icon,
     teacherId: teacherId,
     teacher: teacherId, // Legacy field for backward compatibility
     students: [],
