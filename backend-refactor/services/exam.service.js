@@ -383,6 +383,181 @@ async function deleteExam(examId, teacherId) {
   return true;
 }
 
+/**
+ * Generate question papers for exam (Phase 3.6)
+ * @param {String} examId - Exam ID
+ * @returns {Promise<Object>} Exam with generated papers
+ * @throws {Error} If exam not found or invalid status
+ */
+async function generatePapers(examId) {
+  const exam = await Exam.findById(examId).populate('classId');
+  
+  if (!exam) {
+    throw new Error('Exam not found');
+  }
+  
+  // Only DRAFT or PUBLISHED exams can generate papers
+  if (exam.status !== EXAM_STATUS.DRAFT && exam.status !== EXAM_STATUS.PUBLISHED) {
+    throw new Error(`Cannot generate papers: exam is ${exam.status}. Only DRAFT or PUBLISHED exams can generate papers`);
+  }
+  
+  // Get all enrolled students
+  const Enrollment = require('../models/Enrollment');
+  const User = require('../models/User');
+  
+  const enrollments = await Enrollment.find({ classId: exam.classId._id }).populate('studentId');
+  
+  if (enrollments.length === 0) {
+    throw new Error('No students enrolled in this class');
+  }
+  
+  const students = enrollments.map(e => e.studentId);
+  
+  // Call AI service
+  const aiService = require('./ai.service');
+  const fs = require('fs');
+  const path = require('path');
+  
+  const papers = await aiService.generateQuestionPapers(exam, students, {
+    sourceType: exam.aiConfig?.sourceType,
+    difficulty: exam.aiConfig?.difficulty,
+    instructions: exam.aiConfig?.instructions,
+    totalMarks: exam.aiConfig?.totalMarks || exam.totalMarks
+  });
+  
+  // Save PDFs to disk and update exam
+  const pdfsDir = path.join(__dirname, '../pdfs');
+  if (!fs.existsSync(pdfsDir)) {
+    fs.mkdirSync(pdfsDir, { recursive: true });
+  }
+  
+  exam.questionPapers = [];
+  
+  for (const paper of papers) {
+    const filename = `exam_${examId}_student_${paper.studentId}_${Date.now()}.pdf`;
+    const filePath = path.join(pdfsDir, filename);
+    
+    fs.writeFileSync(filePath, paper.pdfBuffer);
+    
+    exam.questionPapers.push({
+      studentId: paper.studentId,
+      filePath: filePath,
+      setCode: paper.setCode,
+      generatedAt: new Date()
+    });
+  }
+  
+  await exam.save();
+  
+  console.log(`✅ Generated ${papers.length} question papers for exam ${examId}`);
+  
+  return exam;
+}
+
+/**
+ * Attach a question paper to exam manually (Phase 3.6)
+ * @param {String} examId - Exam ID
+ * @param {String} studentId - Student ID
+ * @param {String} filePath - Path to PDF file
+ * @returns {Promise<Object>} Updated exam
+ */
+async function attachPaper(examId, studentId, filePath) {
+  const exam = await Exam.findById(examId);
+  
+  if (!exam) {
+    throw new Error('Exam not found');
+  }
+  
+  // Check if paper already exists for this student
+  const existingIndex = exam.questionPapers.findIndex(
+    p => p.studentId.toString() === studentId.toString()
+  );
+  
+  if (existingIndex >= 0) {
+    // Update existing paper
+    exam.questionPapers[existingIndex].filePath = filePath;
+    exam.questionPapers[existingIndex].generatedAt = new Date();
+  } else {
+    // Add new paper
+    exam.questionPapers.push({
+      studentId,
+      filePath,
+      setCode: `MANUAL-${Date.now()}`,
+      generatedAt: new Date()
+    });
+  }
+  
+  await exam.save();
+  
+  return exam;
+}
+
+/**
+ * Trigger AI evaluation for all attempts in exam (Phase 3.6)
+ * @param {String} examId - Exam ID
+ * @returns {Promise<Object>} Evaluation results summary
+ * @throws {Error} If exam not found or invalid status
+ */
+async function triggerEvaluation(examId) {
+  const exam = await Exam.findById(examId);
+  
+  if (!exam) {
+    throw new Error('Exam not found');
+  }
+  
+  // Only CLOSED exams can be evaluated
+  if (exam.status !== EXAM_STATUS.CLOSED) {
+    throw new Error(`Cannot evaluate: exam is ${exam.status}. Only CLOSED exams can be evaluated`);
+  }
+  
+  // Get all submitted attempts
+  const Attempt = require('../models/Attempt');
+  const { ATTEMPT_STATUS } = require('../utils/constants');
+  
+  const attempts = await Attempt.find({
+    examId: examId,
+    status: ATTEMPT_STATUS.SUBMITTED,
+    answerSheetPath: { $exists: true, $ne: null }
+  });
+  
+  if (attempts.length === 0) {
+    throw new Error('No submitted attempts with answer sheets found');
+  }
+  
+  console.log(`🤖 Starting evaluation for ${attempts.length} attempts...`);
+  
+  // Evaluate each attempt
+  const attemptService = require('./attempt.service');
+  const results = {
+    total: attempts.length,
+    evaluated: 0,
+    failed: 0,
+    errors: []
+  };
+  
+  for (const attempt of attempts) {
+    try {
+      await attemptService.evaluateAttempt(attempt._id);
+      results.evaluated++;
+    } catch (error) {
+      results.failed++;
+      results.errors.push({
+        attemptId: attempt._id,
+        error: error.message
+      });
+      console.error(`❌ Failed to evaluate attempt ${attempt._id}:`, error.message);
+    }
+  }
+  
+  // Update exam status to EVALUATING
+  exam.status = EXAM_STATUS.EVALUATING;
+  await exam.save();
+  
+  console.log(`✅ Evaluation complete: ${results.evaluated} succeeded, ${results.failed} failed`);
+  
+  return results;
+}
+
 module.exports = {
   createExam,
   publishExam,
@@ -394,5 +569,8 @@ module.exports = {
   getClassExams,
   getTeacherExams,
   updateExam,
-  deleteExam
+  deleteExam,
+  generatePapers,
+  attachPaper,
+  triggerEvaluation
 };

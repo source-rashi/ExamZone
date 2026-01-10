@@ -413,6 +413,89 @@ async function recordHeartbeat(attemptId) {
   return attempt;
 }
 
+/**
+ * Submit answer sheet for attempt (Phase 3.6)
+ * @param {String} attemptId - Attempt ID
+ * @param {String} filePath - Path to answer sheet PDF
+ * @returns {Promise<Object>} Updated attempt
+ * @throws {Error} If validation fails
+ */
+async function submitAnswerSheet(attemptId, filePath) {
+  const attempt = await Attempt.findById(attemptId);
+  
+  if (!attempt) {
+    throw new Error('Attempt not found');
+  }
+  
+  // Only IN_PROGRESS or SUBMITTED attempts can upload answer sheets
+  if (attempt.status !== ATTEMPT_STATUS.IN_PROGRESS && attempt.status !== ATTEMPT_STATUS.SUBMITTED) {
+    throw new Error(`Cannot submit answer sheet: attempt is ${attempt.status}`);
+  }
+  
+  // Validate file exists
+  const fs = require('fs');
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Answer sheet file not found: ${filePath}`);
+  }
+  
+  // Update attempt
+  attempt.answerSheetPath = filePath;
+  await attempt.save();
+  
+  console.log(`✅ Answer sheet submitted for attempt ${attemptId}`);
+  
+  return attempt;
+}
+
+/**
+ * Evaluate attempt using AI (Phase 3.6)
+ * @param {String} attemptId - Attempt ID
+ * @returns {Promise<Object>} Updated attempt with evaluation results
+ * @throws {Error} If validation fails
+ */
+async function evaluateAttempt(attemptId) {
+  const attempt = await Attempt.findById(attemptId);
+  
+  if (!attempt) {
+    throw new Error('Attempt not found');
+  }
+  
+  // Only SUBMITTED attempts can be evaluated
+  if (attempt.status !== ATTEMPT_STATUS.SUBMITTED) {
+    throw new Error(`Cannot evaluate: attempt is ${attempt.status}. Only SUBMITTED attempts can be evaluated`);
+  }
+  
+  // Answer sheet must be uploaded
+  if (!attempt.answerSheetPath) {
+    throw new Error('Answer sheet not uploaded');
+  }
+  
+  // Call AI service
+  const aiService = require('./ai.service');
+  const result = await aiService.evaluateAttempt(attemptId.toString(), attempt.answerSheetPath);
+  
+  // Update attempt with results
+  attempt.aiResult = {
+    score: result.score,
+    feedback: result.feedback,
+    evaluatedAt: result.evaluatedAt
+  };
+  
+  // Also update the main score field
+  attempt.score = result.score;
+  
+  // Update status to EVALUATED
+  validateAttemptTransition(attempt.status, ATTEMPT_STATUS.EVALUATED);
+  attempt.status = ATTEMPT_STATUS.EVALUATED;
+  attempt.evaluatedAt = result.evaluatedAt;
+  
+  await attempt.save();
+  
+  console.log(`✅ Attempt ${attemptId} evaluated: score=${result.score}`);
+  
+  return attempt;
+}
+
 module.exports = {
   checkAttemptLimit,
   validateAttempt,
@@ -426,5 +509,7 @@ module.exports = {
   recordFocusLoss,
   getAttemptStatistics,
   recordIntegrityEvent,
-  recordHeartbeat
+  recordHeartbeat,
+  submitAnswerSheet,
+  evaluateAttempt
 };

@@ -115,7 +115,93 @@ async function publishExam(req, res) {
   }
 }
 
+/**
+ * Generate question papers for exam (Phase 3.6)
+ * @route POST /api/v2/exams/:id/generate
+ */
+async function generateQuestionPapers(req, res) {
+  try {
+    const { id } = req.params;
+
+    const exam = await examService.generatePapers(id);
+
+    res.status(200).json({
+      success: true,
+      message: `Generated ${exam.questionPapers.length} question papers`,
+      data: {
+        examId: exam._id,
+        totalPapers: exam.questionPapers.length,
+        papers: exam.questionPapers.map(p => ({
+          studentId: p.studentId,
+          setCode: p.setCode,
+          generatedAt: p.generatedAt
+        }))
+      }
+    });
+  } catch (error) {
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('Cannot generate papers') || error.message.includes('No students enrolled')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate question papers',
+      error: error.message
+    });
+  }
+}
+
+/**
+ * Trigger AI evaluation for exam (Phase 3.6)
+ * @route POST /api/v2/exams/:id/evaluate
+ */
+async function triggerEvaluation(req, res) {
+  try {
+    const { id } = req.params;
+
+    const results = await examService.triggerEvaluation(id);
+
+    res.status(200).json({
+      success: true,
+      message: `Evaluation triggered: ${results.evaluated} succeeded, ${results.failed} failed`,
+      data: results
+    });
+  } catch (error) {
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('Cannot evaluate') || error.message.includes('No submitted attempts')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to trigger evaluation',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   createExam,
-  publishExam
+  publishExam,
+  generateQuestionPapers,
+  triggerEvaluation
 };

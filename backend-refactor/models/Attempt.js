@@ -46,6 +46,22 @@ const attemptSchema = new mongoose.Schema({
     type: Number, // Phase 3.4 - final score after evaluation
     min: 0
   },
+  // Phase 3.6 - AI evaluation
+  answerSheetPath: {
+    type: String
+  },
+  aiResult: {
+    score: {
+      type: Number,
+      min: 0
+    },
+    feedback: {
+      type: String
+    },
+    evaluatedAt: {
+      type: Date
+    }
+  },
   // Phase 3.5 - Integrity tracking
   integrity: {
     tabSwitches: {

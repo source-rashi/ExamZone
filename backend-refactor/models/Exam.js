@@ -58,6 +58,46 @@ const examSchema = new mongoose.Schema({
   closedAt: {
     type: Date
   },
+  // Phase 3.6 - AI integration
+  questionPapers: [
+    {
+      studentId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+      },
+      filePath: {
+        type: String,
+        required: true
+      },
+      setCode: {
+        type: String
+      },
+      generatedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }
+  ],
+  aiConfig: {
+    sourceType: {
+      type: String,
+      enum: ['auto', 'manual', 'bank'],
+      default: 'auto'
+    },
+    difficulty: {
+      type: String,
+      enum: ['easy', 'medium', 'hard'],
+      default: 'medium'
+    },
+    instructions: {
+      type: String,
+      default: ''
+    },
+    totalMarks: {
+      type: Number
+    }
+  },
   settings: {
     tabSwitchLimit: {
       type: Number,

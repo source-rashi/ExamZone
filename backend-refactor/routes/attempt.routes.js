@@ -8,7 +8,8 @@ const router = express.Router();
 const { 
   startAttempt, 
   recordViolation, 
-  recordHeartbeat 
+  recordHeartbeat,
+  submitAnswerSheet
 } = require('../controllers/attempt.controller');
 
 /**
@@ -31,5 +32,12 @@ router.post('/:id/violation', recordViolation);
  * @access Student
  */
 router.post('/:id/heartbeat', recordHeartbeat);
+
+/**
+ * @route POST /api/v2/attempts/:id/submit-sheet
+ * @desc Submit answer sheet PDF
+ * @access Student
+ */
+router.post('/:id/submit-sheet', submitAnswerSheet);
 
 module.exports = router;
