@@ -51,6 +51,17 @@ const userSchema = new mongoose.Schema({
     default: null
   },
   
+  picture: {
+    type: String,
+    default: null
+  },
+  
+  authProvider: {
+    type: String,
+    enum: ['local', 'google'],
+    default: 'local'
+  },
+  
   isActive: {
     type: Boolean,
     default: true

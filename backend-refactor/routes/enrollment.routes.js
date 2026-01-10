@@ -6,19 +6,21 @@
 const express = require('express');
 const router = express.Router();
 const { enrollStudent, getClassStudents } = require('../controllers/enrollment.controller');
+const { authenticate } = require('../middleware/auth.middleware');
+const { teacherOnly } = require('../middleware/role.middleware');
 
 /**
  * @route POST /api/v2/enrollments
  * @desc Enroll a student in a class
- * @access Teacher
+ * @access Teacher only
  */
-router.post('/', enrollStudent);
+router.post('/', authenticate, teacherOnly, enrollStudent);
 
 /**
  * @route GET /api/v2/enrollments/class/:classId
  * @desc Get all students in a class
- * @access Teacher
+ * @access Teacher only
  */
-router.get('/class/:classId', getClassStudents);
+router.get('/class/:classId', authenticate, teacherOnly, getClassStudents);
 
 module.exports = router;

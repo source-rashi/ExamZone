@@ -10,6 +10,7 @@ const uploadRoutes = require('./routes/upload.routes');
 const studentRoutes = require('./routes/student.routes');
 
 // Import V2 route modules
+const authRoutes = require('./routes/auth.routes');
 const classRoutesV2 = require('./routes/class.routes.v2');
 const enrollmentRoutes = require('./routes/enrollment.routes');
 const examRoutes = require('./routes/exam.routes');
@@ -47,6 +48,7 @@ app.use('/', uploadRoutes);
 app.use('/', studentRoutes);
 
 // Register V2 API routes
+app.use('/api/v2/auth', authRoutes);
 app.use('/api/v2/classes', classRoutesV2);
 app.use('/api/v2/enrollments', enrollmentRoutes);
 app.use('/api/v2/exams', examRoutes);

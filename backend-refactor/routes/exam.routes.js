@@ -11,33 +11,35 @@ const {
   generateQuestionPapers, 
   triggerEvaluation 
 } = require('../controllers/exam.controller');
+const { authenticate } = require('../middleware/auth.middleware');
+const { teacherOnly } = require('../middleware/role.middleware');
 
 /**
  * @route POST /api/v2/exams
  * @desc Create a new exam
- * @access Teacher
+ * @access Teacher only
  */
-router.post('/', createExam);
+router.post('/', authenticate, teacherOnly, createExam);
 
 /**
  * @route PATCH /api/v2/exams/:examId/publish
  * @desc Publish an exam
- * @access Teacher (creator only)
+ * @access Teacher only (creator only)
  */
-router.patch('/:examId/publish', publishExam);
+router.patch('/:examId/publish', authenticate, teacherOnly, publishExam);
 
 /**
  * @route POST /api/v2/exams/:id/generate
  * @desc Generate question papers for exam
- * @access Teacher
+ * @access Teacher only
  */
-router.post('/:id/generate', generateQuestionPapers);
+router.post('/:id/generate', authenticate, teacherOnly, generateQuestionPapers);
 
 /**
  * @route POST /api/v2/exams/:id/evaluate
  * @desc Trigger AI evaluation for all attempts
- * @access Teacher
+ * @access Teacher only
  */
-router.post('/:id/evaluate', triggerEvaluation);
+router.post('/:id/evaluate', authenticate, teacherOnly, triggerEvaluation);
 
 module.exports = router;
