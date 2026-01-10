@@ -15,20 +15,32 @@ const studentSchema = new mongoose.Schema({
 });
 
 const classSchema = new mongoose.Schema({
+  // Legacy fields (keep for backward compatibility)
   code: { type: String, required: true, unique: true },
-  title: { type: String, default: '' },
-  description: { type: String, default: '' },
   icon: { type: String, default: '📚' },
   assignments: { type: Number, default: 0 },
   lastActive: { type: String, default: () => new Date().toLocaleString() },
   
-  // Future: reference to teacher (User model)
+  // Phase 3: Professional classroom fields
+  title: { type: String, default: '' },
+  description: { type: String, default: '' },
+  subject: { type: String, default: '' },
+  
+  // Teacher reference (Phase 3: normalized field name)
+  teacherId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  
+  // Legacy teacher field (keep for backward compatibility)
   teacher: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     default: null
   },
   
+  // Legacy students array (keep for backward compatibility)
   students: [studentSchema],
   
   // Timestamps
@@ -43,6 +55,7 @@ const classSchema = new mongoose.Schema({
 // Index for performance
 classSchema.index({ code: 1 });
 classSchema.index({ teacher: 1 });
+classSchema.index({ teacherId: 1 });
 classSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('Class', classSchema);
