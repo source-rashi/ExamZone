@@ -122,7 +122,7 @@ userSchema.statics.findByRole = function(role) {
 };
 
 // Indexes for performance
-userSchema.index({ email: 1 });
+// Note: email unique index created by field-level 'unique: true'
 userSchema.index({ role: 1 });
 userSchema.index({ createdAt: -1 });
 

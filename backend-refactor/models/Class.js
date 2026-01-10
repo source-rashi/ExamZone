@@ -53,7 +53,7 @@ const classSchema = new mongoose.Schema({
 });
 
 // Index for performance
-classSchema.index({ code: 1 });
+// Note: code unique index created by field-level 'unique: true'
 classSchema.index({ teacher: 1 });
 classSchema.index({ teacherId: 1 });
 classSchema.index({ createdAt: -1 });
