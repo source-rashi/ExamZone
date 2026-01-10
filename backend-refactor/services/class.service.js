@@ -1,4 +1,15 @@
 const Class = require('../models/Class');
+const User = require('../models/User');
+
+/**
+ * Class Service
+ * Business logic for class management
+ * Includes legacy functions for backward compatibility
+ */
+
+// ============================================================================
+// LEGACY FUNCTIONS (Preserved for backward compatibility with old routes)
+// ============================================================================
 
 /**
  * Derive class title and icon from class code prefix
@@ -33,7 +44,7 @@ exports.deriveClassInfo = (code) => {
 };
 
 /**
- * Check if class exists by code
+ * Check if class exists by code (Legacy)
  * @param {string} code - Class code
  * @returns {Promise<Object|null>} Class document or null
  */
@@ -141,11 +152,157 @@ exports.updateStudentAnswerSheet = async (classDoc, roll, answerPdfPath) => {
  * @param {string} roll - Optional roll number to filter
  * @returns {Array} Array of students with answer sheets
  */
-exports.getStudentsWithAnswers = (classDoc, roll = null) => {
+exports.getStudentsWithAnswerSheets = (classDoc, roll = null) => {
+  let students = classDoc.students.filter(s => s.answerPdf && s.answerPdf !== '');
+  
   if (roll) {
-    const student = classDoc.students.find(s => s.roll === roll && s.answerPdf);
-    return student ? [student] : [];
+    students = students.filter(s => s.roll === roll);
   }
   
-  return classDoc.students.filter(s => s.answerPdf);
+  return students;
+};
+
+// ============================================================================
+// PHASE 3 FUNCTIONS (New service layer with proper validation)
+// ============================================================================
+
+/**
+ * Create a new class with teacher validation (Phase 3)
+ * @param {ObjectId} teacherId - ID of the teacher creating the class
+ * @param {Object} data - Class data
+ * @returns {Promise<Object>} Created class
+ */
+exports.createClassV2 = async (teacherId, data) => {
+  // Validate teacher exists
+  const teacher = await User.findById(teacherId);
+  if (!teacher) {
+    throw new Error('Teacher not found');
+  }
+
+  if (teacher.role !== 'teacher') {
+    throw new Error('Only teachers can create classes');
+  }
+
+  // Check if class code already exists
+  const existingClass = await Class.findOne({ code: data.code });
+  if (existingClass) {
+    throw new Error('Class with this code already exists');
+  }
+
+  // Auto-derive title and icon if not provided
+  const derivedInfo = exports.deriveClassInfo(data.code);
+
+  // Create new class
+  const classData = {
+    code: data.code,
+    title: data.title || derivedInfo.title,
+    description: data.description || '',
+    subject: data.subject || '',
+    icon: data.icon || derivedInfo.icon,
+    teacherId: teacherId,
+    teacher: teacherId, // Legacy field for backward compatibility
+    students: [],
+    assignments: 0
+  };
+
+  const newClass = await Class.create(classData);
+  return newClass;
+};
+
+/**
+ * Get class by code (Phase 3)
+ * @param {String} code - Class code
+ * @returns {Promise<Object>} Class document
+ */
+exports.getClassByCode = async (code) => {
+  const classDoc = await Class.findOne({ code });
+  
+  if (!classDoc) {
+    throw new Error('Class not found');
+  }
+
+  return classDoc;
+};
+
+/**
+ * Get class by ID (Phase 3)
+ * @param {ObjectId} classId - Class ID
+ * @returns {Promise<Object>} Class document
+ */
+exports.getClassById = async (classId) => {
+  const classDoc = await Class.findById(classId);
+  
+  if (!classDoc) {
+    throw new Error('Class not found');
+  }
+
+  return classDoc;
+};
+
+/**
+ * Get all classes for a teacher (Phase 3)
+ * @param {ObjectId} teacherId - Teacher ID
+ * @returns {Promise<Array>} Array of classes
+ */
+exports.getTeacherClasses = async (teacherId) => {
+  const classes = await Class.find({ teacherId })
+    .sort({ createdAt: -1 })
+    .lean();
+  
+  return classes;
+};
+
+/**
+ * Update class details (Phase 3)
+ * @param {ObjectId} classId - Class ID
+ * @param {ObjectId} teacherId - Teacher ID (for authorization)
+ * @param {Object} updates - Fields to update
+ * @returns {Promise<Object>} Updated class
+ */
+exports.updateClass = async (classId, teacherId, updates) => {
+  const classDoc = await Class.findById(classId);
+  
+  if (!classDoc) {
+    throw new Error('Class not found');
+  }
+
+  // Verify teacher owns this class
+  if (classDoc.teacherId?.toString() !== teacherId.toString() && 
+      classDoc.teacher?.toString() !== teacherId.toString()) {
+    throw new Error('Unauthorized: You do not own this class');
+  }
+
+  // Apply updates (whitelist allowed fields)
+  const allowedUpdates = ['title', 'description', 'subject', 'icon'];
+  Object.keys(updates).forEach(key => {
+    if (allowedUpdates.includes(key)) {
+      classDoc[key] = updates[key];
+    }
+  });
+
+  await classDoc.save();
+  return classDoc;
+};
+
+/**
+ * Delete class (Phase 3)
+ * @param {ObjectId} classId - Class ID
+ * @param {ObjectId} teacherId - Teacher ID (for authorization)
+ * @returns {Promise<Boolean>} Success status
+ */
+exports.deleteClass = async (classId, teacherId) => {
+  const classDoc = await Class.findById(classId);
+  
+  if (!classDoc) {
+    throw new Error('Class not found');
+  }
+
+  // Verify teacher owns this class
+  if (classDoc.teacherId?.toString() !== teacherId.toString() && 
+      classDoc.teacher?.toString() !== teacherId.toString()) {
+    throw new Error('Unauthorized: You do not own this class');
+  }
+
+  await Class.findByIdAndDelete(classId);
+  return true;
 };
