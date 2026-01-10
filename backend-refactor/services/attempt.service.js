@@ -2,11 +2,29 @@ const Attempt = require('../models/Attempt');
 const Exam = require('../models/Exam');
 const User = require('../models/User');
 const Enrollment = require('../models/Enrollment');
+const { EXAM_STATUS, ATTEMPT_STATUS, ATTEMPT_STATE_TRANSITIONS } = require('../utils/constants');
 
 /**
  * Attempt Service
  * Business logic for exam attempt management
  */
+
+/**
+ * Validate attempt state transition
+ * @param {String} currentStatus - Current attempt status
+ * @param {String} newStatus - Desired new status
+ * @throws {Error} If transition is invalid
+ */
+function validateAttemptTransition(currentStatus, newStatus) {
+  const allowedTransitions = ATTEMPT_STATE_TRANSITIONS[currentStatus];
+  
+  if (!allowedTransitions || !allowedTransitions.includes(newStatus)) {
+    throw new Error(
+      `Invalid attempt transition: Cannot move from ${currentStatus} to ${newStatus}. ` +
+      `Allowed transitions: ${allowedTransitions ? allowedTransitions.join(', ') : 'none'}`
+    );
+  }
+}
 
 /**
  * Check if student has reached attempt limit
@@ -39,17 +57,12 @@ async function checkAttemptLimit(studentId, examId) {
 }
 
 /**
- * Start a new exam attempt
- * @param {Object} data - Attempt data {studentId, examId, questionPaperId}
- * @returns {Promise<Object>} Created attempt
+ * Validate if student can attempt exam (Phase 3.4)
+ * @param {ObjectId} studentId - Student ID
+ * @param {ObjectId} examId - Exam ID
+ * @returns {Promise<Object>} Validation result
  */
-async function startAttempt(data) {
-  const { studentId, examId, questionPaperId } = data;
-
-  if (!studentId || !examId) {
-    throw new Error('studentId and examId are required');
-  }
-
+async function validateAttempt(studentId, examId) {
   // Validate student exists
   const student = await User.findById(studentId);
   if (!student) {
@@ -66,9 +79,9 @@ async function startAttempt(data) {
     throw new Error('Exam not found');
   }
 
-  // Check exam status
-  if (exam.status !== 'published' && exam.status !== 'ongoing') {
-    throw new Error(`Exam is not available. Status: ${exam.status}`);
+  // Phase 3.4: Check exam is LIVE
+  if (exam.status !== EXAM_STATUS.LIVE) {
+    throw new Error(`Exam is not live. Current status: ${exam.status}`);
   }
 
   // Check if exam time window is valid
@@ -101,35 +114,123 @@ async function startAttempt(data) {
   const ongoingAttempt = await Attempt.findOne({ 
     studentId, 
     examId, 
-    status: 'started' 
+    status: ATTEMPT_STATUS.IN_PROGRESS
   });
   
   if (ongoingAttempt) {
     throw new Error('You already have an ongoing attempt for this exam');
   }
 
-  // Calculate attempt number
-  const attemptNumber = attemptStatus.attemptCount + 1;
+  return {
+    canAttempt: true,
+    exam,
+    student,
+    attemptNumber: attemptStatus.attemptCount + 1,
+    remainingAttempts: attemptStatus.remainingAttempts
+  };
+}
 
-  // Create new attempt
+/**
+ * Start a new exam attempt (Phase 3.4 updated)
+ * @param {Object} data - Attempt data {studentId, examId, questionPaperId}
+ * @returns {Promise<Object>} Created attempt
+ */
+async function startAttempt(data) {
+  const { studentId, examId, questionPaperId } = data;
+
+  if (!studentId || !examId) {
+    throw new Error('studentId and examId are required');
+  }
+
+  // Validate attempt
+  const validation = await validateAttempt(studentId, examId);
+
+  // Create new attempt with IN_PROGRESS status
   const attempt = await Attempt.create({
     examId,
     studentId,
     questionPaperId: questionPaperId || null,
-    attemptNumber,
+    attemptNumber: validation.attemptNumber,
     startedAt: new Date(),
-    status: 'started',
+    startTime: new Date(), // Legacy field
+    status: ATTEMPT_STATUS.IN_PROGRESS,
     tabSwitchCount: 0,
     focusLossCount: 0
   });
 
-  // Update exam status to ongoing if this is the first attempt
-  if (exam.status === 'published') {
-    exam.status = 'ongoing';
-    await exam.save();
+  return attempt;
+}
+
+/**
+ * Submit an exam attempt (Phase 3.4)
+ * @param {ObjectId} attemptId - Attempt ID
+ * @returns {Promise<Object>} Updated attempt
+ */
+async function submitAttempt(attemptId) {
+  const attempt = await Attempt.findById(attemptId);
+  
+  if (!attempt) {
+    throw new Error('Attempt not found');
   }
 
+  // Validate state transition
+  validateAttemptTransition(attempt.status, ATTEMPT_STATUS.SUBMITTED);
+
+  // Check if exam is still open
+  const exam = await Exam.findById(attempt.examId);
+  if (!exam) {
+    throw new Error('Exam not found');
+  }
+
+  // Allow submission even if exam is closed (for overdue attempts)
+  if (exam.status !== EXAM_STATUS.LIVE && exam.status !== EXAM_STATUS.CLOSED) {
+    throw new Error(`Cannot submit attempt. Exam status: ${exam.status}`);
+  }
+
+  // Update attempt status
+  attempt.status = ATTEMPT_STATUS.SUBMITTED;
+  attempt.submittedAt = new Date();
+  attempt.endTime = new Date(); // Legacy field
+  await attempt.save();
+
   return attempt;
+}
+
+/**
+ * Mark overdue attempts as submitted automatically
+ * Should be called by a background job when exam closes
+ * @param {ObjectId} examId - Exam ID
+ * @returns {Promise<Number>} Number of attempts auto-submitted
+ */
+async function autoSubmitOverdueAttempts(examId) {
+  const exam = await Exam.findById(examId);
+  
+  if (!exam) {
+    throw new Error('Exam not found');
+  }
+
+  if (exam.status !== EXAM_STATUS.CLOSED) {
+    throw new Error('Can only auto-submit attempts for closed exams');
+  }
+
+  // Find all in-progress attempts for this exam
+  const overdueAttempts = await Attempt.find({
+    examId,
+    status: ATTEMPT_STATUS.IN_PROGRESS
+  });
+
+  // Mark them as submitted
+  const now = new Date();
+  const updatePromises = overdueAttempts.map(attempt => {
+    attempt.status = ATTEMPT_STATUS.SUBMITTED;
+    attempt.submittedAt = now;
+    attempt.endTime = now;
+    return attempt.save();
+  });
+
+  await Promise.all(updatePromises);
+
+  return overdueAttempts.length;
 }
 
 /**
@@ -206,37 +307,6 @@ async function getStudentAttempts(studentId, examId = null) {
 }
 
 /**
- * Submit an attempt
- * @param {ObjectId} attemptId - Attempt ID
- * @param {ObjectId} studentId - Student ID (for authorization)
- * @returns {Promise<Object>} Updated attempt
- */
-async function submitAttempt(attemptId, studentId) {
-  const attempt = await Attempt.findById(attemptId);
-  
-  if (!attempt) {
-    throw new Error('Attempt not found');
-  }
-
-  // Verify student owns this attempt
-  if (attempt.studentId.toString() !== studentId.toString()) {
-    throw new Error('Unauthorized: This is not your attempt');
-  }
-
-  // Check if already submitted
-  if (attempt.status !== 'started') {
-    throw new Error(`Cannot submit attempt with status: ${attempt.status}`);
-  }
-
-  // Update attempt
-  attempt.status = 'submitted';
-  attempt.endTime = new Date();
-  await attempt.save();
-
-  return attempt;
-}
-
-/**
  * Record tab switch violation
  * @param {ObjectId} attemptId - Attempt ID
  * @returns {Promise<Object>} Updated attempt
@@ -248,7 +318,7 @@ async function recordTabSwitch(attemptId) {
     throw new Error('Attempt not found');
   }
 
-  if (attempt.status !== 'started') {
+  if (attempt.status !== ATTEMPT_STATUS.IN_PROGRESS) {
     throw new Error('Cannot record violation for non-active attempt');
   }
 
@@ -270,7 +340,7 @@ async function recordFocusLoss(attemptId) {
     throw new Error('Attempt not found');
   }
 
-  if (attempt.status !== 'started') {
+  if (attempt.status !== ATTEMPT_STATUS.IN_PROGRESS) {
     throw new Error('Cannot record violation for non-active attempt');
   }
 
@@ -291,9 +361,9 @@ async function getAttemptStatistics(studentId, examId) {
 
   const stats = {
     totalAttempts: attempts.length,
-    submitted: attempts.filter(a => a.status === 'submitted').length,
-    evaluated: attempts.filter(a => a.status === 'evaluated').length,
-    ongoing: attempts.filter(a => a.status === 'started').length,
+    submitted: attempts.filter(a => a.status === ATTEMPT_STATUS.SUBMITTED).length,
+    evaluated: attempts.filter(a => a.status === ATTEMPT_STATUS.EVALUATED).length,
+    ongoing: attempts.filter(a => a.status === ATTEMPT_STATUS.IN_PROGRESS).length,
     averageTabSwitches: 0,
     averageFocusLoss: 0
   };
@@ -308,11 +378,13 @@ async function getAttemptStatistics(studentId, examId) {
 
 module.exports = {
   checkAttemptLimit,
+  validateAttempt,
   startAttempt,
+  submitAttempt,
+  autoSubmitOverdueAttempts,
   getAttemptById,
   getExamAttempts,
   getStudentAttempts,
-  submitAttempt,
   recordTabSwitch,
   recordFocusLoss,
   getAttemptStatistics

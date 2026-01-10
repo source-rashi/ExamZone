@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { EXAM_STATUS } = require('../utils/constants');
 
 const examSchema = new mongoose.Schema({
   classId: {
@@ -20,7 +21,11 @@ const examSchema = new mongoose.Schema({
     default: ''
   },
   duration: {
-    type: Number, // in minutes
+    type: Number, // in minutes (legacy field)
+    default: 60
+  },
+  durationMinutes: {
+    type: Number, // Phase 3.4 - standardized duration field
     default: 60
   },
   totalMarks: {
@@ -44,8 +49,14 @@ const examSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['draft', 'published', 'ongoing', 'closed'],
-    default: 'draft'
+    enum: Object.values(EXAM_STATUS),
+    default: EXAM_STATUS.DRAFT
+  },
+  publishedAt: {
+    type: Date
+  },
+  closedAt: {
+    type: Date
   },
   settings: {
     tabSwitchLimit: {

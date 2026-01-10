@@ -1,6 +1,7 @@
 const Exam = require('../models/Exam');
 const Class = require('../models/Class');
 const User = require('../models/User');
+const { EXAM_STATUS, EXAM_STATE_TRANSITIONS } = require('../utils/constants');
 
 /**
  * Exam Service
@@ -64,40 +65,185 @@ async function createExam(data) {
 }
 
 /**
- * Publish an exam (change status from draft to published)
+ * Validate state transition
+ * @param {String} currentStatus - Current exam status
+ * @param {String} newStatus - Desired new status
+ * @throws {Error} If transition is invalid
+ */
+function validateStateTransition(currentStatus, newStatus) {
+  const allowedTransitions = EXAM_STATE_TRANSITIONS[currentStatus];
+  
+  if (!allowedTransitions || !allowedTransitions.includes(newStatus)) {
+    throw new Error(
+      `Invalid state transition: Cannot move from ${currentStatus} to ${newStatus}. ` +
+      `Allowed transitions: ${allowedTransitions ? allowedTransitions.join(', ') : 'none'}`
+    );
+  }
+}
+
+/**
+ * Publish an exam (DRAFT → PUBLISHED)
  * @param {ObjectId} examId - Exam ID
- * @param {ObjectId} teacherId - Teacher ID (for authorization)
+ * @param {ObjectId} userId - User ID (for authorization)
  * @returns {Promise<Object>} Updated exam
  */
-async function publishExam(examId, teacherId) {
+async function publishExam(examId, userId) {
   const exam = await Exam.findById(examId);
   
   if (!exam) {
     throw new Error('Exam not found');
   }
 
-  // Verify teacher owns this exam
-  if (exam.createdBy.toString() !== teacherId.toString()) {
-    throw new Error('Unauthorized: You did not create this exam');
+  // Verify user owns this exam
+  if (exam.createdBy.toString() !== userId.toString()) {
+    throw new Error('Unauthorized: Only the exam creator can publish this exam');
   }
 
-  // Check if exam is already published
-  if (exam.status === 'published' || exam.status === 'ongoing' || exam.status === 'closed') {
-    throw new Error(`Cannot publish exam with status: ${exam.status}`);
-  }
+  // Validate state transition
+  validateStateTransition(exam.status, EXAM_STATUS.PUBLISHED);
 
   // Validate exam has required fields
-  if (!exam.title || !exam.startTime || !exam.endTime) {
-    throw new Error('Exam must have title, start time, and end time before publishing');
+  if (!exam.title) {
+    throw new Error('Exam must have a title before publishing');
+  }
+  
+  if (!exam.startTime || !exam.endTime) {
+    throw new Error('Exam must have start time and end time before publishing');
   }
 
   // Validate time range
-  if (new Date(exam.startTime) >= new Date(exam.endTime)) {
+  const startTime = new Date(exam.startTime);
+  const endTime = new Date(exam.endTime);
+  
+  if (startTime >= endTime) {
     throw new Error('End time must be after start time');
   }
 
+  // Set durationMinutes if not set
+  if (!exam.durationMinutes && exam.duration) {
+    exam.durationMinutes = exam.duration;
+  }
+
   // Change status to published
-  exam.status = 'published';
+  exam.status = EXAM_STATUS.PUBLISHED;
+  exam.publishedAt = new Date();
+  await exam.save();
+
+  return exam;
+}
+
+/**
+ * Start an exam (PUBLISHED → LIVE)
+ * Typically triggered automatically when startTime is reached
+ * @param {ObjectId} examId - Exam ID
+ * @returns {Promise<Object>} Updated exam
+ */
+async function startExam(examId) {
+  const exam = await Exam.findById(examId);
+  
+  if (!exam) {
+    throw new Error('Exam not found');
+  }
+
+  // Validate state transition
+  validateStateTransition(exam.status, EXAM_STATUS.LIVE);
+
+  const now = new Date();
+  const startTime = new Date(exam.startTime);
+  
+  // Check if exam can be started
+  if (startTime > now) {
+    throw new Error(`Exam cannot be started yet. Start time is ${exam.startTime}`);
+  }
+
+  // Change status to live
+  exam.status = EXAM_STATUS.LIVE;
+  await exam.save();
+
+  return exam;
+}
+
+/**
+ * Close an exam (LIVE → CLOSED)
+ * Can be manually triggered or automatically when endTime is reached
+ * @param {ObjectId} examId - Exam ID
+ * @param {ObjectId} userId - User ID (for authorization, optional for auto-close)
+ * @returns {Promise<Object>} Updated exam
+ */
+async function closeExam(examId, userId = null) {
+  const exam = await Exam.findById(examId);
+  
+  if (!exam) {
+    throw new Error('Exam not found');
+  }
+
+  // If userId provided, verify authorization
+  if (userId && exam.createdBy.toString() !== userId.toString()) {
+    throw new Error('Unauthorized: Only the exam creator can close this exam');
+  }
+
+  // Validate state transition
+  validateStateTransition(exam.status, EXAM_STATUS.CLOSED);
+
+  // Change status to closed
+  exam.status = EXAM_STATUS.CLOSED;
+  exam.closedAt = new Date();
+  await exam.save();
+
+  return exam;
+}
+
+/**
+ * Start evaluation process (CLOSED → EVALUATING)
+ * @param {ObjectId} examId - Exam ID
+ * @param {ObjectId} userId - User ID (for authorization)
+ * @returns {Promise<Object>} Updated exam
+ */
+async function startEvaluation(examId, userId) {
+  const exam = await Exam.findById(examId);
+  
+  if (!exam) {
+    throw new Error('Exam not found');
+  }
+
+  // Verify user owns this exam
+  if (exam.createdBy.toString() !== userId.toString()) {
+    throw new Error('Unauthorized: Only the exam creator can start evaluation');
+  }
+
+  // Validate state transition
+  validateStateTransition(exam.status, EXAM_STATUS.EVALUATING);
+
+  // Change status to evaluating
+  exam.status = EXAM_STATUS.EVALUATING;
+  await exam.save();
+
+  return exam;
+}
+
+/**
+ * Publish results (EVALUATING → RESULT_PUBLISHED)
+ * @param {ObjectId} examId - Exam ID
+ * @param {ObjectId} userId - User ID (for authorization)
+ * @returns {Promise<Object>} Updated exam
+ */
+async function publishResults(examId, userId) {
+  const exam = await Exam.findById(examId);
+  
+  if (!exam) {
+    throw new Error('Exam not found');
+  }
+
+  // Verify user owns this exam
+  if (exam.createdBy.toString() !== userId.toString()) {
+    throw new Error('Unauthorized: Only the exam creator can publish results');
+  }
+
+  // Validate state transition
+  validateStateTransition(exam.status, EXAM_STATUS.RESULT_PUBLISHED);
+
+  // Change status to result_published
+  exam.status = EXAM_STATUS.RESULT_PUBLISHED;
   await exam.save();
 
   return exam;
@@ -236,45 +382,16 @@ async function deleteExam(examId, teacherId) {
   return true;
 }
 
-/**
- * Close an exam (change status to closed)
- * @param {ObjectId} examId - Exam ID
- * @param {ObjectId} teacherId - Teacher ID (for authorization)
- * @returns {Promise<Object>} Updated exam
- */
-async function closeExam(examId, teacherId) {
-  const exam = await Exam.findById(examId);
-  
-  if (!exam) {
-    throw new Error('Exam not found');
-  }
-
-  // Verify teacher owns this exam
-  if (exam.createdBy.toString() !== teacherId.toString()) {
-    throw new Error('Unauthorized: You did not create this exam');
-  }
-
-  if (exam.status === 'closed') {
-    throw new Error('Exam is already closed');
-  }
-
-  if (exam.status === 'draft') {
-    throw new Error('Cannot close an unpublished exam');
-  }
-
-  exam.status = 'closed';
-  await exam.save();
-
-  return exam;
-}
-
 module.exports = {
   createExam,
   publishExam,
+  startExam,
+  closeExam,
+  startEvaluation,
+  publishResults,
   getExamById,
   getClassExams,
   getTeacherExams,
   updateExam,
-  deleteExam,
-  closeExam
+  deleteExam
 };

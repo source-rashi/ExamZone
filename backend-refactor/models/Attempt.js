@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { ATTEMPT_STATUS } = require('../utils/constants');
 
 const attemptSchema = new mongoose.Schema({
   examId: {
@@ -20,16 +21,30 @@ const attemptSchema = new mongoose.Schema({
     required: true
   },
   startTime: {
-    type: Date,
+    type: Date, // Legacy field
+    default: Date.now
+  },
+  startedAt: {
+    type: Date, // Phase 3.4 - standardized field
     default: Date.now
   },
   endTime: {
-    type: Date
+    type: Date // Legacy field
+  },
+  submittedAt: {
+    type: Date // Phase 3.4 - when student submits
+  },
+  evaluatedAt: {
+    type: Date // Phase 3.4 - when evaluation completes
   },
   status: {
     type: String,
-    enum: ['started', 'submitted', 'evaluated'],
-    default: 'started'
+    enum: Object.values(ATTEMPT_STATUS),
+    default: ATTEMPT_STATUS.IN_PROGRESS
+  },
+  score: {
+    type: Number, // Phase 3.4 - final score after evaluation
+    min: 0
   },
   tabSwitchCount: {
     type: Number,
