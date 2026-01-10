@@ -15,6 +15,7 @@ const classRoutesV2 = require('./routes/class.routes.v2');
 const enrollmentRoutes = require('./routes/enrollment.routes');
 const examRoutes = require('./routes/exam.routes');
 const attemptRoutes = require('./routes/attempt.routes');
+const inviteRoutes = require('./routes/invite.routes');
 
 const app = express();
 
@@ -53,6 +54,7 @@ app.use('/api/v2/classes', classRoutesV2);
 app.use('/api/v2/enrollments', enrollmentRoutes);
 app.use('/api/v2/exams', examRoutes);
 app.use('/api/v2/attempts', attemptRoutes);
+app.use('/api/v2/invites', inviteRoutes);
 
 // Static page routes
 

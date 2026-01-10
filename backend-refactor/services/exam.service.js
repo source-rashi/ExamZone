@@ -1,7 +1,10 @@
 const Exam = require('../models/Exam');
 const Class = require('../models/Class');
 const User = require('../models/User');
+const Enrollment = require('../models/Enrollment');
 const { EXAM_STATUS, EXAM_STATE_TRANSITIONS } = require('../utils/constants');
+const mailService = require('./mail.service');
+const { examPublishedEmail, examClosedEmail, resultPublishedEmail } = require('../utils/emailTemplates');
 
 /**
  * Exam Service
@@ -130,6 +133,11 @@ async function publishExam(examId, userId) {
   exam.publishedAt = new Date();
   await exam.save();
 
+  // Send notification emails to all enrolled students (async, non-blocking)
+  notifyStudentsExamPublished(exam).catch(error => {
+    console.error('Failed to send exam published notifications:', error.message);
+  });
+
   return exam;
 }
 
@@ -191,6 +199,11 @@ async function closeExam(examId, userId = null) {
   exam.closedAt = new Date();
   await exam.save();
 
+  // Send notification emails to all enrolled students (async, non-blocking)
+  notifyStudentsExamClosed(exam).catch(error => {
+    console.error('Failed to send exam closed notifications:', error.message);
+  });
+
   return exam;
 }
 
@@ -246,6 +259,11 @@ async function publishResults(examId, userId) {
   // Change status to result_published
   exam.status = EXAM_STATUS.RESULT_PUBLISHED;
   await exam.save();
+
+  // Send notification emails to all students with their results (async, non-blocking)
+  notifyStudentsResultsPublished(exam).catch(error => {
+    console.error('Failed to send results published notifications:', error.message);
+  });
 
   return exam;
 }
@@ -556,6 +574,130 @@ async function triggerEvaluation(examId) {
   console.log(`✅ Evaluation complete: ${results.evaluated} succeeded, ${results.failed} failed`);
   
   return results;
+}
+
+/**
+ * Send exam published notifications to all enrolled students
+ * @param {Object} exam - Exam document
+ */
+async function notifyStudentsExamPublished(exam) {
+  const Attempt = require('../models/Attempt');
+  
+  // Get class details
+  const classDoc = await Class.findById(exam.classId);
+  
+  if (!classDoc) {
+    console.log('Class not found, skipping notifications');
+    return;
+  }
+  
+  // Get all enrolled students
+  const enrollments = await Enrollment.find({ classId: exam.classId }).populate('studentId');
+  
+  if (enrollments.length === 0) {
+    console.log('No enrolled students, skipping notifications');
+    return;
+  }
+  
+  // Prepare emails
+  const emails = enrollments.map(enrollment => ({
+    to: enrollment.studentId.email,
+    subject: `New Exam Published: ${exam.title}`,
+    html: examPublishedEmail({
+      studentName: enrollment.studentId.name,
+      examTitle: exam.title,
+      className: classDoc.title,
+      startTime: exam.startTime,
+      endTime: exam.endTime,
+      durationMinutes: exam.durationMinutes || exam.duration
+    })
+  }));
+  
+  // Send all emails
+  const results = await mailService.sendBulkMail(emails);
+  console.log(`📧 Exam published notifications: ${results.sent} sent, ${results.failed} failed`);
+}
+
+/**
+ * Send exam closed notifications to all enrolled students
+ * @param {Object} exam - Exam document
+ */
+async function notifyStudentsExamClosed(exam) {
+  // Get class details
+  const classDoc = await Class.findById(exam.classId);
+  
+  if (!classDoc) {
+    console.log('Class not found, skipping notifications');
+    return;
+  }
+  
+  // Get all enrolled students
+  const enrollments = await Enrollment.find({ classId: exam.classId }).populate('studentId');
+  
+  if (enrollments.length === 0) {
+    console.log('No enrolled students, skipping notifications');
+    return;
+  }
+  
+  // Prepare emails
+  const emails = enrollments.map(enrollment => ({
+    to: enrollment.studentId.email,
+    subject: `Exam Closed: ${exam.title}`,
+    html: examClosedEmail({
+      studentName: enrollment.studentId.name,
+      examTitle: exam.title,
+      className: classDoc.title
+    })
+  }));
+  
+  // Send all emails
+  const results = await mailService.sendBulkMail(emails);
+  console.log(`📧 Exam closed notifications: ${results.sent} sent, ${results.failed} failed`);
+}
+
+/**
+ * Send results published notifications to students with their scores
+ * @param {Object} exam - Exam document
+ */
+async function notifyStudentsResultsPublished(exam) {
+  const Attempt = require('../models/Attempt');
+  
+  // Get class details
+  const classDoc = await Class.findById(exam.classId);
+  
+  if (!classDoc) {
+    console.log('Class not found, skipping notifications');
+    return;
+  }
+  
+  // Get all attempts with scores
+  const attempts = await Attempt.find({ 
+    examId: exam._id,
+    status: 'evaluated',
+    score: { $exists: true }
+  }).populate('studentId');
+  
+  if (attempts.length === 0) {
+    console.log('No evaluated attempts, skipping notifications');
+    return;
+  }
+  
+  // Prepare emails
+  const emails = attempts.map(attempt => ({
+    to: attempt.studentId.email,
+    subject: `Results Published: ${exam.title}`,
+    html: resultPublishedEmail({
+      studentName: attempt.studentId.name,
+      examTitle: exam.title,
+      className: classDoc.title,
+      score: attempt.score || 0,
+      totalMarks: exam.totalMarks || 100
+    })
+  }));
+  
+  // Send all emails
+  const results = await mailService.sendBulkMail(emails);
+  console.log(`📧 Results published notifications: ${results.sent} sent, ${results.failed} failed`);
 }
 
 module.exports = {
