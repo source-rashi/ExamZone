@@ -1,9 +1,11 @@
 import { Outlet, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const TeacherLayout = () => {
+  const { logout } = useAuth();
+
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    logout();
     window.location.href = '/login';
   };
 
