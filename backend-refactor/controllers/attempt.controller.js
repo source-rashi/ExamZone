@@ -66,6 +66,108 @@ async function startAttempt(req, res) {
   }
 }
 
+/**
+ * Record integrity violation
+ * @route POST /api/v2/attempts/:id/violation
+ */
+async function recordViolation(req, res) {
+  try {
+    const { id } = req.params;
+    const { type } = req.body;
+
+    if (!type) {
+      return res.status(400).json({
+        success: false,
+        message: 'Violation type is required'
+      });
+    }
+
+    const attempt = await attemptService.recordIntegrityEvent(id, type);
+
+    res.status(200).json({
+      success: true,
+      message: 'Violation recorded',
+      data: {
+        attemptId: attempt._id,
+        status: attempt.status,
+        integrity: attempt.integrity
+      }
+    });
+  } catch (error) {
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (
+      error.message.includes('not in_progress') ||
+      error.message.includes('not live') ||
+      error.message.includes('Invalid event type')
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to record violation',
+      error: error.message
+    });
+  }
+}
+
+/**
+ * Record heartbeat
+ * @route POST /api/v2/attempts/:id/heartbeat
+ */
+async function recordHeartbeat(req, res) {
+  try {
+    const { id } = req.params;
+
+    const attempt = await attemptService.recordHeartbeat(id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Heartbeat recorded',
+      data: {
+        attemptId: attempt._id,
+        status: attempt.status,
+        lastActiveAt: attempt.integrity?.lastActiveAt,
+        autoSubmitted: attempt.integrity?.autoSubmitted
+      }
+    });
+  } catch (error) {
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (
+      error.message.includes('not in_progress') ||
+      error.message.includes('not live')
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to record heartbeat',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
-  startAttempt
+  startAttempt,
+  recordViolation,
+  recordHeartbeat
 };

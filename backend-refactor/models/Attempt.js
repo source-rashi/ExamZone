@@ -46,6 +46,50 @@ const attemptSchema = new mongoose.Schema({
     type: Number, // Phase 3.4 - final score after evaluation
     min: 0
   },
+  // Phase 3.5 - Integrity tracking
+  integrity: {
+    tabSwitches: {
+      type: Number,
+      default: 0
+    },
+    focusLostCount: {
+      type: Number,
+      default: 0
+    },
+    fullscreenExitCount: {
+      type: Number,
+      default: 0
+    },
+    copyEvents: {
+      type: Number,
+      default: 0
+    },
+    pasteEvents: {
+      type: Number,
+      default: 0
+    },
+    violations: [
+      {
+        type: {
+          type: String,
+          enum: ['tab_switch', 'focus_lost', 'fullscreen_exit', 'copy', 'paste', 'suspicious_activity']
+        },
+        timestamp: {
+          type: Date,
+          default: Date.now
+        }
+      }
+    ],
+    lastActiveAt: {
+      type: Date,
+      default: Date.now
+    },
+    autoSubmitted: {
+      type: Boolean,
+      default: false
+    }
+  },
+  // Legacy fields (Phase 3.3)
   tabSwitchCount: {
     type: Number,
     default: 0

@@ -376,6 +376,43 @@ async function getAttemptStatistics(studentId, examId) {
   return stats;
 }
 
+/**
+ * Record an integrity event (Phase 3.5)
+ * @param {String} attemptId - Attempt ID
+ * @param {String} eventType - Event type (tab_switch, focus_lost, fullscreen_exit, copy, paste, suspicious_activity)
+ * @returns {Promise<Object>} Updated attempt
+ * @throws {Error} If validation fails
+ */
+async function recordIntegrityEvent(attemptId, eventType) {
+  const integrityService = require('./integrity.service');
+  
+  // Validate event type
+  const validTypes = ['tab_switch', 'focus_lost', 'fullscreen_exit', 'copy', 'paste', 'suspicious_activity'];
+  if (!validTypes.includes(eventType)) {
+    throw new Error(`Invalid event type: ${eventType}. Valid types: ${validTypes.join(', ')}`);
+  }
+  
+  // Use integrity service to log violation
+  const attempt = await integrityService.logViolation(attemptId, eventType);
+  
+  return attempt;
+}
+
+/**
+ * Record heartbeat for attempt (Phase 3.5)
+ * @param {String} attemptId - Attempt ID
+ * @returns {Promise<Object>} Updated attempt
+ * @throws {Error} If validation fails
+ */
+async function recordHeartbeat(attemptId) {
+  const integrityService = require('./integrity.service');
+  
+  // Use integrity service to record heartbeat
+  const attempt = await integrityService.heartbeat(attemptId);
+  
+  return attempt;
+}
+
 module.exports = {
   checkAttemptLimit,
   validateAttempt,
@@ -387,5 +424,7 @@ module.exports = {
   getStudentAttempts,
   recordTabSwitch,
   recordFocusLoss,
-  getAttemptStatistics
+  getAttemptStatistics,
+  recordIntegrityEvent,
+  recordHeartbeat
 };
