@@ -1,9 +1,0 @@
-fastapi
-uvicorn
-python-multipart
-python-docx
-reportlab
-jinja2
-pdfplumber
-google-generativeai
-pandas

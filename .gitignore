@@ -1,0 +1,57 @@
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads and generated files
+uploads/**
+!uploads/.gitkeep
+!uploads/exams/
+pdfs/**
+!pdfs/.gitkeep
+answersheets/**
+!answersheets/.gitkeep
+
+# AI service results
+ai-services/*/static/*.pdf
+ai-services/*/static/result_*
+
+# Build outputs
+frontend/dist/
+frontend/build/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
