@@ -172,14 +172,16 @@ exports.getStudentsWithAnswerSheets = (classDoc, roll = null) => {
  * @returns {Promise<Object>} Created class
  */
 exports.createClassV2 = async (data) => {
-  const { teacherId, name, description, subject } = data;
+  const { teacherId, name, title, description, subject } = data;
 
   if (!teacherId) {
     throw new Error('teacherId is required');
   }
 
-  if (!name) {
-    throw new Error('Class name is required');
+  const className = name || title;
+  
+  if (!className) {
+    throw new Error('Class name/title is required');
   }
 
   // Validate teacher exists
@@ -197,7 +199,8 @@ exports.createClassV2 = async (data) => {
 
   // Create new class with User reference
   const classData = {
-    name: name,
+    name: className,
+    title: className,
     code: classCode,
     description: description || '',
     subject: subject || '',

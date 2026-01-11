@@ -42,8 +42,7 @@ export default function Classroom() {
   const loadClassData = async () => {
     try {
       setLoading(true);
-      const data = await classAPI.getClassById(id);
-      setClassData(data.class);
+      const data = await classAPI.getClassById(id);      console.log('Loaded class data:', data);      setClassData(data.class);
     } catch (error) {
       console.error('Failed to load class:', error);
       const errorMessage = error.response?.data?.message || 'Failed to load classroom';
@@ -98,7 +97,9 @@ export default function Classroom() {
         <div className="max-w-7xl mx-auto px-6 pt-10 pb-6">
           <div className="flex flex-wrap items-start justify-between gap-6">
             <div className="flex-1">
-              <h1 className="text-4xl font-bold text-[#1f2933] leading-tight">{classData.title}</h1>
+              <h1 className="text-4xl font-bold text-[#1f2933] leading-tight">
+                {classData.name || classData.title || 'Untitled Class'}
+              </h1>
               {classData.subject && (
                 <p className="text-lg text-gray-500 mt-2">{classData.subject}</p>
               )}
@@ -114,7 +115,7 @@ export default function Classroom() {
             <div className="flex items-center gap-2 text-gray-700">
               <GraduationCap className="w-5 h-5 text-gray-400" />
               <span className="font-medium">Teacher:</span>
-              <span className="font-semibold text-[#1f2933]">{classData.teacher.name}</span>
+              <span className="font-semibold text-[#1f2933]">{classData.teacher?.name || classData.teacherName || 'Unknown'}</span>
             </div>
             <div className="flex items-center gap-2 text-gray-700">
               <Users className="w-5 h-5 text-gray-400" />

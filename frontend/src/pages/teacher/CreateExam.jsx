@@ -327,8 +327,8 @@ export default function CreateExam() {
                       onClick={() => setFormData(prev => ({ ...prev, mode }))}
                       className={`px-6 py-4 border-2 rounded-lg font-medium transition-all ${
                         formData.mode === mode
-                          ? 'border-[#1f3c88] bg-[#1f3c88] bg-opacity-5 text-[#1f3c88]'
-                          : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                          ? 'border-[#1f3c88] bg-gradient-to-br from-[#1f3c88]/5 to-[#1f3c88]/10 text-[#1f3c88] shadow-sm'
+                          : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50'
                       }`}
                     >
                       {mode.charAt(0).toUpperCase() + mode.slice(1)}

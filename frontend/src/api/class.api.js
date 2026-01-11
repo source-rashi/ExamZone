@@ -34,7 +34,13 @@ export async function getStudentClasses() {
  * Teacher ID is automatically extracted from JWT
  */
 export async function createClass(classData) {
-  const response = await apiClient.post('/classes', classData);
+  // Ensure both name and title are sent
+  const dataToSend = {
+    ...classData,
+    name: classData.name || classData.title,
+    title: classData.title || classData.name
+  };
+  const response = await apiClient.post('/classes', dataToSend);
   return response.data;
 }
 
@@ -53,7 +59,7 @@ export async function joinClass(classCode) {
  * Get class by ID with populated teacher and students
  */
 export async function getClassById(classId) {
-  const response = await apiClient.get(`/classes/${classId}`);
+  const response = await apiClient.get(`/classes/by-id/${classId}`);
   return response.data;
 }
 

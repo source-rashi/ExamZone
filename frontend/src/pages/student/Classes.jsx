@@ -29,6 +29,8 @@ export default function StudentClasses() {
       setLoading(true);
       setError('');
       const data = await classAPI.getStudentClasses();
+      console.log('Student classes loaded:', data);
+      console.log('Classes array:', data.classes);
       setClasses(data.classes || []);
     } catch (err) {
       console.error('Load classes error:', err);
@@ -40,7 +42,7 @@ export default function StudentClasses() {
 
   const handleJoinClass = async (e) => {
     e.preventDefault();
-    const trimmedCode = classCode.trim();
+    const trimmedCode = classCode.trim().toUpperCase();
     
     if (!trimmedCode) {
       alert('Please enter a class code');
@@ -55,13 +57,16 @@ export default function StudentClasses() {
     try {
       setJoining(true);
       // PHASE 5.1: No need to pass user data, extracted from JWT
-      await classAPI.joinClass(trimmedCode);
+      const response = await classAPI.joinClass(trimmedCode);
       
       setClassCode('');
       setShowModal(false);
-      loadClasses();
+      alert(response.message || 'Successfully joined class!');
+      await loadClasses();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to join class');
+      console.error('Join class error:', err);
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to join class. Please try again.';
+      alert(errorMsg);
     } finally {
       setJoining(false);
     }
@@ -125,15 +130,14 @@ export default function StudentClasses() {
             >
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 bg-emerald-600 bg-opacity-10 rounded-lg flex items-center justify-center">
-                    <BookOpen className="w-6 h-6 text-emerald-600" />
-                  </div>
                   <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-semibold rounded-full">
                     {cls.code}
                   </span>
                 </div>
                 
-                <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-1">{cls.title}</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-1">
+                  {cls.name || cls.title || 'Untitled Class'}
+                </h3>
                 
                 {cls.subject && (
                   <p className="text-sm text-gray-600 mb-3 line-clamp-1">{cls.subject}</p>

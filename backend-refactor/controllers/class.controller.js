@@ -39,13 +39,18 @@ const createClass = async (req, res, next) => {
  */
 async function createClassV2(req, res) {
   try {
-    const { name, description, subject } = req.body;
+    const { name, title, description, subject } = req.body;
     const teacherId = req.user.id; // From authenticate middleware
 
-    if (!name) {
+    console.log('Creating class - Request body:', { name, title, description, subject });
+
+    // Accept either name or title
+    const className = (name || title || '').trim();
+    
+    if (!className) {
       return res.status(400).json({
         success: false,
-        message: 'Class name is required'
+        message: 'Class name/title is required'
       });
     }
 
@@ -58,10 +63,18 @@ async function createClassV2(req, res) {
     }
 
     const classDoc = await classService.createClassV2({
-      name,
+      name: className,
+      title: className,
       description,
       subject,
       teacherId
+    });
+
+    console.log('Class created successfully:', {
+      _id: classDoc._id,
+      name: classDoc.name,
+      title: classDoc.title,
+      code: classDoc.code
     });
 
     res.status(201).json({
@@ -159,7 +172,8 @@ async function getClassById(req, res) {
       success: true,
       class: {
         _id: classDoc._id,
-        name: classDoc.name,
+        name: classDoc.name || classDoc.title,
+        title: classDoc.title || classDoc.name,
         code: classDoc.code,
         description: classDoc.description,
         subject: classDoc.subject,
@@ -200,7 +214,8 @@ async function getTeacherClasses(req, res) {
     // Add student count to each class
     const classesWithCounts = classes.map(cls => ({
       _id: cls._id,
-      name: cls.name,
+      name: cls.name || cls.title,
+      title: cls.title || cls.name,
       code: cls.code,
       description: cls.description,
       subject: cls.subject,
@@ -241,7 +256,8 @@ async function getStudentClasses(req, res) {
     // Format response
     const classesWithInfo = classes.map(cls => ({
       _id: cls._id,
-      name: cls.name,
+      name: cls.name || cls.title,
+      title: cls.title || cls.name,
       code: cls.code,
       description: cls.description,
       subject: cls.subject,
@@ -322,7 +338,8 @@ async function joinClassV2(req, res) {
       message: 'Successfully joined class!',
       class: {
         _id: classDoc._id,
-        name: classDoc.name,
+        name: classDoc.name || classDoc.title,
+        title: classDoc.title || classDoc.name,
         code: classDoc.code
       }
     });

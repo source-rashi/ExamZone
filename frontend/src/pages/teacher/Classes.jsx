@@ -33,6 +33,8 @@ export default function TeacherClasses() {
       setLoading(true);
       setError('');
       const data = await classAPI.getTeacherClasses();
+      console.log('Teacher classes loaded:', data);
+      console.log('Classes array:', data.classes);
       setClasses(data.classes || []);
     } catch (err) {
       console.error('Load classes error:', err);
@@ -55,17 +57,21 @@ export default function TeacherClasses() {
 
     try {
       setCreating(true);
-      await classAPI.createClass({
-        title: formData.title,
-        subject: formData.subject,
-        description: formData.description,
-        teacherId: user.id,
-      });
+      const classData = {
+        title: formData.title.trim(),
+        name: formData.title.trim(),
+        subject: formData.subject.trim(),
+        description: formData.description.trim(),
+      };
+      console.log('Creating class with data:', classData);
+      const result = await classAPI.createClass(classData);
+      console.log('Class created:', result);
       
       setFormData({ title: '', subject: '', description: '' });
       setShowModal(false);
-      loadClasses();
+      await loadClasses();
     } catch (err) {
+      console.error('Create class error:', err);
       alert(err.response?.data?.message || 'Failed to create class');
     } finally {
       setCreating(false);
@@ -130,7 +136,9 @@ export default function TeacherClasses() {
             >
               <div className="p-6 flex flex-col h-full">
                 <div className="flex items-start justify-between mb-4">
-                  <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 flex-grow">{cls.title}</h3>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 flex-grow">
+                    {cls.name || cls.title || 'Untitled Class'}
+                  </h3>
                   <span className="flex-shrink-0 ml-4 px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded-full">
                     {cls.code}
                   </span>

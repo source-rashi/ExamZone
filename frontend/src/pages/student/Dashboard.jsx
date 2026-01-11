@@ -29,6 +29,7 @@ export default function Dashboard() {
       setLoading(true);
       setError('');
       const data = await classAPI.getStudentClasses();
+      console.log('Student dashboard - classes loaded:', data);
       setClasses(data.classes || []);
     } catch (err) {
       console.error('Load classes error:', err);
@@ -213,11 +214,17 @@ export default function Dashboard() {
               >
                 <div className="p-6 flex flex-col h-full">
                   <div className="flex items-start justify-between mb-4">
-                    <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 flex-grow">{cls.title}</h3>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 flex-grow">
+                      {cls.name || cls.title || 'Untitled Class'}
+                    </h3>
                     <span className="flex-shrink-0 ml-4 px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded-full">
                       {cls.code}
                     </span>
                   </div>
+                  
+                  {cls.subject && (
+                    <p className="text-sm text-gray-600 mb-3">{cls.subject}</p>
+                  )}
                   
                   <div className="text-sm text-gray-600 mb-4">
                     <span className="font-medium text-gray-800">Teacher:</span> {cls.teacher?.name || 'N/A'}
@@ -228,7 +235,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between pt-4 border-t border-gray-200 mt-auto">
                     <div className="flex items-center space-x-2 text-sm text-gray-600">
                       <Users className="w-5 h-5 text-gray-400" />
-                      <span>{cls.students?.length || 0} students</span>
+                      <span>{cls.studentCount || cls.students?.length || 0} students</span>
                     </div>
                     <div className="flex items-center text-sm text-[#4b7bec] font-medium">
                       <span>View Class</span>

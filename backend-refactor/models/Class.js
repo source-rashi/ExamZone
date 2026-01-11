@@ -27,10 +27,14 @@ const studentSchema = new mongoose.Schema({
 // CLASS SCHEMA - PHASE 5.1
 // ============================================================================
 const classSchema = new mongoose.Schema({
-  // Core fields
+  // Core fields - both name and title supported
   name: { 
     type: String, 
-    required: true,
+    trim: true
+  },
+  
+  title: { 
+    type: String, 
     trim: true
   },
   
@@ -72,11 +76,6 @@ const classSchema = new mongoose.Schema({
     default: '📚' 
   },
   
-  title: { 
-    type: String, 
-    default: '' 
-  },
-  
   assignments: { 
     type: Number, 
     default: 0 
@@ -109,6 +108,21 @@ const classSchema = new mongoose.Schema({
 // Virtual to handle legacy 'title' field
 classSchema.virtual('displayName').get(function() {
   return this.name || this.title || 'Untitled Class';
+});
+
+// Pre-save hook to ensure at least name or title exists
+classSchema.pre('save', function(next) {
+  if (!this.name && !this.title) {
+    next(new Error('Either name or title must be provided'));
+  }
+  // Sync name and title if one is missing
+  if (!this.name && this.title) {
+    this.name = this.title;
+  }
+  if (!this.title && this.name) {
+    this.title = this.name;
+  }
+  next();
 });
 
 // Index for performance
