@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import * as classAPI from '../../api/class.api';
 import * as classroomAPI from '../../api/classroom.api';
 import * as announcementAPI from '../../api/announcement.api';
+import * as assignmentAPI from '../../api/assignment.api';
 import { 
   BookOpen, 
   Users, 
@@ -307,13 +308,13 @@ function StreamTab({ classId, isTeacher, user }) {
       )}
 
       {announcements.length === 0 ? (
-        <div className="text-cenauthor?.name?.[0] || 'T'}
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-semibold text-gray-900">{announcement.author?.n
+        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
+          <Megaphone className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-800">No announcements yet</h3>
+          <p className="text-gray-500 mt-2">
+            {isTeacher ? "Post your first announcement to get started." : "Your teacher has not posted any announcements yet."}
+          </p>
+        </div>
       ) : (
         <div className="space-y-5">
           {announcements.map(announcement => (
@@ -365,11 +366,14 @@ function AssignmentsTab({ classId, isTeacher }) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    deadline: '',
+    dueDate: '',
     file: null,
   });
   const [creating, setCreating] = useState(false);
+  const [submittingId, setSubmittingId] = useState(null);
+  const [submissionFile, setSubmissionFile] = useState(null);
   const fileInputRef = useRef(null);
+  const submissionFileRef = useRef(null);
 
   useEffect(() => {
     loadAssignments();
@@ -378,8 +382,8 @@ function AssignmentsTab({ classId, isTeacher }) {
   const loadAssignments = async () => {
     try {
       setLoading(true);
-      const data = await classroomAPI.getAssignments(classId);
-      setAssignments(data.assignments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) || []);
+      const data = await assignmentAPI.getAssignments(classId);
+      setAssignments(data.assignments || []);
     } catch (error) {
       console.error('Failed to load assignments:', error);
     } finally {
@@ -388,24 +392,27 @@ function AssignmentsTab({ classId, isTeacher }) {
   };
 
   const resetForm = () => {
-    setFormData({ title: '', description: '', deadline: '', file: null });
+    setFormData({ title: '', description: '', dueDate: '', file: null });
     if(fileInputRef.current) fileInputRef.current.value = '';
   }
 
   const handleCreate = async (e) => {
     e.preventDefault();
     
+    if (!formData.file) {
+      alert('Please attach a PDF file');
+      return;
+    }
+
     const assignmentData = new FormData();
     assignmentData.append('title', formData.title);
     assignmentData.append('description', formData.description);
-    assignmentData.append('deadline', formData.deadline);
-    if (formData.file) {
-      assignmentData.append('file', formData.file);
-    }
+    assignmentData.append('dueDate', formData.dueDate);
+    assignmentData.append('assignment', formData.file);
 
     try {
       setCreating(true);
-      await classroomAPI.createAssignment(classId, assignmentData);
+      await assignmentAPI.createAssignment(classId, assignmentData);
       resetForm();
       setShowCreateModal(false);
       loadAssignments();
@@ -414,6 +421,45 @@ function AssignmentsTab({ classId, isTeacher }) {
       alert(error.response?.data?.message || 'Failed to create assignment');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDownload = async (assignmentId, title) => {
+    try {
+      const blob = await assignmentAPI.downloadAssignment(assignmentId);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${title}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Failed to download assignment:', error);
+      alert('Failed to download assignment');
+    }
+  };
+
+  const handleSubmit = async (assignmentId) => {
+    if (!submissionFile) {
+      alert('Please select a file to submit');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('submission', submissionFile);
+
+    try {
+      await assignmentAPI.submitAssignment(assignmentId, formData);
+      setSubmissionFile(null);
+      if (submissionFileRef.current) submissionFileRef.current.value = '';
+      setSubmittingId(null);
+      loadAssignments();
+      alert('Assignment submitted successfully!');
+    } catch (error) {
+      console.error('Failed to submit assignment:', error);
+      alert(error.response?.data?.message || 'Failed to submit assignment');
     }
   };
 
@@ -451,25 +497,118 @@ function AssignmentsTab({ classId, isTeacher }) {
       ) : (
         <div className="space-y-4">
           {assignments.map(assignment => {
-            const deadline = new Date(assignment.deadline);
-            const isOverdue = deadline < new Date();
+            const dueDate = new Date(assignment.dueDate);
+            const isOverdue = dueDate < new Date();
+            const mySubmission = !isTeacher && assignment.mySubmission;
             
             return (
-              <div key={assignment._id} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow flex items-center gap-5">
-                <div className="w-11 h-11 rounded-full bg-[#4b7bec] bg-opacity-10 flex items-center justify-center flex-shrink-0">
-                  <ClipboardList className="w-5 h-5 text-[#4b7bec]" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-base font-bold text-gray-900 hover:text-[#1f3c88] transition-colors cursor-pointer">{assignment.title}</h3>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Posted on {new Date(assignment.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                    }
-                  </p>
-                </div>
-                <div className="text-sm text-gray-600 text-right">
-                  <span className={isOverdue ? 'text-red-600 font-medium' : ''}>
-                    Due: {deadline.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </span>
+              <div key={assignment._id} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
+                <div className="flex items-start gap-4">
+                  <div className="w-11 h-11 rounded-full bg-[#4b7bec] bg-opacity-10 flex items-center justify-center flex-shrink-0">
+                    <ClipboardList className="w-5 h-5 text-[#4b7bec]" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-gray-900">{assignment.title}</h3>
+                    {assignment.description && (
+                      <p className="text-sm text-gray-600 mt-1">{assignment.description}</p>
+                    )}
+                    <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
+                      <span>Posted: {new Date(assignment.createdAt).toLocaleDateString()}</span>
+                      <span className={isOverdue ? 'text-red-600 font-medium' : ''}>
+                        Due: {dueDate.toLocaleDateString()}
+                      </span>
+                      {isTeacher && (
+                        <span className="text-blue-600">
+                          {assignment.submissionCount || 0} submission{assignment.submissionCount !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Actions */}
+                    <div className="mt-4 flex items-center gap-3">
+                      <button
+                        onClick={() => handleDownload(assignment._id, assignment.title)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
+                      >
+                        <Paperclip className="w-4 h-4" />
+                        Download Assignment
+                      </button>
+                      
+                      {!isTeacher && (
+                        <>
+                          {mySubmission ? (
+                            <div className="flex items-center gap-2">
+                              <span className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                                mySubmission.status === 'graded' 
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {mySubmission.status === 'graded' 
+                                  ? `Graded: ${mySubmission.grade || 'N/A'}`
+                                  : 'Submitted'}
+                              </span>
+                              <button
+                                onClick={() => setSubmittingId(submittingId === assignment._id ? null : assignment._id)}
+                                className="text-sm text-blue-600 hover:text-blue-800"
+                              >
+                                Resubmit
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setSubmittingId(submittingId === assignment._id ? null : assignment._id)}
+                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                            >
+                              Submit Assignment
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Submission Form */}
+                    {!isTeacher && submittingId === assignment._id && (
+                      <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="file"
+                            accept=".pdf"
+                            ref={submissionFileRef}
+                            onChange={(e) => setSubmissionFile(e.target.files[0])}
+                            className="hidden"
+                            id={`submission-${assignment._id}`}
+                          />
+                          <label 
+                            htmlFor={`submission-${assignment._id}`}
+                            className="cursor-pointer px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium flex items-center gap-2"
+                          >
+                            <Paperclip className="w-4 h-4" />
+                            Choose File
+                          </label>
+                          {submissionFile && (
+                            <span className="text-sm text-gray-600">{submissionFile.name}</span>
+                          )}
+                          <button
+                            onClick={() => handleSubmit(assignment._id)}
+                            disabled={!submissionFile}
+                            className="ml-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Submit
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSubmittingId(null);
+                              setSubmissionFile(null);
+                              if (submissionFileRef.current) submissionFileRef.current.value = '';
+                            }}
+                            className="text-gray-500 hover:text-gray-700"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -519,7 +658,7 @@ function AssignmentsTab({ classId, isTeacher }) {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Attachment (PDF only)
+                  Assignment PDF <span className="text-red-500">*</span>
                 </label>
                 <div className="mt-2 flex items-center gap-4">
                   <input
@@ -532,7 +671,7 @@ function AssignmentsTab({ classId, isTeacher }) {
                   />
                   <label htmlFor="file-upload" className="cursor-pointer px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium flex items-center gap-2">
                     <Paperclip className="w-4 h-4" />
-                    Choose File
+                    Choose PDF File
                   </label>
                   {formData.file && (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -549,12 +688,12 @@ function AssignmentsTab({ classId, isTeacher }) {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Deadline <span className="text-red-500">*</span>
+                  Due Date <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="datetime-local"
-                  value={formData.deadline}
-                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                  value={formData.dueDate}
+                  onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88] focus:border-transparent"
                   required
                 />

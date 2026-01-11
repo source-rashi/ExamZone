@@ -19,6 +19,7 @@ const attemptRoutes = require('./routes/attempt.routes');
 const inviteRoutes = require('./routes/invite.routes');
 const classroomRoutes = require('./routes/classroom.routes');
 const announcementRoutes = require('./routes/announcement.routes');
+const assignmentRoutes = require('./routes/assignment.routes');
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/pdfs', express.static(path.join(__dirname, 'pdfs')));
 app.use('/answersheets', express.static(path.join(__dirname, 'answersheets')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Session configuration
 app.use(session({
@@ -66,6 +68,7 @@ app.use('/api/v2/attempts', attemptRoutes);
 app.use('/api/v2/invites', inviteRoutes);
 app.use('/api/v2/classroom', classroomRoutes);
 app.use('/api/v2', announcementRoutes); // Announcement routes
+app.use('/api/v2', assignmentRoutes); // Assignment routes
 
 // Static page routes
 
