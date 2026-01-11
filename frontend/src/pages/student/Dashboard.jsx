@@ -54,10 +54,8 @@ export default function Dashboard() {
 
     try {
       setJoining(true);
-      await classAPI.joinClass(trimmedCode, {
-        name: user.name,
-        email: user.email,
-      });
+      // PHASE 5.1: No need to pass user data, extracted from JWT
+      await classAPI.joinClass(trimmedCode);
       
       setClassCode('');
       setShowJoinModal(false);

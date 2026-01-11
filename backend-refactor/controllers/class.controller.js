@@ -34,22 +34,31 @@ const createClass = async (req, res, next) => {
 
 // ===== V2 ROUTES =====
 /**
- * Create a new class
+ * Create a new class (PHASE 5.1)
  * @route POST /api/v2/classes
  */
 async function createClassV2(req, res) {
   try {
-    const { title, description, subject, teacherId } = req.body;
+    const { name, description, subject } = req.body;
+    const teacherId = req.user.id; // From authenticate middleware
 
-    if (!title || !teacherId) {
+    if (!name) {
       return res.status(400).json({
         success: false,
-        message: 'Title and teacherId are required'
+        message: 'Class name is required'
+      });
+    }
+
+    // Verify user is a teacher
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only teachers can create classes'
       });
     }
 
     const classDoc = await classService.createClassV2({
-      title,
+      name,
       description,
       subject,
       teacherId
@@ -61,24 +70,10 @@ async function createClassV2(req, res) {
       data: classDoc
     });
   } catch (error) {
-    if (error.message.includes('not found') || error.message.includes('does not exist')) {
-      return res.status(404).json({
-        success: false,
-        message: error.message
-      });
-    }
-
-    if (error.message.includes('not authorized') || error.message.includes('not a teacher')) {
-      return res.status(403).json({
-        success: false,
-        message: error.message
-      });
-    }
-
     if (error.code === 11000) {
       return res.status(409).json({
         success: false,
-        message: 'Class code already exists'
+        message: 'Class code already exists. Please try again.'
       });
     }
 
@@ -128,17 +123,18 @@ async function getClassByCode(req, res) {
 }
 
 /**
- * Get class by ID (with access control)
+ * Get class by ID (with populated data) — PHASE 5.1
  * @route GET /api/v2/classes/:id
  */
 async function getClassById(req, res) {
   try {
     const { id } = req.params;
     const userId = req.user.id;
-    const userEmail = req.user.email;
     
     const Class = require('../models/Class');
-    const classDoc = await Class.findById(id);
+    const classDoc = await Class.findById(id)
+      .populate('teacher', 'name email role')
+      .populate('students', 'name email role');
 
     if (!classDoc) {
       return res.status(404).json({
@@ -148,8 +144,8 @@ async function getClassById(req, res) {
     }
 
     // Check if user has access (teacher or enrolled student)
-    const isTeacher = classDoc.teacherId?.toString() === userId || classDoc.teacher?.toString() === userId;
-    const isStudent = classDoc.students.some(s => s.email === userEmail || s.userId?.toString() === userId);
+    const isTeacher = classDoc.teacher?._id.toString() === userId;
+    const isStudent = classDoc.students.some(s => s._id.toString() === userId);
 
     if (!isTeacher && !isStudent) {
       return res.status(403).json({
@@ -158,9 +154,20 @@ async function getClassById(req, res) {
       });
     }
 
+    // Return populated class data
     res.status(200).json({
       success: true,
-      class: classDoc
+      class: {
+        _id: classDoc._id,
+        name: classDoc.name,
+        code: classDoc.code,
+        description: classDoc.description,
+        subject: classDoc.subject,
+        teacher: classDoc.teacher,
+        students: classDoc.students,
+        studentCount: classDoc.students.length,
+        createdAt: classDoc.createdAt
+      }
     });
   } catch (error) {
     if (error.name === 'CastError') {
@@ -178,24 +185,33 @@ async function getClassById(req, res) {
 }
 
 /**
- * Get all classes for a teacher
+ * Get all classes for a teacher — PHASE 5.1
  * @route GET /api/v2/classes/teacher
  */
 async function getTeacherClasses(req, res) {
   try {
-    const teacherId = req.user.id; // From authenticate middleware
+    const teacherId = req.user.id;
     
     const Class = require('../models/Class');
-    const classes = await Class.find({ 
-      $or: [
-        { teacherId: teacherId },
-        { teacher: teacherId }
-      ]
-    }).sort({ createdAt: -1 });
+    const classes = await Class.find({ teacher: teacherId })
+      .populate('teacher', 'name email')
+      .sort({ createdAt: -1 });
+
+    // Add student count to each class
+    const classesWithCounts = classes.map(cls => ({
+      _id: cls._id,
+      name: cls.name,
+      code: cls.code,
+      description: cls.description,
+      subject: cls.subject,
+      teacher: cls.teacher,
+      studentCount: cls.students.length,
+      createdAt: cls.createdAt
+    }));
 
     res.status(200).json({
       success: true,
-      classes
+      classes: classesWithCounts
     });
   } catch (error) {
     res.status(500).json({
@@ -207,22 +223,36 @@ async function getTeacherClasses(req, res) {
 }
 
 /**
- * Get all classes for a student
+ * Get all classes for a student — PHASE 5.1
  * @route GET /api/v2/classes/student
  */
 async function getStudentClasses(req, res) {
   try {
-    const studentEmail = req.user.email; // From authenticate middleware
+    const studentId = req.user.id;
     
     const Class = require('../models/Class');
-    // Find classes where student's email is in the students array
+    // Find classes where student ID is in the students array
     const classes = await Class.find({
-      'students.email': studentEmail
-    }).sort({ createdAt: -1 });
+      students: studentId
+    })
+    .populate('teacher', 'name email')
+    .sort({ createdAt: -1 });
+
+    // Format response
+    const classesWithInfo = classes.map(cls => ({
+      _id: cls._id,
+      name: cls.name,
+      code: cls.code,
+      description: cls.description,
+      subject: cls.subject,
+      teacher: cls.teacher,
+      studentCount: cls.students.length,
+      createdAt: cls.createdAt
+    }));
 
     res.status(200).json({
       success: true,
-      classes
+      classes: classesWithInfo
     });
   } catch (error) {
     res.status(500).json({
@@ -234,20 +264,26 @@ async function getStudentClasses(req, res) {
 }
 
 /**
- * Join a class (student)
+ * Join a class (student) — PHASE 5.1
  * @route POST /api/v2/classes/join
  */
 async function joinClassV2(req, res) {
   try {
-    const { classCode, name, email } = req.body;
+    const { classCode } = req.body;
     const studentUserId = req.user.id;
-    const studentEmail = email || req.user.email;
-    const studentName = name || req.user.name;
 
     if (!classCode) {
       return res.status(400).json({
         success: false,
         message: 'Class code is required'
+      });
+    }
+
+    // Verify user is a student
+    if (req.user.role !== 'student') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only students can join classes'
       });
     }
 
@@ -265,10 +301,9 @@ async function joinClassV2(req, res) {
       });
     }
 
-    // Check if student already joined
+    // Check if student already joined (using ObjectId reference)
     const alreadyJoined = classDoc.students.some(
-      student => student.email === studentEmail || 
-                 (student.userId && student.userId.toString() === studentUserId)
+      studentId => studentId.toString() === studentUserId
     );
 
     if (alreadyJoined) {
@@ -278,25 +313,77 @@ async function joinClassV2(req, res) {
       });
     }
 
-    // Add student to class
-    classDoc.students.push({
-      name: studentName,
-      email: studentEmail,
-      userId: studentUserId,
-      roll: `STU${classDoc.students.length + 1}` // Auto-generate roll number
-    });
-
+    // Add student User reference to class
+    classDoc.students.push(studentUserId);
     await classDoc.save();
 
     res.status(200).json({
       success: true,
       message: 'Successfully joined class!',
-      class: classDoc
+      class: {
+        _id: classDoc._id,
+        name: classDoc.name,
+        code: classDoc.code
+      }
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: 'Failed to join class',
+      error: error.message
+    });
+  }
+}
+
+/**
+ * Get my classes (works for both teachers and students) — PHASE 5.1
+ * @route GET /api/v2/classes/my
+ */
+async function getMyClasses(req, res) {
+  try {
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    
+    const Class = require('../models/Class');
+    let classes;
+
+    if (userRole === 'teacher') {
+      // Get classes where user is the teacher
+      classes = await Class.find({ teacher: userId })
+        .populate('teacher', 'name email')
+        .sort({ createdAt: -1 });
+    } else if (userRole === 'student') {
+      // Get classes where user is in students array
+      classes = await Class.find({ students: userId })
+        .populate('teacher', 'name email')
+        .sort({ createdAt: -1 });
+    } else {
+      return res.status(403).json({
+        success: false,
+        message: 'Invalid user role'
+      });
+    }
+
+    // Format response
+    const classesWithInfo = classes.map(cls => ({
+      _id: cls._id,
+      name: cls.name,
+      code: cls.code,
+      description: cls.description,
+      subject: cls.subject,
+      teacher: cls.teacher,
+      studentCount: cls.students.length,
+      createdAt: cls.createdAt
+    }));
+
+    res.status(200).json({
+      success: true,
+      classes: classesWithInfo
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve classes',
       error: error.message
     });
   }
@@ -337,6 +424,7 @@ module.exports = {
   getClassById,
   getTeacherClasses,
   getStudentClasses,
+  getMyClasses,
   joinClassV2,
   // V1 legacy functions
   createClass,

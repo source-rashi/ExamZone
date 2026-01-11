@@ -163,23 +163,23 @@ exports.getStudentsWithAnswerSheets = (classDoc, roll = null) => {
 };
 
 // ============================================================================
-// PHASE 3 FUNCTIONS (New service layer with proper validation)
+// PHASE 5.1 FUNCTIONS (Real classroom data with User references)
 // ============================================================================
 
 /**
- * Create a new class with teacher validation (Phase 3)
+ * Create a new class with real User references — PHASE 5.1
  * @param {Object} data - Class data including teacherId
  * @returns {Promise<Object>} Created class
  */
 exports.createClassV2 = async (data) => {
-  const { teacherId, title, description, subject, code, icon } = data;
+  const { teacherId, name, description, subject } = data;
 
   if (!teacherId) {
     throw new Error('teacherId is required');
   }
 
-  if (!title) {
-    throw new Error('title is required');
+  if (!name) {
+    throw new Error('Class name is required');
   }
 
   // Validate teacher exists
@@ -192,29 +192,20 @@ exports.createClassV2 = async (data) => {
     throw new Error('Only teachers can create classes');
   }
 
-  // Generate class code (simple random 6-char code)
-  const classCode = code || Math.random().toString(36).substring(2, 8).toUpperCase();
+  // Generate unique 6-character class code
+  const classCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-  // Check if class code already exists
-  const existingClass = await Class.findOne({ code: classCode });
-  if (existingClass) {
-    throw new Error('Class with this code already exists');
-  }
-
-  // Auto-derive title and icon if not provided
-  const derivedInfo = exports.deriveClassInfo(classCode);
-
-  // Create new class
+  // Create new class with User reference
   const classData = {
+    name: name,
     code: classCode,
-    title: title,
     description: description || '',
     subject: subject || '',
-    icon: icon || derivedInfo.icon,
-    teacherId: teacherId,
-    teacher: teacherId, // Legacy field for backward compatibility
-    students: [],
-    assignments: 0
+    teacher: teacherId, // User reference
+    students: [], // Will store User references only
+    icon: '📚',
+    assignments: 0,
+    createdAt: new Date()
   };
 
   const newClass = await Class.create(classData);

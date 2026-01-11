@@ -10,12 +10,12 @@ export const teacherAPI = {
    * @returns {Promise<{classes: Array}>}
    */
   getMyClasses: async () => {
-    const response = await apiClient.get('/classes');
+    const response = await apiClient.get('/classes/teacher');
     return response.data;
   },
 
   /**
-   * Create a new class
+   * Create a new class (PHASE 5.1)
    * @param {Object} data - Class data
    * @param {string} data.name - Class name
    * @param {string} data.subject - Subject
@@ -28,7 +28,8 @@ export const teacherAPI = {
   },
 
   /**
-   * Get details of a specific class
+   * Get details of a specific class (PHASE 5.1)
+   * Returns populated teacher and students data
    * @param {string} classId - Class ID
    * @returns {Promise<{class: Object}>}
    */

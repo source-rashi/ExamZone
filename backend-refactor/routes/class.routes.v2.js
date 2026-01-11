@@ -11,10 +11,18 @@ const {
   getClassById,
   getTeacherClasses, 
   getStudentClasses,
+  getMyClasses,
   joinClassV2
 } = require('../controllers/class.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 const { teacherOnly, studentOnly } = require('../middleware/role.middleware');
+
+/**
+ * @route GET /api/v2/classes/my
+ * @desc Get all classes for the authenticated user (teacher or student)
+ * @access Authenticated users
+ */
+router.get('/my', authenticate, getMyClasses);
 
 /**
  * @route GET /api/v2/classes/teacher
@@ -46,16 +54,16 @@ router.post('/join', authenticate, studentOnly, joinClassV2);
 
 /**
  * @route GET /api/v2/classes/by-id/:id
- * @desc Get class by ID (with access control)
+ * @desc Get class by ID (with populated teacher and students)
  * @access Authenticated users (must be teacher or enrolled student)
  */
 router.get('/by-id/:id', authenticate, getClassById);
 
 /**
- * @route GET /api/v2/classes/:code
- * @desc Get class by code
- * @access Authenticated users
+ * @route GET /api/v2/classes/:id
+ * @desc Get class by ID (alias for by-id)
+ * @access Authenticated users (must be teacher or enrolled student)
  */
-router.get('/:code', authenticate, getClassByCode);
+router.get('/:id', authenticate, getClassById);
 
 module.exports = router;
