@@ -15,6 +15,7 @@ const authRoutes = require('./routes/auth.routes');
 const classRoutesV2 = require('./routes/class.routes.v2');
 const enrollmentRoutes = require('./routes/enrollment.routes');
 const examRoutes = require('./routes/exam.routes');
+const examRoutesV2 = require('./routes/exam.routes.v2');
 const attemptRoutes = require('./routes/attempt.routes');
 const inviteRoutes = require('./routes/invite.routes');
 const classroomRoutes = require('./routes/classroom.routes');
@@ -63,7 +64,8 @@ app.use('/', studentRoutes);
 app.use('/api/v2/auth', authRoutes);
 app.use('/api/v2/classes', classRoutesV2);
 app.use('/api/v2/enrollments', enrollmentRoutes);
-app.use('/api/v2/exams', examRoutes);
+app.use('/api/v2/exams-legacy', examRoutes); // Old exam routes
+app.use('/api/v2', examRoutesV2); // Phase 6.1 exam routes
 app.use('/api/v2/attempts', attemptRoutes);
 app.use('/api/v2/invites', inviteRoutes);
 app.use('/api/v2/classroom', classroomRoutes);

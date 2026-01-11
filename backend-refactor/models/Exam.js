@@ -1,5 +1,9 @@
 const mongoose = require('mongoose');
-const { EXAM_STATUS } = require('../utils/constants');
+
+/**
+ * PHASE 6.1 — Exam Model (Updated)
+ * Foundation for exam management system
+ */
 
 const examSchema = new mongoose.Schema({
   classId: {
@@ -12,41 +16,20 @@ const examSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  teacherId: { // Alias for createdBy for backward compatibility
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
   title: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
   description: {
     type: String,
-    default: ''
+    default: '',
+    trim: true
   },
-  date: { // Added for Phase 4.3 classroom view
-    type: Date
-  },
-  duration: {
-    type: Number, // in minutes (legacy field)
-    default: 60
-  },
-  durationMinutes: {
-    type: Number, // Phase 3.4 - standardized duration field
-    default: 60
-  },
-  totalMarks: {
-    type: Number,
-    default: 100
-  },
-  maxAttempts: {
-    type: Number,
-    default: 1
-  },
-  evaluationMode: {
+  mode: {
     type: String,
-    enum: ['manual', 'ai', 'hybrid'],
-    default: 'manual'
+    enum: ['online', 'offline', 'hybrid'],
+    default: 'online'
   },
   startTime: {
     type: Date
@@ -54,10 +37,31 @@ const examSchema = new mongoose.Schema({
   endTime: {
     type: Date
   },
+  duration: {
+    type: Number, // in minutes
+    required: true,
+    default: 60,
+    min: 1
+  },
+  attemptsAllowed: {
+    type: Number,
+    default: 1,
+    min: 1
+  },
+  setsPerStudent: {
+    type: Number,
+    default: 1,
+    min: 1
+  },
+  totalMarks: {
+    type: Number,
+    default: 100,
+    min: 0
+  },
   status: {
     type: String,
-    enum: Object.values(EXAM_STATUS),
-    default: EXAM_STATUS.DRAFT
+    enum: ['draft', 'published', 'running', 'closed', 'evaluated'],
+    default: 'draft'
   },
   publishedAt: {
     type: Date
