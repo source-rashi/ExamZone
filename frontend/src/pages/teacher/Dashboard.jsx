@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { teacherAPI } from '../../api/teacher.api';
-import ClassCard from '../../components/teacher/ClassCard';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import classAPI from '../../api/class.api';
 
 /**
- * Teacher Dashboard - Shows profile and list of classes
+ * Teacher Dashboard - Phase 4.2
+ * University portal style with real data
  */
 export default function Dashboard() {
   const { user } = useAuth();
@@ -20,7 +22,7 @@ export default function Dashboard() {
   const loadClasses = async () => {
     try {
       setLoading(true);
-      const data = await teacherAPI.getMyClasses();
+      const data = await classAPI.getTeacherClasses();
       setClasses(data.classes || []);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load classes');
@@ -29,61 +31,123 @@ export default function Dashboard() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-gray-600">Loading...</div>
-      </div>
-    );
-  }
+  const totalStudents = classes.reduce((sum, cls) => sum + (cls.students?.length || 0), 0);
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      {/* Profile Section */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          Welcome, {user?.name}
-        </h1>
-        <p className="text-gray-600">{user?.email}</p>
-        <span className="inline-block mt-2 px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded">
-          {user?.role?.toUpperCase()}
-        </span>
+    <div className="p-6">
+      {/* Welcome Header */}
+      <div className="mb-6">
+        <h2 className="text-3xl font-bold text-slate-900">
+          Welcome back, {user?.name?.split(' ')[0]}! 👋
+        </h2>
+        <p className="text-slate-600 mt-1">Here's what's happening in your classes today</p>
       </div>
 
-      {/* Classes Section */}
-      <div className="mb-6 flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-900">Your Classes</h2>
-        <Link
-          to="/teacher/create-class"
-          className="px-4 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-700"
-        >
-          Create New Class
-        </Link>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card>
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-slate-600">Total Classes</h3>
+              <span className="text-2xl">📚</span>
+            </div>
+            <p className="text-4xl font-bold text-slate-900">{classes.length}</p>
+          </div>
+        </Card>
+        
+        <Card>
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-slate-600">Active Exams</h3>
+              <span className="text-2xl">📝</span>
+            </div>
+            <p className="text-4xl font-bold text-slate-900">0</p>
+            <p className="text-xs text-slate-500 mt-1">Coming soon</p>
+          </div>
+        </Card>
+        
+        <Card>
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-slate-600">Total Students</h3>
+              <span className="text-2xl">👥</span>
+            </div>
+            <p className="text-4xl font-bold text-slate-900">{totalStudents}</p>
+          </div>
+        </Card>
       </div>
 
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 text-red-700 rounded">
-          {error}
+      {/* Quick Actions */}
+      <Card className="mb-8">
+        <div className="p-6">
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h3>
+          <div className="flex gap-4">
+            <Link to="/teacher/classes">
+              <Button variant="primary">Create New Class</Button>
+            </Link>
+            <Button variant="outline" disabled>Create Exam (Coming Soon)</Button>
+          </div>
         </div>
-      )}
+      </Card>
 
-      {classes.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <p className="text-gray-500 mb-4">No classes yet</p>
-          <Link
-            to="/teacher/create-class"
-            className="text-blue-600 hover:underline"
-          >
-            Create your first class
-          </Link>
+      {/* My Classes */}
+      <Card>
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900">My Classes</h3>
+            <Link to="/teacher/classes">
+              <Button variant="ghost" size="sm">View All</Button>
+            </Link>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-8">
+              <p className="text-slate-600">Loading classes...</p>
+            </div>
+          ) : error ? (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          ) : classes.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-slate-600 mb-4">You haven't created any classes yet</p>
+              <Link to="/teacher/classes">
+                <Button variant="primary">Create Your First Class</Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {classes.slice(0, 3).map((cls) => (
+                <div
+                  key={cls._id}
+                  className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <span className="text-2xl">{cls.icon || '📚'}</span>
+                    <div>
+                      <h4 className="font-medium text-slate-900">{cls.title}</h4>
+                      <p className="text-sm text-slate-500">
+                        {cls.students?.length || 0} students • Code: {cls.code}
+                      </p>
+                    </div>
+                  </div>
+                  <Link to={`/teacher/classes`}>
+                    <Button variant="ghost" size="sm">View</Button>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {classes.map((classData) => (
-            <ClassCard key={classData._id} classData={classData} />
-          ))}
+      </Card>
+
+      {/* Recent Activity - Placeholder */}
+      <Card className="mt-8">
+        <div className="p-6">
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Recent Activity</h3>
+          <p className="text-slate-600 text-sm">No recent activity to show</p>
         </div>
-      )}
+      </Card>
     </div>
   );
 }

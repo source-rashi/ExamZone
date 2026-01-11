@@ -127,6 +127,131 @@ async function getClassByCode(req, res) {
   }
 }
 
+/**
+ * Get all classes for a teacher
+ * @route GET /api/v2/classes/teacher
+ */
+async function getTeacherClasses(req, res) {
+  try {
+    const teacherId = req.user.id; // From authenticate middleware
+    
+    const Class = require('../models/Class');
+    const classes = await Class.find({ 
+      $or: [
+        { teacherId: teacherId },
+        { teacher: teacherId }
+      ]
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      classes
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve classes',
+      error: error.message
+    });
+  }
+}
+
+/**
+ * Get all classes for a student
+ * @route GET /api/v2/classes/student
+ */
+async function getStudentClasses(req, res) {
+  try {
+    const studentEmail = req.user.email; // From authenticate middleware
+    
+    const Class = require('../models/Class');
+    // Find classes where student's email is in the students array
+    const classes = await Class.find({
+      'students.email': studentEmail
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      classes
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve classes',
+      error: error.message
+    });
+  }
+}
+
+/**
+ * Join a class (student)
+ * @route POST /api/v2/classes/join
+ */
+async function joinClassV2(req, res) {
+  try {
+    const { classCode, name, email } = req.body;
+    const studentUserId = req.user.id;
+    const studentEmail = email || req.user.email;
+    const studentName = name || req.user.name;
+
+    if (!classCode) {
+      return res.status(400).json({
+        success: false,
+        message: 'Class code is required'
+      });
+    }
+
+    const Class = require('../models/Class');
+    
+    // Find class by code (case-insensitive)
+    const classDoc = await Class.findOne({ 
+      code: classCode.toUpperCase() 
+    });
+
+    if (!classDoc) {
+      return res.status(404).json({
+        success: false,
+        message: 'Class not found. Please check the code and try again.'
+      });
+    }
+
+    // Check if student already joined
+    const alreadyJoined = classDoc.students.some(
+      student => student.email === studentEmail || 
+                 (student.userId && student.userId.toString() === studentUserId)
+    );
+
+    if (alreadyJoined) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already joined this class'
+      });
+    }
+
+    // Add student to class
+    classDoc.students.push({
+      name: studentName,
+      email: studentEmail,
+      userId: studentUserId,
+      roll: `STU${classDoc.students.length + 1}` // Auto-generate roll number
+    });
+
+    await classDoc.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Successfully joined class!',
+      class: classDoc
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to join class',
+      error: error.message
+    });
+  }
+}
+
 // ===== LEGACY ROUTES (V1) =====
 // Student joins a class
 const joinClass = async (req, res, next) => {
@@ -159,6 +284,9 @@ module.exports = {
   // V2 functions
   createClassV2,
   getClassByCode,
+  getTeacherClasses,
+  getStudentClasses,
+  joinClassV2,
   // V1 legacy functions
   createClass,
   joinClass
