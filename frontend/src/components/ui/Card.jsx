@@ -2,9 +2,10 @@
  * Card Component
  * Reusable card container
  */
-export default function Card({ children, className = '', hover = false }) {
+export default function Card({ children, className = '', hover = false, onClick }) {
   return (
     <div
+      onClick={onClick}
       className={`bg-white rounded-lg border border-slate-200 shadow-sm p-6 ${
         hover ? 'transition-shadow hover:shadow-md' : ''
       } ${className}`}

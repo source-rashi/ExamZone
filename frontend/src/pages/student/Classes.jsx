@@ -4,7 +4,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import classAPI from '../../api/class.api';
 import { useAuth } from '../../context/AuthContext';
-import { BookOpen, Users, Loader2, X } from 'lucide-react';
+import { BookOpen, Users, Loader2, X, ChevronRight } from 'lucide-react';
 
 /**
  * Student Classes Page - Phase 4.RE
@@ -150,9 +150,7 @@ export default function StudentClasses() {
                     <Users className="w-5 h-5 text-gray-400" />
                     <span>{cls.students?.length || 0} students</span>
                   </div>
-                  <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
                 </div>
               </div>
             </Card>

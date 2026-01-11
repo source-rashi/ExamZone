@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import classAPI from '../../api/class.api';
-import { BookOpen, FileText, CheckCircle, Users, Loader2, X } from 'lucide-react';
+import { BookOpen, FileText, CheckCircle, Users, Loader2, X, ChevronRight } from 'lucide-react';
 
 /**
  * Student Dashboard - Phase 4.RE-FINAL
@@ -90,8 +90,8 @@ export default function Dashboard() {
                 <p className="text-sm font-medium text-gray-600 mb-2">Enrolled Classes</p>
                 <p className="text-4xl font-bold text-gray-900">{classes.length}</p>
               </div>
-              <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-indigo-600" />
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center">
+                <BookOpen className="w-8 h-8 text-indigo-600" />
               </div>
             </div>
           </div>
@@ -105,8 +105,8 @@ export default function Dashboard() {
                 <p className="text-4xl font-bold text-gray-900">0</p>
                 <p className="text-xs text-gray-500 mt-1">Coming soon</p>
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <FileText className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center">
+                <FileText className="w-8 h-8 text-blue-600" />
               </div>
             </div>
           </div>
@@ -120,8 +120,8 @@ export default function Dashboard() {
                 <p className="text-4xl font-bold text-gray-900">0</p>
                 <p className="text-xs text-gray-500 mt-1">Coming soon</p>
               </div>
-              <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-emerald-600" />
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-8 h-8 text-emerald-600" />
               </div>
             </div>
           </div>
@@ -148,8 +148,8 @@ export default function Dashboard() {
           <div onClick={() => setShowJoinModal(true)}>
             <Card className="border border-gray-200 hover:border-emerald-600 hover:shadow-lg transition-all cursor-pointer">
               <div className="p-6 flex items-center gap-4">
-                <div className="w-12 h-12 bg-emerald-600 bg-opacity-10 rounded-lg flex items-center justify-center">
-                  <BookOpen className="w-6 h-6 text-emerald-600" />
+                <div className="w-12 h-12 rounded-lg flex items-center justify-center">
+                  <BookOpen className="w-7 h-7 text-emerald-600" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">Join a Class</h3>
@@ -162,8 +162,8 @@ export default function Dashboard() {
           <Link to="/student/classes">
             <Card className="border border-gray-200 hover:border-emerald-600 hover:shadow-lg transition-all cursor-pointer">
               <div className="p-6 flex items-center gap-4">
-                <div className="w-12 h-12 bg-emerald-600 bg-opacity-10 rounded-lg flex items-center justify-center">
-                  <Users className="w-6 h-6 text-emerald-600" />
+                <div className="w-12 h-12 rounded-lg flex items-center justify-center">
+                  <Users className="w-7 h-7 text-emerald-600" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">View All Classes</h3>
@@ -210,37 +210,32 @@ export default function Dashboard() {
             {displayClasses.map((cls) => (
               <Card 
                 key={cls._id} 
-                className="border border-gray-200 hover:border-emerald-600 hover:shadow-lg transition-all cursor-pointer"
+                className="border border-gray-200 hover:border-[#4b7bec] hover:shadow-lg transition-all cursor-pointer flex flex-col"
                 onClick={() => navigate(`/class/${cls._id}`)}
               >
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 bg-emerald-600 bg-opacity-10 rounded-lg flex items-center justify-center">
-                      <BookOpen className="w-6 h-6 text-emerald-600" />
-                    </div>
-                    <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-semibold rounded-full">
+                <div className="p-6 flex flex-col h-full">
+                  <div className="flex items-start justify-between mb-4">
+                    <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 flex-grow">{cls.title}</h3>
+                    <span className="flex-shrink-0 ml-4 px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded-full">
                       {cls.code}
                     </span>
                   </div>
                   
-                  <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-1">{cls.title}</h3>
+                  <div className="text-sm text-gray-600 mb-4">
+                    <span className="font-medium text-gray-800">Teacher:</span> {cls.teacher?.name || 'N/A'}
+                  </div>
                   
-                  {cls.subject && (
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-1">{cls.subject}</p>
-                  )}
+                  <div className="flex-grow"></div>
                   
-                  {cls.description && (
-                    <p className="text-sm text-gray-500 mb-4 line-clamp-2 min-h-[2.5rem]">{cls.description}</p>
-                  )}
-                  
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-200 mt-auto">
                     <div className="flex items-center space-x-2 text-sm text-gray-600">
                       <Users className="w-5 h-5 text-gray-400" />
                       <span>{cls.students?.length || 0} students</span>
                     </div>
-                    <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
+                    <div className="flex items-center text-sm text-[#4b7bec] font-medium">
+                      <span>View Class</span>
+                      <ChevronRight className="w-5 h-5" />
+                    </div>
                   </div>
                 </div>
               </Card>
