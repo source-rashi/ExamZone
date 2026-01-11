@@ -5,6 +5,7 @@ import * as classAPI from '../../api/class.api';
 import * as classroomAPI from '../../api/classroom.api';
 import * as announcementAPI from '../../api/announcement.api';
 import * as assignmentAPI from '../../api/assignment.api';
+import examAPI from '../../api/exam.api';
 import { 
   BookOpen, 
   Users, 
@@ -18,7 +19,8 @@ import {
   Loader2,
   Paperclip,
   Trash2,
-  Send
+  Send,
+  Plus
 } from 'lucide-react';
 
 /**
@@ -85,6 +87,7 @@ export default function Classroom() {
   const tabs = [
     { id: 'stream', label: 'Stream', icon: Megaphone },
     { id: 'assignments', label: 'Assignments', icon: ClipboardList },
+    { id: 'exams', label: 'Exams', icon: FileText },
     { id: 'people', label: 'People', icon: Users }
   ];
 
@@ -155,6 +158,9 @@ export default function Classroom() {
         {activeTab === 'assignments' && (
           <AssignmentsTab classId={id} isTeacher={isTeacher} />
         )}
+        {activeTab === 'exams' && (
+          <ExamsTab classId={id} isTeacher={isTeacher} />
+        )}
         {activeTab === 'people' && (
           <PeopleTab classData={classData} />
         )}
@@ -198,6 +204,7 @@ function StreamTab({ classId, isTeacher, user }) {
     const tempId = `temp-${Date.now()}`;
     const newAnnouncement = {
       _id: tempId,
+      content: content.trim(),
       author: { name: user.name, _id: user._id },
       createdAt: new Date().toISOString(),
       isOptimistic: true,
@@ -223,7 +230,16 @@ function StreamTab({ classId, isTeacher, user }) {
       console.error('Failed to create announcement:', error);
       alert(error.response?.data?.message || 'Failed to create announcement');
       // Remove optimistic announcement on error
-      alert(error.response?.data?.message || 'Failed to create announcement');
+      setAnnouncements(prev => prev.filter(a => a._id !== tempId));
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDelete = async (announcementId) => {
+    if (!confirm('Delete this announcement?')) return;
+
+    const originalAnnouncements = [...announcements];
     // Optimistic update
     setAnnouncements(prev => prev.filter(a => a._id !== announcementId));
 
@@ -234,16 +250,6 @@ function StreamTab({ classId, isTeacher, user }) {
       console.error('Failed to delete announcement:', error);
       alert(error.response?.data?.message || 'Failed to delete announcement');
       // Restore on error
-    if (!confirm('Delete this announcement?')) return;
-
-    const originalAnnouncements = [...announcements];
-    setAnnouncements(prev => prev.filter(a => a._id !== announcementId));
-
-    try {
-      await classroomAPI.deleteAnnouncement(classId, announcementId);
-    } catch (error) {
-      console.error('Failed to delete announcement:', error);
-      alert(error.response?.data?.message || 'Failed to delete announcement');
       setAnnouncements(originalAnnouncements);
     }
   };
@@ -728,8 +734,166 @@ function AssignmentsTab({ classId, isTeacher }) {
   );
 }
 
-// ExamsTab removed in Phase 5.4 - Not touching exams per requirements
-// Will be restored in future phase
+// ExamsTab - Phase 6.2 Exam Display
+function ExamsTab({ classId, isTeacher }) {
+  const navigate = useNavigate();
+  const [exams, setExams] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadExams();
+  }, [classId]);
+
+  const loadExams = async () => {
+    try {
+      setLoading(true);
+      const data = isTeacher 
+        ? await examAPI.getClassExams(classId)
+        : await examAPI.getStudentExams(classId);
+      setExams(data.exams || []);
+    } catch (error) {
+      console.error('Failed to load exams:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusBadge = (exam) => {
+    if (exam.status === 'draft') {
+      return <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded-full">Draft</span>;
+    }
+    
+    const now = new Date();
+    const startTime = new Date(exam.startTime);
+    const endTime = new Date(exam.endTime);
+    
+    if (now < startTime) {
+      return <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">Upcoming</span>;
+    }
+    if (now >= startTime && now <= endTime) {
+      return <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">Active</span>;
+    }
+    return <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-semibold rounded-full">Ended</span>;
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-16">
+        <Loader2 className="w-10 h-10 text-[#1f3c88] animate-spin mx-auto mb-4" />
+        <p className="text-gray-600">Loading exams...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      {isTeacher && (
+        <div className="mb-6">
+          <button
+            onClick={() => navigate(`/teacher/class/${classId}/create-exam`)}
+            className="px-6 py-3 bg-[#1f3c88] text-white rounded-lg hover:bg-[#152a5e] transition-colors font-medium flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Create Exam
+          </button>
+        </div>
+      )}
+
+      {exams.length === 0 ? (
+        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
+          <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-500 text-lg">No exams yet</p>
+          {isTeacher && (
+            <p className="text-gray-400 text-sm mt-2">Create your first exam to get started</p>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {exams.map(exam => (
+            <div 
+              key={exam._id} 
+              className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="text-xl font-bold text-gray-900">{exam.title}</h3>
+                    {getStatusBadge(exam)}
+                  </div>
+                  {exam.description && (
+                    <p className="text-gray-600 text-sm line-clamp-2">{exam.description}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Total Marks</p>
+                  <p className="font-semibold text-gray-900">{exam.totalMarks}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Duration</p>
+                  <p className="font-semibold text-gray-900">{exam.duration} min</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Attempts</p>
+                  <p className="font-semibold text-gray-900">{exam.attemptsAllowed || 1}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Mode</p>
+                  <p className="font-semibold text-gray-900 capitalize">{exam.mode || 'Online'}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  <span>
+                    {new Date(exam.startTime).toLocaleDateString()} - {new Date(exam.endTime).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  <span>
+                    {new Date(exam.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {isTeacher ? (
+                  <>
+                    {exam.status === 'draft' && (
+                      <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                        Edit Draft
+                      </button>
+                    )}
+                    <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                      View Details
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {exam.status === 'published' && 
+                      new Date() >= new Date(exam.startTime) && 
+                      new Date() <= new Date(exam.endTime) && (
+                        <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium">
+                          Start Exam
+                        </button>
+                      )}
+                    <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                      View Details
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // People Tab - Teacher and Students
 function PeopleTab({ classData }) {
