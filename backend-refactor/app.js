@@ -18,6 +18,7 @@ const examRoutes = require('./routes/exam.routes');
 const attemptRoutes = require('./routes/attempt.routes');
 const inviteRoutes = require('./routes/invite.routes');
 const classroomRoutes = require('./routes/classroom.routes');
+const announcementRoutes = require('./routes/announcement.routes');
 
 const app = express();
 
@@ -64,6 +65,7 @@ app.use('/api/v2/exams', examRoutes);
 app.use('/api/v2/attempts', attemptRoutes);
 app.use('/api/v2/invites', inviteRoutes);
 app.use('/api/v2/classroom', classroomRoutes);
+app.use('/api/v2', announcementRoutes); // Announcement routes
 
 // Static page routes
 

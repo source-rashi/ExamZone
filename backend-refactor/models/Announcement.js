@@ -1,31 +1,44 @@
 const mongoose = require('mongoose');
 
+/**
+ * PHASE 5.2 — Announcement Model
+ * Real announcement system for classroom communication
+ * Teacher → Class → Students
+ */
+
 const announcementSchema = new mongoose.Schema({
-  classId: {
+  // Announcement content
+  content: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  
+  // Class reference (required)
+  class: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Class',
     required: true
   },
-  teacherId: {
+  
+  // Author (teacher) reference
+  author: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  teacherName: {
-    type: String,
-    required: true
-  },
-  content: {
-    type: String,
-    required: true
-  },
+  
+  // Timestamp
   createdAt: {
     type: Date,
     default: Date.now
   }
+}, {
+  timestamps: true
 });
 
-// Index for efficient querying
-announcementSchema.index({ classId: 1, createdAt: -1 });
+// Indexes for performance
+announcementSchema.index({ class: 1, createdAt: -1 });
+announcementSchema.index({ author: 1 });
 
 module.exports = mongoose.model('Announcement', announcementSchema);

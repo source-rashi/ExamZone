@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import * as classAPI from '../../api/class.api';
 import * as classroomAPI from '../../api/classroom.api';
+import * as announcementAPI from '../../api/announcement.api';
 import { 
   BookOpen, 
   Users, 
@@ -180,8 +181,9 @@ function StreamTab({ classId, isTeacher, user }) {
   const loadAnnouncements = async () => {
     try {
       setLoading(true);
-      const data = await classroomAPI.getAnnouncements(classId);
-      setAnnouncements(data.announcements.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) || []);
+      // PHASE 5.2: Use announcement API
+      const data = await announcementAPI.getAnnouncements(classId);
+      setAnnouncements(data.announcements || []);
     } catch (error) {
       console.error('Failed to load announcements:', error);
       if (error.response?.status === 403) {
@@ -199,30 +201,42 @@ function StreamTab({ classId, isTeacher, user }) {
     const tempId = `temp-${Date.now()}`;
     const newAnnouncement = {
       _id: tempId,
-      content: content.trim(),
-      teacherName: user.name,
+      author: { name: user.name, _id: user._id },
       createdAt: new Date().toISOString(),
       isOptimistic: true,
     };
 
+    // Optimistic update
     setAnnouncements(prev => [newAnnouncement, ...prev]);
     setContent('');
     setIsFocused(false);
     setCreating(true);
 
     try {
-      const created = await classroomAPI.createAnnouncement(classId, { content: newAnnouncement.content });
-      setAnnouncements(prev => prev.map(a => a._id === tempId ? { ...created.announcement, teacherName: user.name } : a));
+      // PHASE 5.2: Use announcement API
+      const created = await announcementAPI.createAnnouncement(classId, { 
+        content: newAnnouncement.content 
+      });
+      
+      // Replace optimistic announcement with real one
+      setAnnouncements(prev => 
+        prev.map(a => a._id === tempId ? created.announcement : a)
+      );
     } catch (error) {
       console.error('Failed to create announcement:', error);
       alert(error.response?.data?.message || 'Failed to create announcement');
-      setAnnouncements(prev => prev.filter(a => a._id !== tempId));
-    } finally {
-      setCreating(false);
-    }
-  };
+      // Remove optimistic announcement on error
+      alert(error.response?.data?.message || 'Failed to create announcement');
+    // Optimistic update
+    setAnnouncements(prev => prev.filter(a => a._id !== announcementId));
 
-  const handleDelete = async (announcementId) => {
+    try {
+      // PHASE 5.2: Use announcement API
+      await announcementAPI.deleteAnnouncement(announcementId);
+    } catch (error) {
+      console.error('Failed to delete announcement:', error);
+      alert(error.response?.data?.message || 'Failed to delete announcement');
+      // Restore on error
     if (!confirm('Delete this announcement?')) return;
 
     const originalAnnouncements = [...announcements];
@@ -293,13 +307,13 @@ function StreamTab({ classId, isTeacher, user }) {
       )}
 
       {announcements.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <Megaphone className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-800">The stream is empty</h3>
-          <p className="text-gray-500 mt-2">
-            {isTeacher ? "Announcements you post will appear here." : "New announcements from your teacher will appear here."}
-          </p>
-        </div>
+        <div className="text-cenauthor?.name?.[0] || 'T'}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-semibold text-gray-900">{announcement.author?.n
       ) : (
         <div className="space-y-5">
           {announcements.map(announcement => (
