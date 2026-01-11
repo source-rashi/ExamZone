@@ -61,6 +61,14 @@ export async function deleteExam(examId) {
   return response.data;
 }
 
+/**
+ * Generate AI question papers for exam (Phase 6.3)
+ */
+export async function generateQuestionPapers(examId, teacherId) {
+  const response = await apiClient.post(`/exams/${examId}/generate-papers`, { teacherId });
+  return response.data;
+}
+
 export const examAPI = {
   createExam,
   publishExam,
@@ -69,6 +77,7 @@ export const examAPI = {
   getExamById,
   updateExam,
   deleteExam,
+  generateQuestionPapers,
 };
 
 export default examAPI;

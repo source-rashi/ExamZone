@@ -740,6 +740,7 @@ function ExamsTab({ classId, isTeacher }) {
   const navigate = useNavigate();
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [generatingPapers, setGeneratingPapers] = useState({}); // Track generation per exam
 
   useEffect(() => {
     loadExams();
@@ -756,6 +757,30 @@ function ExamsTab({ classId, isTeacher }) {
       console.error('Failed to load exams:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGeneratePapers = async (examId) => {
+    const confirm = window.confirm('Generate AI question papers for all students? This cannot be undone.');
+    if (!confirm) return;
+
+    try {
+      setGeneratingPapers(prev => ({ ...prev, [examId]: true }));
+      
+      // Get teacherId from localStorage
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const teacherId = user.id || user._id;
+      
+      const result = await examAPI.generateQuestionPapers(examId, teacherId);
+      
+      alert(`Success! Generated ${result.data?.totalPapers || 0} question papers.`);
+      loadExams(); // Reload to update status
+    } catch (error) {
+      console.error('Failed to generate papers:', error);
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to generate papers';
+      alert(`Error: ${errorMsg}`);
+    } finally {
+      setGeneratingPapers(prev => ({ ...prev, [examId]: false }));
     }
   };
 
@@ -867,6 +892,25 @@ function ExamsTab({ classId, isTeacher }) {
                     {exam.status === 'draft' && (
                       <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
                         Edit Draft
+                      </button>
+                    )}
+                    {exam.status === 'published' && (
+                      <button 
+                        onClick={() => handleGeneratePapers(exam._id)}
+                        disabled={generatingPapers[exam._id]}
+                        className="px-4 py-2 bg-[#1f3c88] text-white rounded-lg hover:bg-[#152a5e] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-2"
+                      >
+                        {generatingPapers[exam._id] ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="w-4 h-4" />
+                            Generate Question Papers
+                          </>
+                        )}
                       </button>
                     )}
                     <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">

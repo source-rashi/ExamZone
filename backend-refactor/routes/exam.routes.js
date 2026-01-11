@@ -29,11 +29,11 @@ router.post('/', authenticate, teacherOnly, createExam);
 router.patch('/:examId/publish', authenticate, teacherOnly, publishExam);
 
 /**
- * @route POST /api/v2/exams/:id/generate
- * @desc Generate question papers for exam
- * @access Teacher only
+ * @route POST /api/v2/exams/:id/generate-papers
+ * @desc Generate AI question papers for exam (Phase 6.3)
+ * @access Teacher only (exam creator only)
  */
-router.post('/:id/generate', authenticate, teacherOnly, generateQuestionPapers);
+router.post('/:id/generate-papers', authenticate, teacherOnly, generateQuestionPapers);
 
 /**
  * @route POST /api/v2/exams/:id/evaluate

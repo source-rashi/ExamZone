@@ -4,6 +4,7 @@
  */
 
 const examService = require('../services/exam.service');
+const aiExamService = require('../services/aiExam.service');
 
 /**
  * Create a new exam
@@ -116,29 +117,32 @@ async function publishExam(req, res) {
 }
 
 /**
- * Generate question papers for exam (Phase 3.6)
- * @route POST /api/v2/exams/:id/generate
+ * Generate question papers for exam (Phase 6.3 - AI Integration)
+ * @route POST /api/v2/exams/:id/generate-papers
  */
 async function generateQuestionPapers(req, res) {
   try {
     const { id } = req.params;
+    const teacherId = req.body.teacherId || req.user?.id;
 
-    const exam = await examService.generatePapers(id);
+    if (!teacherId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Teacher ID required'
+      });
+    }
+
+    // Call AI bridge service (BLACK BOX integration)
+    const result = await aiExamService.generateExamPapers(id, teacherId);
 
     res.status(200).json({
       success: true,
-      message: `Generated ${exam.questionPapers.length} question papers`,
-      data: {
-        examId: exam._id,
-        totalPapers: exam.questionPapers.length,
-        papers: exam.questionPapers.map(p => ({
-          studentId: p.studentId,
-          setCode: p.setCode,
-          generatedAt: p.generatedAt
-        }))
-      }
+      message: result.message,
+      data: result.stats
     });
   } catch (error) {
+    console.error('[Generate Papers] Error:', error.message);
+    
     if (error.message.includes('not found')) {
       return res.status(404).json({
         success: false,
@@ -146,7 +150,16 @@ async function generateQuestionPapers(req, res) {
       });
     }
 
-    if (error.message.includes('Cannot generate papers') || error.message.includes('No students enrolled')) {
+    if (error.message.includes('Unauthorized') || error.message.includes('Only exam creator')) {
+      return res.status(403).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('must be published') || 
+        error.message.includes('already generated') ||
+        error.message.includes('No students')) {
       return res.status(400).json({
         success: false,
         message: error.message

@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const examController = require('../controllers/exam.controller.v2');
+const examControllerV1 = require('../controllers/exam.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 
 // Teacher routes
@@ -13,6 +14,9 @@ router.post('/exams', authenticate, examController.createExam);
 router.post('/exams/:id/publish', authenticate, examController.publishExam);
 router.post('/exams/:id/close', authenticate, examController.closeExam);
 router.get('/exams/class/:classId', authenticate, examController.getClassExams);
+
+// PHASE 6.3 - AI Question Paper Generation
+router.post('/exams/:id/generate-papers', authenticate, examControllerV1.generateQuestionPapers);
 
 // Student routes
 router.get('/exams/student/:classId', authenticate, examController.getStudentExams);
