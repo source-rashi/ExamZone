@@ -35,6 +35,9 @@ import StudentExams from './pages/student/Exams';
 import StudentProfile from './pages/student/Profile';
 import ExamPage from './pages/ExamPage';
 
+// Shared pages
+import Classroom from './pages/shared/Classroom';
+
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 function App() {
@@ -106,6 +109,16 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ExamPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Classroom routes (protected but role-agnostic) */}
+            <Route
+              path="/class/:id"
+              element={
+                <ProtectedRoute>
+                  <Classroom />
                 </ProtectedRoute>
               }
             />

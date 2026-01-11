@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import classAPI from '../../api/class.api';
@@ -6,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 
 export default function StudentClasses() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -120,7 +122,13 @@ export default function StudentClasses() {
                     <span>👥</span>
                     <span>{cls.students?.length || 0} students</span>
                   </div>
-                  <Button variant="ghost" size="sm">View</Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => navigate(`/class/${cls._id}`)}
+                  >
+                    View
+                  </Button>
                 </div>
               </div>
             </Card>

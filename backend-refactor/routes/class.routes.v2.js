@@ -7,7 +7,8 @@ const express = require('express');
 const router = express.Router();
 const { 
   createClassV2, 
-  getClassByCode, 
+  getClassByCode,
+  getClassById,
   getTeacherClasses, 
   getStudentClasses,
   joinClassV2
@@ -42,6 +43,13 @@ router.post('/', authenticate, teacherOnly, createClassV2);
  * @access Student only
  */
 router.post('/join', authenticate, studentOnly, joinClassV2);
+
+/**
+ * @route GET /api/v2/classes/by-id/:id
+ * @desc Get class by ID (with access control)
+ * @access Authenticated users (must be teacher or enrolled student)
+ */
+router.get('/by-id/:id', authenticate, getClassById);
 
 /**
  * @route GET /api/v2/classes/:code

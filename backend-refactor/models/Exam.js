@@ -12,6 +12,10 @@ const examSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  teacherId: { // Alias for createdBy for backward compatibility
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   title: {
     type: String,
     required: true
@@ -19,6 +23,9 @@ const examSchema = new mongoose.Schema({
   description: {
     type: String,
     default: ''
+  },
+  date: { // Added for Phase 4.3 classroom view
+    type: Date
   },
   duration: {
     type: Number, // in minutes (legacy field)

@@ -128,6 +128,56 @@ async function getClassByCode(req, res) {
 }
 
 /**
+ * Get class by ID (with access control)
+ * @route GET /api/v2/classes/:id
+ */
+async function getClassById(req, res) {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const userEmail = req.user.email;
+    
+    const Class = require('../models/Class');
+    const classDoc = await Class.findById(id);
+
+    if (!classDoc) {
+      return res.status(404).json({
+        success: false,
+        message: 'Class not found'
+      });
+    }
+
+    // Check if user has access (teacher or enrolled student)
+    const isTeacher = classDoc.teacherId?.toString() === userId || classDoc.teacher?.toString() === userId;
+    const isStudent = classDoc.students.some(s => s.email === userEmail || s.userId?.toString() === userId);
+
+    if (!isTeacher && !isStudent) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have access to this class'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      class: classDoc
+    });
+  } catch (error) {
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid class ID format'
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve class',
+      error: error.message
+    });
+  }
+}
+
+/**
  * Get all classes for a teacher
  * @route GET /api/v2/classes/teacher
  */
@@ -284,6 +334,7 @@ module.exports = {
   // V2 functions
   createClassV2,
   getClassByCode,
+  getClassById,
   getTeacherClasses,
   getStudentClasses,
   joinClassV2,

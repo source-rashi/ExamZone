@@ -141,8 +141,9 @@ export default function StudentDashboard() {
           ) : (
             <div className="space-y-3">
               {classes.slice(0, 3).map((cls) => (
-                <div
+                <Link
                   key={cls._id}
+                  to={`/class/${cls._id}`}
                   className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
                 >
                   <div className="flex items-center space-x-3">
@@ -154,10 +155,8 @@ export default function StudentDashboard() {
                       </p>
                     </div>
                   </div>
-                  <Link to="/student/classes">
-                    <Button variant="ghost" size="sm">View</Button>
-                  </Link>
-                </div>
+                  <Button variant="ghost" size="sm">View</Button>
+                </Link>
               ))}
             </div>
           )}

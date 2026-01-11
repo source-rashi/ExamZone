@@ -41,10 +41,10 @@ export async function joinClass(classCode, studentData) {
 }
 
 /**
- * Get class by ID
+ * Get class by ID (with access control)
  */
 export async function getClassById(classId) {
-  const response = await apiClient.get(`/classes/${classId}`);
+  const response = await apiClient.get(`/classes/by-id/${classId}`);
   return response.data;
 }
 
