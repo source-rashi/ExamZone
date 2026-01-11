@@ -8,7 +8,7 @@ const { AppError } = require('../middleware/error.middleware');
 
 // ===== LEGACY ROUTES (V1) =====
 // Create a new class with derived title and icon
-exports.createClass = async (req, res, next) => {
+const createClass = async (req, res, next) => {
   const { code } = req.body;
 
   try {
@@ -127,15 +127,9 @@ async function getClassByCode(req, res) {
   }
 }
 
-// Export V2 functions
-module.exports = {
-  createClassV2,
-  getClassByCode
-};
-
 // ===== LEGACY ROUTES (V1) =====
 // Student joins a class
-exports.joinClass = async (req, res, next) => {
+const joinClass = async (req, res, next) => {
   const { classCode, rollNumber, name } = req.body;
 
   try {
@@ -158,4 +152,14 @@ exports.joinClass = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+// Export all functions
+module.exports = {
+  // V2 functions
+  createClassV2,
+  getClassByCode,
+  // V1 legacy functions
+  createClass,
+  joinClass
 };

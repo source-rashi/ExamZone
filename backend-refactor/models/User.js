@@ -31,7 +31,10 @@ const userSchema = new mongoose.Schema({
   
   password: {
     type: String,
-    required: [true, 'Password is required'],
+    required: function() {
+      // Only require password for local auth
+      return this.authProvider === 'local';
+    },
     minlength: [6, 'Password must be at least 6 characters'],
     select: false // Don't return password by default in queries
   },

@@ -9,6 +9,20 @@ const authController = require('../controllers/auth.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 
 /**
+ * POST /api/v2/auth/register
+ * Register new user with email/password
+ * Body: { name, email, password, role }
+ */
+router.post('/register', authController.register);
+
+/**
+ * POST /api/v2/auth/login
+ * Login with email/password
+ * Body: { email, password }
+ */
+router.post('/login', authController.login);
+
+/**
  * POST /api/v2/auth/google
  * Login with Google OAuth token
  * Body: { token: string }

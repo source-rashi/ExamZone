@@ -64,6 +64,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const login = (userData) => {
+    // For email/password login - data already includes token and user
+    setUser(userData);
+    // Token is already in localStorage from the signup/login page
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -77,6 +83,7 @@ export const AuthProvider = ({ children }) => {
     token,
     loading,
     loginWithGoogle,
+    login,
     logout,
     isAuthenticated: !!token && !!user,
   };
