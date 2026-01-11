@@ -72,7 +72,7 @@ async function createAssignment(req, res) {
     res.status(201).json({
       success: true,
       message: 'Assignment created successfully',
-      assignment
+      data: { assignment }
     });
   } catch (error) {
     // Clean up file on error
@@ -143,7 +143,8 @@ async function getAssignments(req, res) {
 
     res.status(200).json({
       success: true,
-      assignments: assignmentsWithStatus
+      message: 'Assignments fetched successfully',
+      data: { assignments: assignmentsWithStatus }
     });
   } catch (error) {
     console.error('Get assignments error:', error);
@@ -269,7 +270,8 @@ async function submitAssignment(req, res) {
 
     res.status(200).json({
       success: true,
-      message: 'Assignment submitted successfully'
+      message: 'Assignment submitted successfully',
+      data: null
     });
   } catch (error) {
     // Clean up file on error
@@ -316,7 +318,8 @@ async function getSubmissions(req, res) {
 
     res.status(200).json({
       success: true,
-      submissions: assignment.submissions
+      message: 'Submissions fetched successfully',
+      data: { submissions: assignment.submissions }
     });
   } catch (error) {
     console.error('Get submissions error:', error);

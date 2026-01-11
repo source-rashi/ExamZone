@@ -14,7 +14,7 @@ import apiClient from './client';
  */
 export async function createAnnouncement(classId, data) {
   const response = await apiClient.post(`/classes/${classId}/announcements`, data);
-  return response.data;
+  return response.data.data || response.data;
 }
 
 /**
@@ -24,7 +24,7 @@ export async function createAnnouncement(classId, data) {
  */
 export async function getAnnouncements(classId) {
   const response = await apiClient.get(`/classes/${classId}/announcements`);
-  return response.data;
+  return response.data.data || response.data;
 }
 
 /**

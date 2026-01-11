@@ -54,7 +54,7 @@ async function createAnnouncement(req, res) {
     res.status(201).json({
       success: true,
       message: 'Announcement created successfully',
-      announcement
+      data: { announcement }
     });
   } catch (error) {
     console.error('Create announcement error:', error);
@@ -102,7 +102,8 @@ async function getAnnouncements(req, res) {
 
     res.status(200).json({
       success: true,
-      announcements
+      message: 'Announcements fetched successfully',
+      data: { announcements }
     });
   } catch (error) {
     console.error('Get announcements error:', error);
@@ -148,7 +149,8 @@ async function deleteAnnouncement(req, res) {
 
     res.status(200).json({
       success: true,
-      message: 'Announcement deleted successfully'
+      message: 'Announcement deleted successfully',
+      data: null
     });
   } catch (error) {
     console.error('Delete announcement error:', error);

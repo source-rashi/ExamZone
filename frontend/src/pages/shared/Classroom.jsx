@@ -85,8 +85,7 @@ export default function Classroom() {
   const tabs = [
     { id: 'stream', label: 'Stream', icon: Megaphone },
     { id: 'assignments', label: 'Assignments', icon: ClipboardList },
-    { id: 'exams', label: 'Exams', icon: FileText },
-    { id: 'members', label: 'Members', icon: Users }
+    { id: 'people', label: 'People', icon: Users }
   ];
 
   return (
@@ -156,11 +155,8 @@ export default function Classroom() {
         {activeTab === 'assignments' && (
           <AssignmentsTab classId={id} isTeacher={isTeacher} />
         )}
-        {activeTab === 'exams' && (
-          <ExamsTab classId={id} isTeacher={isTeacher} />
-        )}
-        {activeTab === 'members' && (
-          <MembersTab classData={classData} />
+        {activeTab === 'people' && (
+          <PeopleTab classData={classData} />
         )}
       </div>
     </div>
@@ -732,216 +728,11 @@ function AssignmentsTab({ classId, isTeacher }) {
   );
 }
 
-// Exams Tab
-function ExamsTab({ classId, isTeacher }) {
-  const [exams, setExams] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    date: '',
-    duration: ''
-  });
-  const [creating, setCreating] = useState(false);
+// ExamsTab removed in Phase 5.4 - Not touching exams per requirements
+// Will be restored in future phase
 
-  useEffect(() => {
-    loadExams();
-  }, [classId]);
-
-  const loadExams = async () => {
-    try {
-      setLoading(true);
-      const data = await classroomAPI.getExams(classId);
-      setExams(data.exams.sort((a, b) => new Date(b.date) - new Date(a.date)) || []);
-    } catch (error) {
-      console.error('Failed to load exams:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({ title: '', date: '', duration: '' });
-  }
-
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    try {
-      setCreating(true);
-      await classroomAPI.createExam(classId, formData);
-      resetForm();
-      setShowCreateModal(false);
-      loadExams();
-    } catch (error) {
-      console.error('Failed to create exam:', error);
-      alert(error.response?.data?.message || 'Failed to create exam');
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="text-center py-16">
-        <Loader2 className="w-10 h-10 text-[#1f3c88] animate-spin mx-auto mb-4" />
-        <p className="text-gray-600">Loading exams...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="max-w-4xl mx-auto">
-      {isTeacher && (
-        <div className="text-right mb-6">
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-5 py-2.5 bg-[#1f3c88] text-white rounded-lg hover:bg-[#152a5e] transition-colors font-medium flex items-center gap-2 inline-flex"
-          >
-            <FileText className="w-5 h-5" />
-            Create Exam
-          </button>
-        </div>
-      )}
-
-      {exams.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-800">No exams scheduled</h3>
-          <p className="text-gray-500 mt-2">
-            {isTeacher ? "Create your first exam to get started." : "Your teacher has not scheduled any exams yet."}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {exams.map(exam => {
-            const examDate = new Date(exam.date);
-            const isUpcoming = examDate > new Date();
-            
-            return (
-              <div key={exam._id} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow flex items-center gap-5">
-                <div className="w-11 h-11 rounded-full bg-[#4b7bec] bg-opacity-10 flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-5 h-5 text-[#4b7bec]" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-base font-bold text-gray-900">{exam.title}</h3>
-                  <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5" />
-                      {examDate.toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5" />
-                      {exam.duration} minutes
-                    </div>
-                  </div>
-                </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  isUpcoming
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-gray-100 text-gray-700'
-                }`}>
-                  {isUpcoming ? 'Upcoming' : 'Past'}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Create Exam Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Create Exam</h2>
-              <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  resetForm();
-                }}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Exam Title <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88] focus:border-transparent"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Date & Time <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="datetime-local"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88] focus:border-transparent"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Duration (minutes) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  value={formData.duration}
-                  onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                  min="1"
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88] focus:border-transparent"
-                  required
-                />
-              </div>
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    resetForm();
-                  }}
-                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={creating}
-                  className="flex-1 px-6 py-3 bg-[#1f3c88] text-white rounded-lg hover:bg-[#152a5e] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {creating ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    'Create Exam'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Members Tab - Professional Table
-function MembersTab({ classData }) {
+// People Tab - Teacher and Students
+function PeopleTab({ classData }) {
   const teacher = classData.teacher;
   const students = classData.students || [];
 
