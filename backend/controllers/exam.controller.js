@@ -65,12 +65,12 @@ async function createExam(req, res) {
 async function updateExam(req, res) {
   try {
     const { id } = req.params;
-    const teacherId = req.body.teacherId || req.user?.id;
+    const teacherId = req.user?.id;
 
     if (!teacherId) {
       return res.status(401).json({
         success: false,
-        message: 'Teacher ID required'
+        message: 'Authentication required'
       });
     }
 
@@ -191,12 +191,12 @@ async function publishExam(req, res) {
 async function generateQuestionPapers(req, res) {
   try {
     const { id } = req.params;
-    const teacherId = req.body.teacherId || req.user?.id;
+    const teacherId = req.user?.id;
 
     if (!teacherId) {
       return res.status(401).json({
         success: false,
-        message: 'Teacher ID required'
+        message: 'Authentication required'
       });
     }
 
@@ -278,12 +278,12 @@ async function generateQuestionPapers(req, res) {
 async function generateStudentPapers(req, res) {
   try {
     const { id } = req.params;
-    const teacherId = req.body.teacherId || req.user?.id;
+    const teacherId = req.user?.id;
 
     if (!teacherId) {
       return res.status(401).json({
         success: false,
-        message: 'Teacher ID required'
+        message: 'Authentication required'
       });
     }
 
@@ -380,12 +380,12 @@ async function triggerEvaluation(req, res) {
 async function generateSets(req, res) {
   try {
     const { id } = req.params;
-    const teacherId = req.body.teacherId || req.user?.id;
+    const teacherId = req.user?.id;
 
     if (!teacherId) {
       return res.status(401).json({
         success: false,
-        message: 'Teacher ID required'
+        message: 'Authentication required'
       });
     }
 
@@ -440,12 +440,12 @@ async function generateSets(req, res) {
 async function resetGeneration(req, res) {
   try {
     const { id } = req.params;
-    const teacherId = req.body.teacherId || req.user?.id;
+    const teacherId = req.user?.id;
 
     if (!teacherId) {
       return res.status(401).json({
         success: false,
-        message: 'Teacher ID required'
+        message: 'Authentication required'
       });
     }
 

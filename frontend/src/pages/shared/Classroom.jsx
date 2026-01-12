@@ -769,12 +769,8 @@ function ExamsTab({ classId, isTeacher }) {
     try {
       setGeneratingPapers(prev => ({ ...prev, [examId]: true }));
       
-      // Get teacherId from localStorage
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const teacherId = user.id || user._id;
-      
       console.log('🚀 Calling generateQuestionPapers for exam:', examId);
-      const result = await examAPI.generateQuestionPapers(examId, teacherId);
+      const result = await examAPI.generateQuestionPapers(examId);
       
       console.log('✅ Generation response:', result);
       console.log('📊 Updated exam status:', result.data?.exam?.status);

@@ -64,8 +64,8 @@ export async function deleteExam(examId) {
 /**
  * Generate AI question papers for exam (Phase 6.3)
  */
-export async function generateQuestionPapers(examId, teacherId) {
-  const response = await apiClient.post(`/exams/${examId}/generate-papers`, { teacherId });
+export async function generateQuestionPapers(examId) {
+  const response = await apiClient.post(`/exams/${examId}/generate-papers`);
   return response.data;
 }
 
