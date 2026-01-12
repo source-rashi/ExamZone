@@ -212,9 +212,126 @@ async function triggerEvaluation(req, res) {
   }
 }
 
+/**
+ * PHASE 6.2.5 — Generate question sets and assign students
+ * @route POST /api/v2/exams/:id/generate-sets
+ */
+async function generateSets(req, res) {
+  try {
+    const { id } = req.params;
+    const teacherId = req.body.teacherId || req.user?.id;
+
+    if (!teacherId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Teacher ID required'
+      });
+    }
+
+    const result = await examService.generateQuestionSets(id, teacherId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Question sets generated and students assigned successfully',
+      data: {
+        setMap: result.setMap,
+        totalStudents: result.totalStudents
+      }
+    });
+  } catch (error) {
+    console.error('[Generate Sets] Error:', error.message);
+    
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('Only the exam creator') || error.message.includes('not authorized')) {
+      return res.status(403).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('already generated') || 
+        error.message.includes('No students') ||
+        error.message.includes('Reset exam')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate question sets',
+      error: error.message
+    });
+  }
+}
+
+/**
+ * Reset exam generation
+ * @route POST /api/v2/exams/:id/reset-generation
+ */
+async function resetGeneration(req, res) {
+  try {
+    const { id } = req.params;
+    const teacherId = req.body.teacherId || req.user?.id;
+
+    if (!teacherId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Teacher ID required'
+      });
+    }
+
+    const exam = await examService.resetExamGeneration(id, teacherId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Exam generation reset successfully',
+      data: exam
+    });
+  } catch (error) {
+    console.error('[Reset Generation] Error:', error.message);
+    
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('Only the exam creator')) {
+      return res.status(403).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('Cannot reset')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reset exam generation',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   createExam,
   publishExam,
   generateQuestionPapers,
-  triggerEvaluation
+  triggerEvaluation,
+  generateSets,
+  resetGeneration
 };

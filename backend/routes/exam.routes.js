@@ -9,7 +9,9 @@ const {
   createExam, 
   publishExam, 
   generateQuestionPapers, 
-  triggerEvaluation 
+  triggerEvaluation,
+  generateSets,
+  resetGeneration
 } = require('../controllers/exam.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 const { teacherOnly } = require('../middleware/role.middleware');
@@ -41,5 +43,19 @@ router.post('/:id/generate-papers', authenticate, teacherOnly, generateQuestionP
  * @access Teacher only
  */
 router.post('/:id/evaluate', authenticate, teacherOnly, triggerEvaluation);
+
+/**
+ * @route POST /api/v2/exams/:id/generate-sets
+ * @desc Generate question sets and assign students (PHASE 6.2.5)
+ * @access Teacher only (exam creator only)
+ */
+router.post('/:id/generate-sets', authenticate, teacherOnly, generateSets);
+
+/**
+ * @route POST /api/v2/exams/:id/reset-generation
+ * @desc Reset exam generation (PHASE 6.2.5)
+ * @access Teacher only (exam creator only)
+ */
+router.post('/:id/reset-generation', authenticate, teacherOnly, resetGeneration);
 
 module.exports = router;

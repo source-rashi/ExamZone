@@ -5,6 +5,7 @@
 
 const Exam = require('../models/Exam');
 const Class = require('../models/Class');
+const Enrollment = require('../models/Enrollment');
 
 /**
  * Create a new exam (draft state)
@@ -153,10 +154,112 @@ async function getStudentExams(classId, studentId) {
   return exams;
 }
 
+/**
+ * PHASE 6.2.5 — Generate Question Sets & Random Student Assignment
+ * Creates empty sets and randomly assigns students to sets
+ */
+async function generateQuestionSets(examId, teacherId) {
+  const exam = await Exam.findById(examId).populate('classId');
+
+  if (!exam) {
+    throw new Error('Exam not found');
+  }
+
+  // Verify teacher owns the exam
+  if (exam.createdBy.toString() !== teacherId) {
+    throw new Error('Only the exam creator can generate question sets');
+  }
+
+  // Can only generate for draft or ready exams
+  if (exam.generationStatus === 'generated') {
+    throw new Error('Question sets already generated. Reset exam to regenerate.');
+  }
+
+  // Get all enrolled students with roll numbers
+  const enrollments = await Enrollment.find({ 
+    classId: exam.classId._id,
+    status: 'active'
+  }).sort({ rollNumber: 1 });
+
+  if (enrollments.length === 0) {
+    throw new Error('No students enrolled in this class');
+  }
+
+  // Extract roll numbers
+  const rollNumbers = enrollments.map(e => e.rollNumber);
+
+  // Shuffle roll numbers randomly
+  const shuffledRolls = [...rollNumbers];
+  for (let i = shuffledRolls.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffledRolls[i], shuffledRolls[j]] = [shuffledRolls[j], shuffledRolls[i]];
+  }
+
+  // Distribute students into sets
+  const numberOfSets = exam.numberOfSets || 1;
+  const setMap = [];
+  const studentsPerSet = Math.ceil(shuffledRolls.length / numberOfSets);
+
+  for (let i = 0; i < numberOfSets; i++) {
+    const setId = String.fromCharCode(65 + i); // A, B, C, etc.
+    const startIdx = i * studentsPerSet;
+    const endIdx = Math.min(startIdx + studentsPerSet, shuffledRolls.length);
+    const assignedRollNumbers = shuffledRolls.slice(startIdx, endIdx);
+
+    setMap.push({
+      setId,
+      assignedRollNumbers
+    });
+  }
+
+  // Update exam
+  exam.setMap = setMap;
+  exam.generationStatus = 'ready';
+  exam.lockedAfterGeneration = true;
+  await exam.save();
+
+  return {
+    exam,
+    setMap,
+    totalStudents: rollNumbers.length
+  };
+}
+
+/**
+ * Reset exam generation (unlock and clear sets)
+ */
+async function resetExamGeneration(examId, teacherId) {
+  const exam = await Exam.findById(examId);
+
+  if (!exam) {
+    throw new Error('Exam not found');
+  }
+
+  // Verify teacher owns the exam
+  if (exam.createdBy.toString() !== teacherId) {
+    throw new Error('Only the exam creator can reset the exam');
+  }
+
+  // Can only reset if not published
+  if (exam.status === 'published' || exam.status === 'running') {
+    throw new Error('Cannot reset a published or running exam');
+  }
+
+  // Clear generation data
+  exam.setMap = [];
+  exam.generationStatus = 'draft';
+  exam.lockedAfterGeneration = false;
+  await exam.save();
+
+  return exam;
+}
+
 module.exports = {
   createExam,
   publishExam,
   closeExam,
   getClassExams,
-  getStudentExams
+  getStudentExams,
+  generateQuestionSets,
+  resetExamGeneration
 };
