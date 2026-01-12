@@ -97,7 +97,9 @@ async function generateStudentPapers(examId) {
   console.log('[Student Papers] Starting generation for exam:', examId);
 
   // Step 1: Validate exam
-  const exam = await Exam.findById(examId).populate('classId');
+  const exam = await Exam.findById(examId)
+    .populate('classId', 'name code')
+    .populate('createdBy', 'name email role');
   
   if (!exam) {
     throw new Error('Exam not found');
@@ -113,6 +115,10 @@ async function generateStudentPapers(examId) {
 
   if (exam.studentPapers && exam.studentPapers.length > 0) {
     throw new Error('Student papers already generated. Reset exam to regenerate.');
+  }
+
+  if (!exam.createdBy) {
+    throw new Error('Exam has no creator (createdBy field missing)');
   }
 
   console.log('[Student Papers] Exam validated. Status:', exam.status);
@@ -229,7 +235,8 @@ async function generateStudentPapers(examId) {
  * Get student's paper data
  */
 async function getStudentPaper(examId, studentId) {
-  const exam = await Exam.findById(examId);
+  const exam = await Exam.findById(examId)
+    .populate('createdBy', 'name email role');
   
   if (!exam) {
     throw new Error('Exam not found');
@@ -262,11 +269,15 @@ async function getStudentPaper(examId, studentId) {
  */
 async function getExamDetails(examId) {
   const exam = await Exam.findById(examId)
-    .populate('classId')
-    .populate('createdBy', 'name email');
+    .populate('classId', 'name code')
+    .populate('createdBy', 'name email role');
 
   if (!exam) {
     throw new Error('Exam not found');
+  }
+
+  if (!exam.createdBy) {
+    console.warn('[Get Exam Details] Warning: Exam has no createdBy populated');
   }
 
   return exam.toObject();
