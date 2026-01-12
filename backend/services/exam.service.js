@@ -146,9 +146,9 @@ async function publishExam(examId, teacherId) {
     throw new Error(`Cannot publish exam with status: ${exam.status}`);
   }
 
-  // PHASE 6.2.5 - Must generate sets before publishing
-  if (exam.generationStatus !== 'ready') {
-    throw new Error('Please generate question sets before publishing the exam');
+  // PHASE 6.3 - Must generate question papers before publishing
+  if (exam.generationStatus !== 'generated') {
+    throw new Error('Please generate question papers before publishing the exam');
   }
 
   // Validate required fields
@@ -408,6 +408,23 @@ async function getExamPreparationData(examId) {
   };
 }
 
+/**
+ * Get exam by ID with generated sets
+ * PHASE 6.3 - For teacher review panel
+ */
+async function getExamById(examId, userId) {
+  const exam = await Exam.findById(examId)
+    .populate('classId', 'name subject')
+    .populate('createdBy', 'name email');
+
+  if (!exam) {
+    throw new Error('Exam not found');
+  }
+
+  // Return exam with generated sets
+  return exam;
+}
+
 module.exports = {
   createExam,
   updateExam,
@@ -417,5 +434,6 @@ module.exports = {
   getStudentExams,
   generateQuestionSets,
   resetExamGeneration,
-  getExamPreparationData
+  getExamPreparationData,
+  getExamById
 };

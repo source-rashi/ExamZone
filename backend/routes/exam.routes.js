@@ -14,7 +14,8 @@ const {
   generateSets,
   resetGeneration,
   getPreparationData,
-  generateExamSetsWithAI
+  generateExamSetsWithAI,
+  getExamById
 } = require('../controllers/exam.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 const { teacherOnly } = require('../middleware/role.middleware');
@@ -82,5 +83,12 @@ router.get('/:id/preparation-data', authenticate, teacherOnly, getPreparationDat
  * @access Teacher only (exam creator only)
  */
 router.post('/:id/generate', authenticate, teacherOnly, generateExamSetsWithAI);
+
+/**
+ * @route GET /api/v2/exams/:id
+ * @desc Get exam by ID with generated sets
+ * @access Authenticated users
+ */
+router.get('/:id', authenticate, getExamById);
 
 module.exports = router;

@@ -4,9 +4,11 @@ import { teacherAPI } from '../../api/teacher.api';
 import StudentTable from '../../components/teacher/StudentTable';
 import ExamCard from '../../components/teacher/ExamCard';
 import InviteModal from '../../components/teacher/InviteModal';
+import ViewSetsModal from '../../components/teacher/ViewSetsModal';
 
 /**
  * ClassDetails - Show class info, students, exams, and actions
+ * PHASE 6.3 - Added Question Paper Generation and Review
  */
 export default function ClassDetails() {
   const { id } = useParams();
@@ -15,6 +17,8 @@ export default function ClassDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [generatingExamId, setGeneratingExamId] = useState(null);
+  const [viewingSetsExamId, setViewingSetsExamId] = useState(null);
 
   useEffect(() => {
     loadClassDetails();
@@ -42,19 +46,37 @@ export default function ClassDetails() {
     try {
       await teacherAPI.publishExam(examId);
       await loadClassDetails();
+      alert('Exam published successfully!');
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to publish exam');
     }
   };
 
   const handleGeneratePapers = async (examId) => {
+    if (!confirm('Generate question papers for this exam? This may take a few moments.')) {
+      return;
+    }
+
     try {
+      setGeneratingExamId(examId);
       const result = await teacherAPI.generatePapers(examId);
-      alert(`Generated ${result.count} answer papers`);
+      
+      alert(`Success! Generated ${result.data?.numberOfSets || result.numberOfSets} question sets with ${result.data?.totalQuestions || result.totalQuestions} total questions.`);
       await loadClassDetails();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to generate papers');
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || 'Failed to generate papers';
+      alert(errorMsg);
+    } finally {
+      setGeneratingExamId(null);
     }
+  };
+
+  const handleViewSets = (examId) => {
+    setViewingSetsExamId(examId);
+  };
+
+  const closeViewSets = () => {
+    setViewingSetsExamId(null);
   };
 
   if (loading) {
@@ -138,6 +160,7 @@ export default function ClassDetails() {
                 exam={exam}
                 onPublish={handlePublishExam}
                 onGeneratePapers={handleGeneratePapers}
+                onViewSets={handleViewSets}
               />
             ))}
           </div>
@@ -150,6 +173,29 @@ export default function ClassDetails() {
         onClose={() => setShowInviteModal(false)}
         onInvite={handleInvite}
       />
+
+      {/* PHASE 6.3 - View Generated Sets Modal */}
+      {viewingSetsExamId && (
+        <ViewSetsModal
+          examId={viewingSetsExamId}
+          onClose={closeViewSets}
+        />
+      )}
+
+      {/* Generating Overlay */}
+      {generatingExamId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Generating Question Papers
+            </h3>
+            <p className="text-gray-600">
+              Please wait while AI generates your exam sets...
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

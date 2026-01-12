@@ -183,6 +183,10 @@ async function publishExam(req, res) {
  * Generate question papers for exam (Phase 6.3 - AI Integration)
  * @route POST /api/v2/exams/:id/generate-papers
  */
+/**
+ * PHASE 6.3 - Generate Question Papers using AI
+ * @route POST /api/v2/exams/:id/generate-papers
+ */
 async function generateQuestionPapers(req, res) {
   try {
     const { id } = req.params;
@@ -195,13 +199,19 @@ async function generateQuestionPapers(req, res) {
       });
     }
 
-    // Call AI bridge service (BLACK BOX integration)
-    const result = await aiExamService.generateExamPapers(id, teacherId);
+    console.log('[Generate Papers] Starting generation for exam:', id);
+
+    // Use PHASE 6.3 AI Generation Service
+    const result = await aiGenerationService.generateExamSetsWithAI(id);
 
     res.status(200).json({
       success: true,
       message: result.message,
-      data: result.stats
+      data: {
+        numberOfSets: result.numberOfSets,
+        totalQuestions: result.totalQuestions,
+        generatedAt: result.generatedAt
+      }
     });
   } catch (error) {
     console.error('[Generate Papers] Error:', error.message);
@@ -220,12 +230,27 @@ async function generateQuestionPapers(req, res) {
       });
     }
 
-    if (error.message.includes('must be published') || 
-        error.message.includes('already generated') ||
+    if (error.message.includes('already generated') ||
         error.message.includes('No students')) {
       return res.status(400).json({
         success: false,
         message: error.message
+      });
+    }
+
+    if (error.message.includes('service not available')) {
+      return res.status(503).json({
+        success: false,
+        message: 'AI service unavailable. Please ensure AI services are running.',
+        error: error.message
+      });
+    }
+
+    if (error.message.includes('Validation failed')) {
+      return res.status(422).json({
+        success: false,
+        message: 'AI output validation failed',
+        error: error.message
       });
     }
 
@@ -485,6 +510,38 @@ async function generateExamSetsWithAI(req, res) {
   }
 }
 
+/**
+ * Get exam by ID
+ * @route GET /api/v2/exams/:id
+ */
+async function getExamById(req, res) {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    const exam = await examService.getExamById(id, userId);
+
+    res.status(200).json({
+      success: true,
+      data: exam
+    });
+  } catch (error) {
+    console.error('[Get Exam] Error:', error.message);
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get exam',
+      error: error.message
+    });
+  }
+}
 
 module.exports = {
   createExam,
@@ -495,5 +552,6 @@ module.exports = {
   generateSets,
   resetGeneration,
   getPreparationData,
-  generateExamSetsWithAI
+  generateExamSetsWithAI,
+  getExamById
 };
