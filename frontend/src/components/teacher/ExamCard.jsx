@@ -1,16 +1,17 @@
 /**
  * ExamCard - Display exam with status badge and actions
- * PHASE 6.3 - Added Question Paper Generation
+ * PHASE 6.0-6.4 - Complete exam lifecycle
  */
-export default function ExamCard({ exam, onPublish, onGeneratePapers, onViewSets }) {
+export default function ExamCard({ exam, onPublish, onGeneratePapers, onGenerateStudentPapers, onViewSets, onViewPapers }) {
   const getStatusBadge = (status) => {
     const statusStyles = {
       draft: 'bg-gray-100 text-gray-800',
-      ready: 'bg-yellow-100 text-yellow-800',
+      prepared: 'bg-yellow-100 text-yellow-800',
+      generated: 'bg-blue-100 text-blue-800',
       published: 'bg-green-100 text-green-800',
-      active: 'bg-blue-100 text-blue-800',
+      running: 'bg-purple-100 text-purple-800',
       closed: 'bg-red-100 text-red-800',
-      evaluated: 'bg-purple-100 text-purple-800',
+      evaluated: 'bg-indigo-100 text-indigo-800',
     };
 
     return (
@@ -22,12 +23,12 @@ export default function ExamCard({ exam, onPublish, onGeneratePapers, onViewSets
 
   const getGenerationBadge = (generationStatus) => {
     const badges = {
-      draft: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Not Generated' },
-      ready: { bg: 'bg-yellow-100', text: 'text-yellow-600', label: 'Ready' },
-      generated: { bg: 'bg-green-100', text: 'text-green-600', label: 'Papers Generated' }
+      none: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Not Prepared' },
+      preparing: { bg: 'bg-yellow-100', text: 'text-yellow-600', label: 'Preparing...' },
+      generated: { bg: 'bg-green-100', text: 'text-green-600', label: 'Sets Ready' }
     };
 
-    const badge = badges[generationStatus] || badges.draft;
+    const badge = badges[generationStatus] || badges.none;
 
     return (
       <span className={`px-2 py-1 text-xs font-medium rounded ${badge.bg} ${badge.text}`}>
@@ -36,9 +37,14 @@ export default function ExamCard({ exam, onPublish, onGeneratePapers, onViewSets
     );
   };
 
-  const canGenerate = ['draft', 'ready'].includes(exam.status) && exam.generationStatus !== 'generated';
-  const canPublish = exam.status === 'draft' && exam.generationStatus === 'generated';
-  const canViewSets = exam.generationStatus === 'generated';
+  // PHASE 6.0 - Proper lifecycle button logic
+  const isDraft = exam.status === 'draft';
+  const isPrepared = exam.status === 'prepared';
+  const isGenerated = exam.status === 'generated';
+  const isPublished = exam.status === 'published';
+  
+  const hasSets = exam.generationStatus === 'generated' && exam.generatedSets?.length > 0;
+  const hasPapers = exam.studentPapers?.length > 0;
 
   return (
     <div className="p-6 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
@@ -73,30 +79,79 @@ export default function ExamCard({ exam, onPublish, onGeneratePapers, onViewSets
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        {/* PHASE 6.3 - Generate Question Papers Button */}
-        {canGenerate && onGeneratePapers && (
-          <button
-            onClick={() => onGeneratePapers(exam._id)}
-            className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded hover:bg-purple-700 transition-colors"
-          >
-            Generate Question Papers
-          </button>
+        {/* PHASE 6.0 - Draft Status: Edit and Generate Question Papers */}
+        {isDraft && (
+          <>
+            <button
+              onClick={() => onGeneratePapers(exam._id)}
+              className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded hover:bg-purple-700 transition-colors"
+            >
+              Generate Question Papers
+            </button>
+          </>
         )}
 
-        {/* View Generated Sets Button */}
-        {canViewSets && onViewSets && (
-          <button
-            onClick={() => onViewSets(exam._id)}
-            className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 transition-colors"
-          >
-            View Sets
-          </button>
+        {/* PHASE 6.3 - Prepared Status: View Sets and Generate Student Papers */}
+        {isPrepared && (
+          <>
+            {hasSets && onViewSets && (
+              <button
+                onClick={() => onViewSets(exam._id)}
+                className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 transition-colors"
+              >
+                View Sets
+              </button>
+            )}
+            {onGenerateStudentPapers && (
+              <button
+                onClick={() => onGenerateStudentPapers(exam._id)}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
+              >
+                Generate Student Papers
+              </button>
+            )}
+          </>
         )}
 
-        {/* Publish Button - Only when papers are generated */}
-        {canPublish && onPublish && (
-          <button
-            onClick={() => onPublish(exam._id)}
+        {/* PHASE 6.4 - Generated Status: View Papers and Publish */}
+        {isGenerated && (
+          <>
+            {hasPapers && onViewPapers && (
+              <button
+                onClick={() => onViewPapers(exam._id)}
+                className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 transition-colors"
+              >
+                View Papers
+              </button>
+            )}
+            {onPublish && (
+              <button
+                onClick={() => onPublish(exam._id)}
+                className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors"
+              >
+                Publish Exam
+              </button>
+            )}
+          </>
+        )}
+
+        {/* Published Status: View Papers and Exam Live indicator */}
+        {isPublished && (
+          <>
+            {hasPapers && onViewPapers && (
+              <button
+                onClick={() => onViewPapers(exam._id)}
+                className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 transition-colors"
+              >
+                View Papers
+              </button>
+            )}
+            <span className="px-4 py-2 bg-green-50 text-green-700 text-sm font-medium rounded border border-green-200">
+              📡 Exam Live
+            </span>
+          </>
+        )}
+      </div>
             className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors"
           >
             Publish Exam

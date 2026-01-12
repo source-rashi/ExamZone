@@ -79,6 +79,30 @@ export default function ClassDetails() {
     setViewingSetsExamId(null);
   };
 
+  const handleGenerateStudentPapers = async (examId) => {
+    if (!confirm('Generate student-specific PDF papers? This may take a few moments.')) {
+      return;
+    }
+
+    try {
+      setGeneratingExamId(examId);
+      const result = await teacherAPI.generateStudentPapers(examId);
+      
+      alert(`Success! Generated ${result.data?.papersGenerated || result.papersGenerated} student papers.`);
+      await loadClassDetails();
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || 'Failed to generate student papers';
+      alert(errorMsg);
+    } finally {
+      setGeneratingExamId(null);
+    }
+  };
+
+  const handleViewPapers = (examId) => {
+    // TODO: Navigate to papers view or open modal
+    alert('View Papers feature coming soon');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -160,7 +184,9 @@ export default function ClassDetails() {
                 exam={exam}
                 onPublish={handlePublishExam}
                 onGeneratePapers={handleGeneratePapers}
+                onGenerateStudentPapers={handleGenerateStudentPapers}
                 onViewSets={handleViewSets}
+                onViewPapers={handleViewPapers}
               />
             ))}
           </div>
