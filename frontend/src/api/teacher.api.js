@@ -79,12 +79,24 @@ export const teacherAPI = {
   },
 
   /**
-   * Generate answer papers for an exam
+   * Generate answer papers for an exam (PHASE 6.3)
+   * Creates question sets
    * @param {string} examId - Exam ID
-   * @returns {Promise<{message: string, count: number}>}
+   * @returns {Promise<{message: string, numberOfSets: number, totalQuestions: number}>}
    */
   generatePapers: async (examId) => {
     const response = await apiClient.post(`/exams/${examId}/generate-papers`);
+    return response.data;
+  },
+
+  /**
+   * Generate student-specific PDF papers (PHASE 6.4)
+   * Creates individual PDFs for each student
+   * @param {string} examId - Exam ID
+   * @returns {Promise<{message: string, papersGenerated: number}>}
+   */
+  generateStudentPapers: async (examId) => {
+    const response = await apiClient.post(`/exams/${examId}/generate-student-papers`);
     return response.data;
   },
 };

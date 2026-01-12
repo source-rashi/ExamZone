@@ -9,7 +9,8 @@ const {
   createExam,
   updateExam,
   publishExam, 
-  generateQuestionPapers, 
+  generateQuestionPapers,
+  generateStudentPapers,
   triggerEvaluation,
   generateSets,
   resetGeneration,
@@ -54,6 +55,14 @@ router.patch('/:examId/publish', authenticate, teacherOnly, publishExam);
  * @access Teacher only (exam creator only)
  */
 router.post('/:id/generate-papers', authenticate, teacherOnly, generateQuestionPapers);
+
+/**
+ * PHASE 6.4 - Generate Student-Specific PDF Papers
+ * @route POST /api/v2/exams/:id/generate-student-papers
+ * @desc Generate PDF question papers for all students
+ * @access Teacher only (exam creator only)
+ */
+router.post('/:id/generate-student-papers', authenticate, teacherOnly, generateStudentPapers);
 
 /**
  * @route POST /api/v2/exams/:id/evaluate

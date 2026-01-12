@@ -6,6 +6,7 @@
 const examService = require('../services/exam.service');
 const aiExamService = require('../services/aiExam.service');
 const aiGenerationService = require('../services/aiGeneration.service');
+const pdfGenerationService = require('../services/pdfGeneration.service');
 
 /**
  * Create a new exam
@@ -257,6 +258,66 @@ async function generateQuestionPapers(req, res) {
     res.status(500).json({
       success: false,
       message: 'Failed to generate question papers',
+      error: error.message
+    });
+  }
+}
+
+/**
+ * PHASE 6.4 - Generate Student Papers with PDFs
+ * @route POST /api/v2/exams/:id/generate-student-papers
+ */
+async function generateStudentPapers(req, res) {
+  try {
+    const { id } = req.params;
+    const teacherId = req.body.teacherId || req.user?.id;
+
+    if (!teacherId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Teacher ID required'
+      });
+    }
+
+    console.log('[Generate Student Papers] Starting for exam:', id);
+
+    // Generate PDF papers for all students
+    const result = await pdfGenerationService.generateStudentPapers(id);
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: {
+        papersGenerated: result.papersGenerated
+      }
+    });
+  } catch (error) {
+    console.error('[Generate Student Papers] Error:', error.message);
+    
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('must be in')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('No question sets') || error.message.includes('No enrolled students')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate student papers',
       error: error.message
     });
   }
@@ -548,6 +609,7 @@ module.exports = {
   updateExam,
   publishExam,
   generateQuestionPapers,
+  generateStudentPapers,
   triggerEvaluation,
   generateSets,
   resetGeneration,
