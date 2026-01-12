@@ -745,7 +745,6 @@ function ExamsTab({ classId, isTeacher }) {
   const [generatingPapers, setGeneratingPapers] = useState({}); // Track generation per exam
   const [viewPapersModal, setViewPapersModal] = useState({ open: false, examId: null });
   const [examDetailsModal, setExamDetailsModal] = useState({ open: false, examId: null });
-  const [examDetailsModal, setExamDetailsModal] = useState({ open: false, examId: null });
 
   useEffect(() => {
     loadExams();
