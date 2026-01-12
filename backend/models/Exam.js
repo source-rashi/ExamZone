@@ -58,6 +58,45 @@ const examSchema = new mongoose.Schema({
     default: 100,
     min: 0
   },
+  // PHASE 6.2.5 - Exam Preparation Layer
+  numberOfSets: {
+    type: Number,
+    default: 1,
+    min: 1
+  },
+  questionSource: {
+    type: {
+      type: String,
+      enum: ['latex', 'text', 'pdf'],
+      default: 'text'
+    },
+    content: {
+      type: String,
+      default: ''
+    },
+    filePath: {
+      type: String,
+      default: ''
+    }
+  },
+  generationStatus: {
+    type: String,
+    enum: ['draft', 'ready', 'generated'],
+    default: 'draft'
+  },
+  setMap: [{
+    setId: {
+      type: String,
+      required: true
+    },
+    assignedRollNumbers: [{
+      type: Number
+    }]
+  }],
+  lockedAfterGeneration: {
+    type: Boolean,
+    default: false
+  },
   status: {
     type: String,
     enum: ['draft', 'published', 'running', 'closed', 'evaluated'],
