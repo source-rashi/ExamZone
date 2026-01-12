@@ -36,11 +36,13 @@ async function ensureExamStorage(examId) {
  * Build a paper object for a student
  */
 function buildPaperData(exam, student, setData) {
+  const className = exam.classId?.name || exam.classId || 'Unknown Class';
+  
   return {
     examId: exam._id.toString(),
     examTitle: exam.title,
     description: exam.description,
-    className: exam.classId?.name || 'Unknown Class',
+    className: className,
     studentInfo: {
       id: student.userId.toString(),
       name: student.name,
@@ -121,6 +123,10 @@ async function generateStudentPapers(examId) {
     throw new Error('Exam has no creator (createdBy field missing)');
   }
 
+  if (!exam.classId) {
+    throw new Error('Exam has no class associated (classId field missing or not populated)');
+  }
+
   console.log('[Student Papers] Exam validated. Status:', exam.status);
 
   // Step 2: Ensure storage exists
@@ -128,8 +134,9 @@ async function generateStudentPapers(examId) {
   console.log('[Student Papers] Storage ready:', studentsDir);
 
   // Step 3: Fetch enrolled students
+  const classIdValue = exam.classId._id || exam.classId;
   const enrollments = await Enrollment.find({ 
-    classId: exam.classId._id 
+    classId: classIdValue 
   }).populate('userId');
 
   if (enrollments.length === 0) {
