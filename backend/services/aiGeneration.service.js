@@ -20,6 +20,9 @@ const Enrollment = require('../models/Enrollment');
 const QUESTION_GENERATOR_URL = process.env.QUESTION_GENERATOR_URL || 'http://127.0.0.1:5001';
 const ANSWER_CHECKER_URL = process.env.ANSWER_CHECKER_URL || 'http://127.0.0.1:5002';
 
+// Mock mode: Set to true to bypass AI services and use mock data
+const MOCK_MODE = process.env.AI_MOCK_MODE === 'true' || false;
+
 /**
  * TASK 1 — Build Exam AI Preparation Payload
  * 
@@ -107,6 +110,29 @@ async function aiNormalizeQuestions(payload) {
   try {
     console.log('[AI Normalize] Processing question source:', payload.questionSource.type);
 
+    // MOCK MODE: Return sample questions without calling AI
+    if (MOCK_MODE) {
+      console.log('[AI Normalize] MOCK MODE - Returning sample questions');
+      
+      const totalMarks = payload.examMetadata.totalMarks || 20;
+      const questionsCount = Math.max(4, Math.floor(totalMarks / 5));
+      const marksPerQuestion = Math.floor(totalMarks / questionsCount);
+      const remainder = totalMarks % questionsCount;
+      
+      const questions = [];
+      for (let i = 0; i < questionsCount; i++) {
+        const marks = i < remainder ? marksPerQuestion + 1 : marksPerQuestion;
+        questions.push({
+          questionText: `Sample question ${i + 1}: Explain the concept in detail.`,
+          marks: marks,
+          topic: ['Physics', 'Mathematics', 'Chemistry', 'Biology'][i % 4],
+          difficulty: ['easy', 'medium', 'hard'][i % 3]
+        });
+      }
+      
+      return questions;
+    }
+
     // Prepare request for question generator service
     const requestData = {
       source_type: payload.questionSource.type,
@@ -154,7 +180,7 @@ async function aiNormalizeQuestions(payload) {
     
     // If AI service is not available, return error with details
     if (error.code === 'ECONNREFUSED') {
-      throw new Error(`AI Question Generator service not available at ${QUESTION_GENERATOR_URL}`);
+      throw new Error(`AI Question Generator service not available at ${QUESTION_GENERATOR_URL}. Set AI_MOCK_MODE=true in .env to use mock data.`);
     }
     
     throw error;
@@ -182,6 +208,30 @@ async function aiNormalizeQuestions(payload) {
 async function aiGenerateExamSets(normalizedQuestions, numberOfSets, constraints = {}) {
   try {
     console.log('[AI Generate Sets] Creating', numberOfSets, 'sets from', normalizedQuestions.length, 'questions');
+
+    // MOCK MODE: Generate simple sets without calling AI
+    if (MOCK_MODE) {
+      console.log('[AI Generate Sets] MOCK MODE - Creating simple sets');
+      
+      // Create N sets by shuffling questions
+      const sets = [];
+      for (let i = 0; i < numberOfSets; i++) {
+        const setQuestions = normalizedQuestions.map((q, idx) => ({
+          ...q,
+          questionNumber: idx + 1,
+          setVariant: `Set ${String.fromCharCode(65 + i)}` // A, B, C, D...
+        }));
+        
+        sets.push({
+          setId: String.fromCharCode(65 + i),
+          setName: `Set ${String.fromCharCode(65 + i)}`,
+          questions: setQuestions,
+          totalMarks: setQuestions.reduce((sum, q) => sum + (q.marks || 0), 0)
+        });
+      }
+      
+      return sets;
+    }
 
     // Prepare request for set generation
     const requestData = {

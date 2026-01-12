@@ -966,7 +966,7 @@ function ExamsTab({ classId, isTeacher }) {
                         <button 
                           onClick={() => handleGeneratePapers(exam._id)}
                           disabled={generatingPapers[exam._id]}
-                          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-2"
+                          className="px-4 py-2 bg-[#1f3c88] text-white rounded-lg hover:bg-[#152a5e] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-2"
                         >
                           {generatingPapers[exam._id] ? (
                             <>
@@ -989,7 +989,7 @@ function ExamsTab({ classId, isTeacher }) {
                         <button 
                           onClick={() => handleGenerateStudentPapers(exam._id)}
                           disabled={generatingPapers[exam._id]}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-2"
+                          className="px-4 py-2 bg-[#1f3c88] text-white rounded-lg hover:bg-[#152a5e] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-2"
                         >
                           {generatingPapers[exam._id] ? (
                             <>

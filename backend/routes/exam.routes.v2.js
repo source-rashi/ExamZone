@@ -18,6 +18,11 @@ router.get('/exams/class/:classId', authenticate, examController.getClassExams);
 // PHASE 6.3 - AI Question Paper Generation
 router.post('/exams/:id/generate-papers', authenticate, examControllerV1.generateQuestionPapers);
 
+// PHASE 6.4 - Student Paper Generation
+router.post('/exams/:id/generate-student-papers', authenticate, examControllerV1.generateStudentPapers);
+router.get('/exams/:id/details', authenticate, examControllerV1.getExamDetails);
+router.get('/exams/:id/my-paper', authenticate, examControllerV1.getMyPaper);
+
 // Student routes
 router.get('/exams/student/:classId', authenticate, examController.getStudentExams);
 router.post('/exams/:id/start', authenticate, examController.startAttempt);

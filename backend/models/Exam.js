@@ -143,17 +143,30 @@ const examSchema = new mongoose.Schema({
       type: Number,
       required: true
     },
+    name: {
+      type: String,
+      required: true
+    },
     setId: {
       type: String,
       required: true
     },
-    pdfPath: {
+    paperPath: {
       type: String,
       required: true
+    },
+    paperPreview: {
+      type: mongoose.Schema.Types.Mixed, // JSON of questions for UI display
+      default: null
     },
     generatedAt: {
       type: Date,
       default: Date.now
+    },
+    status: {
+      type: String,
+      enum: ['created', 'failed'],
+      default: 'created'
     }
   }],
   // Phase 3.6 - AI integration (legacy)

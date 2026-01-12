@@ -77,6 +77,22 @@ export async function generateStudentPapers(examId) {
   return response.data;
 }
 
+/**
+ * Get full exam details with sets and papers (Phase 6.4)
+ */
+export async function getExamDetails(examId) {
+  const response = await apiClient.get(`/exams/${examId}/details`);
+  return response.data;
+}
+
+/**
+ * Get my paper as a student (Phase 6.4)
+ */
+export async function getMyPaper(examId) {
+  const response = await apiClient.get(`/exams/${examId}/my-paper`);
+  return response.data;
+}
+
 export const examAPI = {
   createExam,
   publishExam,
@@ -87,6 +103,8 @@ export const examAPI = {
   deleteExam,
   generateQuestionPapers,
   generateStudentPapers,
+  getExamDetails,
+  getMyPaper
 };
 
 export default examAPI;

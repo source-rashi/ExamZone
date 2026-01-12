@@ -289,8 +289,9 @@ async function generateStudentPapers(req, res) {
 
     console.log('[Generate Student Papers] ⚡ Starting for exam:', id);
 
-    // Generate PDF papers for all students
-    const result = await pdfGenerationService.generateStudentPapers(id);
+    // Use new studentPaper service
+    const studentPaperService = require('../services/studentPaper.service');
+    const result = await studentPaperService.generateStudentPapers(id);
 
     console.log('[Generate Student Papers] ✅ Complete. Exam status:', result.exam?.status);
 
@@ -312,7 +313,7 @@ async function generateStudentPapers(req, res) {
       });
     }
 
-    if (error.message.includes('must be in')) {
+    if (error.message.includes('Cannot generate') || error.message.includes('already generated')) {
       return res.status(400).json({
         success: false,
         message: error.message
@@ -791,6 +792,39 @@ async function downloadPaper(req, res) {
   }
 }
 
+/**
+ * PHASE 6.4 - Get Full Exam Details
+ * @route GET /api/v2/exams/:id/details
+ */
+async function getExamDetails(req, res) {
+  try {
+    const { id } = req.params;
+    const studentPaperService = require('../services/studentPaper.service');
+    
+    const exam = await studentPaperService.getExamDetails(id);
+
+    res.status(200).json({
+      success: true,
+      data: exam
+    });
+  } catch (error) {
+    console.error('[Get Exam Details] Error:', error.message);
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get exam details',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   createExam,
   updateExam,
@@ -805,5 +839,6 @@ module.exports = {
   getExamById,
   getStudentPapers,
   getMyPaper,
-  downloadPaper
+  downloadPaper,
+  getExamDetails
 };
