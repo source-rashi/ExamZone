@@ -460,4 +460,6 @@ async def check_answer_sheets(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=7000)
+    import os
+    port = int(os.getenv("PORT", 5002))
+    uvicorn.run(app, host="0.0.0.0", port=port)

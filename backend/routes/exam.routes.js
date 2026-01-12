@@ -13,7 +13,8 @@ const {
   triggerEvaluation,
   generateSets,
   resetGeneration,
-  getPreparationData
+  getPreparationData,
+  generateExamSetsWithAI
 } = require('../controllers/exam.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 const { teacherOnly } = require('../middleware/role.middleware');
@@ -73,5 +74,13 @@ router.post('/:id/reset-generation', authenticate, teacherOnly, resetGeneration)
  * @access Teacher only
  */
 router.get('/:id/preparation-data', authenticate, teacherOnly, getPreparationData);
+
+/**
+ * PHASE 6.3 — AI EXAM SET GENERATION
+ * @route POST /api/v2/exams/:id/generate
+ * @desc Generate exam question sets using AI
+ * @access Teacher only (exam creator only)
+ */
+router.post('/:id/generate', authenticate, teacherOnly, generateExamSetsWithAI);
 
 module.exports = router;

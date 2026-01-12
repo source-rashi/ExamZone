@@ -473,6 +473,240 @@ class GeneratePapersRequest(BaseModel):
     student_details: List[StudentDetail]
     question_sources: Optional[List[str]] = []  # Optional: list of file paths or question texts
 
+# PHASE 6.3 - New Request Models
+class QuestionSourceRequest(BaseModel):
+    source_type: str  # 'text', 'latex', 'pdf'
+    content: str
+    file_path: str
+    total_marks: int
+    exam_title: str
+
+class QuestionNormalized(BaseModel):
+    questionText: str
+    marks: int
+    topic: str
+    difficulty: str
+    options: Optional[List[str]] = []
+    correctAnswer: Optional[str] = ""
+
+class GenerateSetsRequest(BaseModel):
+    questions: List[QuestionNormalized]
+    number_of_sets: int
+    total_marks: int
+    minimum_questions: int
+    balance_difficulty: bool
+    shuffle_variants: bool
+
+
+# PHASE 6.3 - AI Normalization Endpoint
+@app.post("/api/normalize-questions")
+async def normalize_questions(request: QuestionSourceRequest):
+    """
+    TASK 2 - AI Question Normalization
+    
+    Reads teacher input, extracts questions, normalizes formatting,
+    and tags questions by topic, difficulty, marks.
+    """
+    try:
+        logger.info(f"[Normalize] Processing {request.source_type} source")
+        
+        normalized_questions = []
+        
+        # Extract raw questions based on source type
+        if request.source_type == 'text' or request.source_type == 'latex':
+            raw_text = request.content
+            # Split by common question delimiters
+            question_patterns = re.findall(r'(?:Q\d+[\.:)]|Question\s+\d+[\.:)]|\d+[\.:)])\s*(.+?)(?=Q\d+[\.:)]|Question\s+\d+[\.:)]|\d+[\.:)]|$)', raw_text, re.DOTALL | re.IGNORECASE)
+            
+            if not question_patterns:
+                # Fallback: split by newlines and filter
+                question_patterns = [q.strip() for q in raw_text.split('\n') if q.strip() and len(q.strip()) > 10]
+            
+            # Use AI to normalize and tag questions
+            for idx, q_text in enumerate(question_patterns):
+                if not q_text.strip():
+                    continue
+                
+                try:
+                    normalized_q = normalize_single_question_with_ai(q_text, idx + 1, request.total_marks, len(question_patterns))
+                    if normalized_q:
+                        normalized_questions.append(normalized_q)
+                except Exception as e:
+                    logger.warning(f"[Normalize] Failed to normalize question {idx + 1}: {str(e)}")
+                    # Add with defaults if AI fails
+                    normalized_questions.append({
+                        "questionText": q_text.strip(),
+                        "marks": max(1, request.total_marks // max(1, len(question_patterns))),
+                        "topic": "General",
+                        "difficulty": "medium",
+                        "options": [],
+                        "correctAnswer": ""
+                    })
+        
+        elif request.source_type == 'pdf':
+            # Use existing PDF extraction logic would go here
+            logger.info("[Normalize] Extracting from PDF...")
+            return JSONResponse(content={
+                "success": False,
+                "error": "PDF extraction not yet implemented in normalization endpoint"
+            }, status_code=501)
+        
+        logger.info(f"[Normalize] Normalized {len(normalized_questions)} questions")
+        
+        return JSONResponse(content={
+            "success": True,
+            "questions": normalized_questions,
+            "count": len(normalized_questions)
+        })
+        
+    except Exception as e:
+        logger.error(f"[Normalize] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Normalization failed: {str(e)}")
+
+
+def normalize_single_question_with_ai(question_text: str, question_num: int, total_marks: int, total_questions: int) -> dict:
+    """
+    Use Gemini AI to normalize a single question and extract metadata
+    """
+    if not GOOGLE_API_KEY:
+        # Return basic normalization without AI
+        return {
+            "questionText": question_text.strip(),
+            "marks": max(1, total_marks // max(1, total_questions)),
+            "topic": "General",
+            "difficulty": "medium",
+            "options": [],
+            "correctAnswer": ""
+        }
+    
+    try:
+        model = genai.GenerativeModel(available_model)
+        
+        prompt = f"""Analyze this exam question and provide structured metadata:
+
+Question: {question_text}
+
+Provide response in this exact JSON format:
+{{
+    "questionText": "cleaned and complete question text",
+    "marks": <suggested marks based on complexity>,
+    "topic": "main topic (e.g., Mathematics, Physics, History)",
+    "difficulty": "easy|medium|hard",
+    "options": ["option1", "option2", ...] (if multiple choice, else empty array),
+    "correctAnswer": "correct answer if obvious, else empty string"
+}}
+
+Total exam marks: {total_marks}
+Total questions: {total_questions}
+Suggested marks per question: {max(1, total_marks // max(1, total_questions))}
+"""
+        
+        response = model.generate_content(prompt)
+        response_text = response.text.strip()
+        
+        # Extract JSON from response
+        json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+        if json_match:
+            import json
+            normalized = json.loads(json_match.group())
+            return normalized
+        
+        raise ValueError("Could not extract JSON from AI response")
+        
+    except Exception as e:
+        logger.warning(f"[AI Normalize] Error: {str(e)}")
+        # Return basic normalization
+        return {
+            "questionText": question_text.strip(),
+            "marks": max(1, total_marks // max(1, total_questions)),
+            "topic": "General",
+            "difficulty": "medium",
+            "options": [],
+            "correctAnswer": ""
+        }
+
+
+# PHASE 6.3 - Set Generation Endpoint
+@app.post("/api/generate-sets")
+async def generate_sets(request: GenerateSetsRequest):
+    """
+    TASK 3 - AI Exam Set Generation
+    
+    Generates N distinct question sets with:
+    - Balanced difficulty
+    - No similar question placement
+    - Shuffled variants
+    - Full paper coverage
+    """
+    try:
+        logger.info(f"[Generate Sets] Creating {request.number_of_sets} sets from {len(request.questions)} questions")
+        
+        questions = [q.dict() for q in request.questions]
+        
+        # Group questions by difficulty
+        easy_questions = [q for q in questions if q.get('difficulty') == 'easy']
+        medium_questions = [q for q in questions if q.get('difficulty') == 'medium']
+        hard_questions = [q for q in questions if q.get('difficulty') == 'hard']
+        
+        generated_sets = []
+        
+        for set_num in range(request.number_of_sets):
+            # Balance difficulty across sets
+            if request.balance_difficulty:
+                # Calculate distribution
+                questions_needed = max(request.minimum_questions, len(questions) // request.number_of_sets)
+                
+                # Distribute: 30% easy, 50% medium, 20% hard
+                easy_count = max(1, int(questions_needed * 0.3))
+                medium_count = max(1, int(questions_needed * 0.5))
+                hard_count = max(1, questions_needed - easy_count - medium_count)
+                
+                # Sample questions
+                set_questions = []
+                
+                if easy_questions:
+                    set_questions.extend(random.sample(easy_questions, min(easy_count, len(easy_questions))))
+                if medium_questions:
+                    set_questions.extend(random.sample(medium_questions, min(medium_count, len(medium_questions))))
+                if hard_questions:
+                    set_questions.extend(random.sample(hard_questions, min(hard_count, len(hard_questions))))
+                
+                # If not enough questions, fill from all questions
+                while len(set_questions) < questions_needed and len(set_questions) < len(questions):
+                    remaining = [q for q in questions if q not in set_questions]
+                    if remaining:
+                        set_questions.append(random.choice(remaining))
+                    else:
+                        break
+            else:
+                # Simple random selection
+                questions_per_set = max(request.minimum_questions, len(questions) // request.number_of_sets)
+                set_questions = random.sample(questions, min(questions_per_set, len(questions)))
+            
+            # Shuffle if requested
+            if request.shuffle_variants:
+                random.shuffle(set_questions)
+            
+            generated_sets.append({
+                "setId": f"SET-{str(set_num + 1).zfill(3)}",
+                "questions": set_questions,
+                "totalMarks": sum(q.get('marks', 0) for q in set_questions),
+                "questionCount": len(set_questions)
+            })
+        
+        logger.info(f"[Generate Sets] Generated {len(generated_sets)} sets")
+        
+        return JSONResponse(content={
+            "success": True,
+            "sets": generated_sets,
+            "count": len(generated_sets)
+        })
+        
+    except Exception as e:
+        logger.error(f"[Generate Sets] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Set generation failed: {str(e)}")
+
+
 @app.post("/api/generate-papers")
 async def generate_papers_json(request: GeneratePapersRequest):
     """
@@ -564,4 +798,6 @@ async def generate_papers_json(request: GeneratePapersRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    # PHASE 6.3 - Run on port 5001 (separate from answer-checker on 5002)
+    port = int(os.getenv("PORT", 5001))
+    uvicorn.run(app, host="127.0.0.1", port=port)

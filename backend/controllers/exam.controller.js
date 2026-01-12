@@ -5,6 +5,7 @@
 
 const examService = require('../services/exam.service');
 const aiExamService = require('../services/aiExam.service');
+const aiGenerationService = require('../services/aiGeneration.service');
 
 /**
  * Create a new exam
@@ -421,6 +422,70 @@ async function getPreparationData(req, res) {
   }
 }
 
+/**
+ * PHASE 6.3 — Generate exam sets with AI
+ * @route POST /api/v2/exams/:id/generate
+ */
+async function generateExamSetsWithAI(req, res) {
+  try {
+    const { id } = req.params;
+
+    console.log('[Generate Exam Sets] Starting AI generation for exam:', id);
+
+    // Run the complete AI generation pipeline
+    const result = await aiGenerationService.generateExamSetsWithAI(id);
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: {
+        numberOfSets: result.numberOfSets,
+        totalQuestions: result.totalQuestions,
+        generatedAt: result.generatedAt
+      }
+    });
+  } catch (error) {
+    console.error('[Generate Exam Sets] Error:', error.message);
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('already generated')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('service not available')) {
+      return res.status(503).json({
+        success: false,
+        message: 'AI service unavailable. Please ensure AI services are running.',
+        error: error.message
+      });
+    }
+
+    if (error.message.includes('Validation failed')) {
+      return res.status(422).json({
+        success: false,
+        message: 'AI output validation failed',
+        error: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate exam sets',
+      error: error.message
+    });
+  }
+}
+
+
 module.exports = {
   createExam,
   updateExam,
@@ -429,5 +494,6 @@ module.exports = {
   triggerEvaluation,
   generateSets,
   resetGeneration,
-  getPreparationData
+  getPreparationData,
+  generateExamSetsWithAI
 };

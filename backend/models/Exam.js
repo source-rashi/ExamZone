@@ -97,6 +97,26 @@ const examSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  // PHASE 6.3 - AI-generated question sets
+  generatedSets: [{
+    setId: {
+      type: String,
+      required: true
+    },
+    questions: [{
+      questionText: String,
+      marks: Number,
+      topic: String,
+      difficulty: String,
+      options: [String],
+      correctAnswer: String
+    }],
+    totalMarks: Number,
+    generatedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   status: {
     type: String,
     enum: ['draft', 'published', 'running', 'closed', 'evaluated'],
