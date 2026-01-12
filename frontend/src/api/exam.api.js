@@ -49,7 +49,7 @@ export async function getExamById(examId) {
  * Update exam (draft only)
  */
 export async function updateExam(examId, examData) {
-  const response = await apiClient.put(`/exams/${examId}`, examData);
+  const response = await apiClient.patch(`/exams/${examId}`, examData);
   return response.data;
 }
 

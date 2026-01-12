@@ -11,6 +11,8 @@ const { authenticate } = require('../middleware/auth.middleware');
 
 // Teacher routes
 router.post('/exams', authenticate, examController.createExam);
+router.get('/exams/:id', authenticate, examControllerV1.getExamById);
+router.patch('/exams/:id', authenticate, examControllerV1.updateExam);
 router.post('/exams/:id/publish', authenticate, examController.publishExam);
 router.post('/exams/:id/close', authenticate, examController.closeExam);
 router.get('/exams/class/:classId', authenticate, examController.getClassExams);
