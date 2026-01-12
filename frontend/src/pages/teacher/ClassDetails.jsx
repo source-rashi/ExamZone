@@ -104,6 +104,20 @@ export default function ClassDetails() {
     setViewingPapersExamId(examId);
   };
 
+  const handleReset = async (examId) => {
+    if (!confirm('Reset exam to draft? This will clear all generated sets and papers. This cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await teacherAPI.resetExam(examId);
+      alert('Exam reset to draft successfully');
+      await loadClassDetails();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to reset exam');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -188,6 +202,7 @@ export default function ClassDetails() {
                 onGenerateStudentPapers={handleGenerateStudentPapers}
                 onViewSets={handleViewSets}
                 onViewPapers={handleViewPapers}
+                onReset={handleReset}
               />
             ))}
           </div>

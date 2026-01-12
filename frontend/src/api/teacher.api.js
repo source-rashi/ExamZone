@@ -123,4 +123,14 @@ export const teacherAPI = {
     });
     return response.data;
   },
+
+  /**
+   * Reset exam to draft (TASK 8)
+   * @param {string} examId - Exam ID
+   * @returns {Promise<{exam: Object}>}
+   */
+  resetExam: async (examId) => {
+    const response = await apiClient.post(`/exams/${examId}/reset-generation`);
+    return response.data;
+  },
 };

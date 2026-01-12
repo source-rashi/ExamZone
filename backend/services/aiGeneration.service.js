@@ -385,13 +385,14 @@ async function generateExamSetsWithAI(examId) {
       throw new Error('Exam not found');
     }
 
-    // Only allow generation from draft status
+    // TASK 8 - Only allow generation from draft status (cannot regenerate without reset)
     if (exam.status !== 'draft') {
-      throw new Error(`Cannot generate from ${exam.status} status. Must be in draft.`);
+      throw new Error(`Cannot generate from ${exam.status} status. Exam must be in draft. Use reset to regenerate.`);
     }
 
+    // TASK 8 - Prevent regeneration if already generated (must reset first)
     if (exam.generationStatus === 'generated') {
-      throw new Error('Exam sets already generated');
+      throw new Error('Exam sets already generated. Use reset to regenerate.');
     }
 
     // Set to preparing status

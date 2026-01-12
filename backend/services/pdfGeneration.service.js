@@ -168,19 +168,24 @@ async function generateStudentPapers(examId) {
       throw new Error('Exam not found');
     }
 
-    // Verify exam is in prepared status
+    // TASK 8 - Verify exam is in prepared status (cannot generate papers from other states)
     if (exam.status !== 'prepared') {
       throw new Error(`Cannot generate student papers: Exam must be in 'prepared' status (current: ${exam.status})`);
     }
 
-    // Verify sets exist
+    // TASK 8 - Verify sets exist (cannot generate papers without sets)
     if (!exam.generatedSets || exam.generatedSets.length === 0) {
       throw new Error('Cannot generate student papers: No question sets found. Generate sets first.');
     }
 
-    // Verify setMap exists
+    // TASK 8 - Verify setMap exists
     if (!exam.setMap || exam.setMap.length === 0) {
       throw new Error('Cannot generate student papers: No student distribution found.');
+    }
+
+    // TASK 8 - Prevent regeneration if papers already exist
+    if (exam.studentPapers && exam.studentPapers.length > 0) {
+      throw new Error('Student papers already generated. Reset exam to regenerate.');
     }
 
     // Load enrolled students

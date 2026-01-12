@@ -234,6 +234,7 @@ async function getClassExams(classId, teacherId) {
 
 /**
  * Get exams for a student (only published/running exams)
+ * TASK 8 - Students blocked before publish
  */
 async function getStudentExams(classId, studentId) {
   // Verify student is enrolled in class
@@ -247,7 +248,7 @@ async function getStudentExams(classId, studentId) {
     throw new Error('You are not enrolled in this class');
   }
 
-  // Only show published or running exams
+  // TASK 8 - Only show published or running exams (block draft/prepared/generated)
   const exams = await Exam.find({
     classId,
     status: { $in: ['published', 'running', 'closed'] }
@@ -331,6 +332,7 @@ async function generateQuestionSets(examId, teacherId) {
 
 /**
  * Reset exam generation (unlock and clear sets)
+ * TASK 8 - Allow resetting from prepared/generated back to draft
  */
 async function resetExamGeneration(examId, teacherId) {
   const exam = await Exam.findById(examId);
@@ -344,15 +346,18 @@ async function resetExamGeneration(examId, teacherId) {
     throw new Error('Only the exam creator can reset the exam');
   }
 
-  // Can only reset if not published
-  if (exam.status === 'published' || exam.status === 'running') {
-    throw new Error('Cannot reset a published or running exam');
+  // TASK 8 - Cannot reset if published, running, or closed
+  if (['published', 'running', 'closed', 'evaluated'].includes(exam.status)) {
+    throw new Error(`Cannot reset exam with status: ${exam.status}. Unpublish the exam first.`);
   }
 
   // Clear generation data
   exam.setMap = [];
+  exam.generatedSets = [];
+  exam.studentPapers = [];
   exam.generationStatus = 'none';
   exam.lockedAfterGeneration = false;
+  exam.status = 'draft';
   await exam.save();
 
   return exam;

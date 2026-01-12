@@ -2,7 +2,7 @@
  * ExamCard - Display exam with status badge and actions
  * PHASE 6.0-6.4 - Complete exam lifecycle
  */
-export default function ExamCard({ exam, onPublish, onGeneratePapers, onGenerateStudentPapers, onViewSets, onViewPapers }) {
+export default function ExamCard({ exam, onPublish, onGeneratePapers, onGenerateStudentPapers, onViewSets, onViewPapers, onReset }) {
   const getStatusBadge = (status) => {
     const statusStyles = {
       draft: 'bg-gray-100 text-gray-800',
@@ -110,6 +110,14 @@ export default function ExamCard({ exam, onPublish, onGeneratePapers, onGenerate
                 Generate Student Papers
               </button>
             )}
+            {onReset && (
+              <button
+                onClick={() => onReset(exam._id)}
+                className="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded hover:bg-gray-700 transition-colors"
+              >
+                Reset to Draft
+              </button>
+            )}
           </>
         )}
 
@@ -130,6 +138,14 @@ export default function ExamCard({ exam, onPublish, onGeneratePapers, onGenerate
                 className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors"
               >
                 Publish Exam
+              </button>
+            )}
+            {onReset && (
+              <button
+                onClick={() => onReset(exam._id)}
+                className="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded hover:bg-gray-700 transition-colors"
+              >
+                Reset to Draft
               </button>
             )}
           </>
