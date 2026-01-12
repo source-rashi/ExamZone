@@ -81,14 +81,24 @@ async function updateExam(examId, data, teacherId) {
     throw new Error(`Cannot update exam with status: ${exam.status}`);
   }
 
-  // Check if exam is locked after generation
-  if (exam.lockedAfterGeneration && exam.generationStatus === 'ready') {
+  // PHASE 6.8 - Prevent editing after preparation
+  if (exam.lockedAfterGeneration) {
     // Prevent changes to critical fields
     const lockedFields = ['numberOfSets', 'questionSource'];
     const attemptedChanges = lockedFields.filter(field => data[field] !== undefined);
     
     if (attemptedChanges.length > 0) {
-      throw new Error(`Cannot modify ${attemptedChanges.join(', ')} after question sets are generated. Reset exam to make changes.`);
+      throw new Error(`Cannot modify ${attemptedChanges.join(', ')} after exam is prepared. Reset exam to draft to make changes.`);
+    }
+  }
+
+  // PHASE 6.8 - Prevent editing after prepared status
+  if (['prepared', 'generated'].includes(exam.status)) {
+    const restrictedFields = ['numberOfSets', 'questionSource', 'totalMarks'];
+    const attemptedChanges = restrictedFields.filter(field => data[field] !== undefined);
+    
+    if (attemptedChanges.length > 0) {
+      throw new Error(`Cannot modify ${attemptedChanges.join(', ')} after exam is prepared. Use reset to return to draft.`);
     }
   }
 
@@ -128,6 +138,7 @@ async function updateExam(examId, data, teacherId) {
 
 /**
  * Publish an exam (make it visible to students)
+ * PHASE 6.0-6.7 - Enforce lifecycle safety
  */
 async function publishExam(examId, teacherId) {
   const exam = await Exam.findById(examId).populate('classId');
@@ -141,12 +152,17 @@ async function publishExam(examId, teacherId) {
     throw new Error('Only the exam creator can publish it');
   }
 
-  // Can only publish drafts or ready exams
-  if (!['draft', 'ready'].includes(exam.status)) {
-    throw new Error(`Cannot publish exam with status: ${exam.status}`);
+  // PHASE 6.7 - Can only publish from 'generated' status
+  if (exam.status !== 'generated') {
+    throw new Error(`Cannot publish exam with status: ${exam.status}. Exam must be in 'generated' status.`);
   }
 
-  // PHASE 6.3 - Must generate question papers before publishing
+  // PHASE 6.7 - Must have student papers generated
+  if (!exam.studentPapers || exam.studentPapers.length === 0) {
+    throw new Error('Cannot publish exam: Student papers must be generated first.');
+  }
+
+  // PHASE 6.3 - Must have question sets generated
   if (exam.generationStatus !== 'generated') {
     throw new Error('Please generate question papers before publishing the exam');
   }
