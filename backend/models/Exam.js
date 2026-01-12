@@ -81,8 +81,8 @@ const examSchema = new mongoose.Schema({
   },
   generationStatus: {
     type: String,
-    enum: ['draft', 'ready', 'generating', 'generated'],
-    default: 'draft'
+    enum: ['none', 'preparing', 'generated'],
+    default: 'none'
   },
   setMap: [{
     setId: {
@@ -123,7 +123,7 @@ const examSchema = new mongoose.Schema({
   }],
   status: {
     type: String,
-    enum: ['draft', 'published', 'running', 'closed', 'evaluated'],
+    enum: ['draft', 'prepared', 'generated', 'published', 'running', 'closed', 'evaluated'],
     default: 'draft'
   },
   publishedAt: {
@@ -132,7 +132,31 @@ const examSchema = new mongoose.Schema({
   closedAt: {
     type: Date
   },
-  // Phase 3.6 - AI integration
+  // PHASE 6.4 - Student paper mapping
+  studentPapers: [{
+    studentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    rollNumber: {
+      type: Number,
+      required: true
+    },
+    setId: {
+      type: String,
+      required: true
+    },
+    pdfPath: {
+      type: String,
+      required: true
+    },
+    generatedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  // Phase 3.6 - AI integration (legacy)
   questionPapers: [
     {
       studentId: {
