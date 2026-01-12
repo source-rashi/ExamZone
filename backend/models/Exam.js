@@ -81,7 +81,7 @@ const examSchema = new mongoose.Schema({
   },
   generationStatus: {
     type: String,
-    enum: ['draft', 'ready', 'generated'],
+    enum: ['draft', 'ready', 'generating', 'generated'],
     default: 'draft'
   },
   setMap: [{
@@ -97,7 +97,7 @@ const examSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  // PHASE 6.3 - AI-generated question sets
+  // PHASE 6.3 - AI-generated question papers (alias for backward compatibility)
   generatedSets: [{
     setId: {
       type: String,
@@ -112,6 +112,10 @@ const examSchema = new mongoose.Schema({
       correctAnswer: String
     }],
     totalMarks: Number,
+    instructions: {
+      type: String,
+      default: ''
+    },
     generatedAt: {
       type: Date,
       default: Date.now
@@ -195,5 +199,13 @@ examSchema.index({ classId: 1 });
 examSchema.index({ createdBy: 1 });
 examSchema.index({ status: 1 });
 examSchema.index({ startTime: 1, endTime: 1 });
+
+// Virtual field: generatedPapers (alias for generatedSets)
+examSchema.virtual('generatedPapers').get(function() {
+  return this.generatedSets;
+});
+
+examSchema.set('toJSON', { virtuals: true });
+examSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('Exam', examSchema);

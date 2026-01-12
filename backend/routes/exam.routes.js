@@ -28,6 +28,13 @@ const { teacherOnly } = require('../middleware/role.middleware');
 router.post('/', authenticate, teacherOnly, createExam);
 
 /**
+ * @route GET /api/v2/exams/:id
+ * @desc Get exam by ID with generated sets
+ * @access Authenticated
+ */
+router.get('/:id', authenticate, getExamById);
+
+/**
  * @route PATCH /api/v2/exams/:id
  * @desc Update an exam (respects locking)
  * @access Teacher only (creator only)

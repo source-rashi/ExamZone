@@ -355,8 +355,24 @@ async function validateAndStoreSets(examId, generatedSets) {
  * @returns {Promise<Object>} Generation summary
  */
 async function generateExamSetsWithAI(examId) {
+  let exam = null;
+  
   try {
     console.log('[AI Pipeline] Starting generation for exam:', examId);
+
+    // Load exam and set to 'generating' status immediately
+    exam = await Exam.findById(examId);
+    if (!exam) {
+      throw new Error('Exam not found');
+    }
+
+    // PART B.3: Set generating status immediately
+    if (exam.generationStatus === 'generated') {
+      throw new Error('Exam papers already generated');
+    }
+
+    exam.generationStatus = 'generating';
+    await exam.save();
 
     // STEP 1: Build payload
     console.log('[AI Pipeline] Step 1: Building payload...');
@@ -392,6 +408,13 @@ async function generateExamSetsWithAI(examId) {
     return summary;
   } catch (error) {
     console.error('[AI Pipeline] Generation failed:', error.message);
+    
+    // Reset to draft if generation fails
+    if (exam && exam.generationStatus === 'generating') {
+      exam.generationStatus = 'draft';
+      await exam.save();
+    }
+    
     throw error;
   }
 }
