@@ -30,9 +30,14 @@ export default function CreateExam() {
     totalMarks: 100,
     duration: 60, // minutes
     attemptsAllowed: 1,
-    setsPerStudent: 1,
+    numberOfSets: 1, // Manual input instead of dropdown
     
-    // Step 3: Scheduling
+    // Step 3: Question Source (PHASE 6.2.5)
+    questionSourceType: 'text', // 'latex', 'text', 'pdf'
+    questionContent: '', // For latex/text
+    questionFile: null, // For PDF
+    
+    // Step 4: Scheduling
     startTime: '',
     endTime: '',
     autoCalculateDuration: false,
@@ -41,8 +46,9 @@ export default function CreateExam() {
   const steps = [
     { number: 1, name: 'Basic Info', icon: FileText },
     { number: 2, name: 'Configuration', icon: Settings },
-    { number: 3, name: 'Scheduling', icon: Calendar },
-    { number: 4, name: 'Review', icon: Check },
+    { number: 3, name: 'Question Source', icon: FileText },
+    { number: 4, name: 'Scheduling', icon: Calendar },
+    { number: 5, name: 'Review', icon: Check },
   ];
 
   useEffect(() => {
@@ -96,13 +102,28 @@ export default function CreateExam() {
           setError('Attempts allowed must be between 1 and 3');
           return false;
         }
-        if (formData.setsPerStudent < 1 || formData.setsPerStudent > 5) {
-          setError('Sets per student must be between 1 and 5');
+        if (formData.numberOfSets < 1) {
+          setError('Number of sets must be at least 1');
           return false;
         }
         break;
       
       case 3:
+        if (!formData.questionSourceType) {
+          setError('Question source type is required');
+          return false;
+        }
+        if ((formData.questionSourceType === 'latex' || formData.questionSourceType === 'text') && !formData.questionContent.trim()) {
+          setError('Question content is required');
+          return false;
+        }
+        if (formData.questionSourceType === 'pdf' && !formData.questionFile) {
+          setError('PDF file is required');
+          return false;
+        }
+        break;
+      
+      case 4:
         if (!formData.startTime) {
           setError('Start time is required');
           return false;
@@ -123,7 +144,7 @@ export default function CreateExam() {
 
   const handleNext = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep(prev => Math.min(prev + 1, 4));
+      setCurrentStep(prev => Math.min(prev + 1, 5));
     }
   };
 
@@ -388,18 +409,17 @@ export default function CreateExam() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sets per Student <span className="text-red-500">*</span>
+                    Number of Sets <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    name="setsPerStudent"
-                    value={formData.setsPerStudent}
+                  <input
+                    type="number"
+                    name="numberOfSets"
+                    value={formData.numberOfSets}
                     onChange={handleInputChange}
+                    min="1"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88]"
-                  >
-                    {[1, 2, 3, 4, 5].map(num => (
-                      <option key={num} value={num}>{num} {num === 1 ? 'Set' : 'Sets'}</option>
-                    ))}
-                  </select>
+                    required
+                  />
                 </div>
               </div>
 
@@ -411,8 +431,94 @@ export default function CreateExam() {
             </div>
           )}
 
-          {/* Step 3: Scheduling */}
+          {/* Step 3: Question Source */}
           {currentStep === 3 && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Question Source</h2>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Source Type <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-3 gap-4">
+                  {[
+                    { value: 'text', label: 'Plain Text' },
+                    { value: 'latex', label: 'LaTeX' },
+                    { value: 'pdf', label: 'PDF Upload' }
+                  ].map(type => (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, questionSourceType: type.value, questionContent: '', questionFile: null }))}
+                      className={`px-6 py-4 border-2 rounded-lg font-medium transition-all ${
+                        formData.questionSourceType === type.value
+                          ? 'border-[#1f3c88] bg-gradient-to-br from-[#1f3c88]/5 to-[#1f3c88]/10 text-[#1f3c88] shadow-sm'
+                          : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50'
+                      }`}
+                    >
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {(formData.questionSourceType === 'text' || formData.questionSourceType === 'latex') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {formData.questionSourceType === 'latex' ? 'LaTeX Content' : 'Question Text'} <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    name="questionContent"
+                    value={formData.questionContent}
+                    onChange={handleInputChange}
+                    rows={12}
+                    placeholder={formData.questionSourceType === 'latex' 
+                      ? 'Enter LaTeX formatted questions...\n\nExample:\n\\begin{enumerate}\n  \\item Question 1\n  \\item Question 2\n\\end{enumerate}'
+                      : 'Enter your questions here...\n\n1. Question 1\n2. Question 2'}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88] focus:border-transparent font-mono text-sm"
+                    required
+                  />
+                  <p className="text-sm text-gray-500 mt-2">
+                    {formData.questionSourceType === 'latex' 
+                      ? 'Provide questions in LaTeX format. These will be used to generate question sets.'
+                      : 'Provide questions in plain text format. These will be used to generate question sets.'}
+                  </p>
+                </div>
+              )}
+
+              {formData.questionSourceType === 'pdf' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Upload PDF <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => setFormData(prev => ({ ...prev, questionFile: e.target.files[0] }))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88]"
+                    required
+                  />
+                  {formData.questionFile && (
+                    <p className="text-sm text-green-600 mt-2">
+                      Selected: {formData.questionFile.name}
+                    </p>
+                  )}
+                  <p className="text-sm text-gray-500 mt-2">
+                    Upload a PDF containing the question bank. This will be used to generate question sets.
+                  </p>
+                </div>
+              )}
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
+                <p className="text-sm text-blue-800">
+                  <strong>Important:</strong> These questions will be used to generate {formData.numberOfSets} different question sets. After generation, questions cannot be modified.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Scheduling */}
+          {currentStep === 4 && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Exam Scheduling</h2>
               
@@ -460,8 +566,8 @@ export default function CreateExam() {
             </div>
           )}
 
-          {/* Step 4: Review */}
-          {currentStep === 4 && (
+          {/* Step 5: Review */}
+          {currentStep === 5 && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Review & Create</h2>
               
@@ -508,9 +614,33 @@ export default function CreateExam() {
                       <dd className="font-medium text-gray-900">{formData.attemptsAllowed}</dd>
                     </div>
                     <div>
-                      <dt className="text-sm text-gray-600">Sets per Student</dt>
-                      <dd className="font-medium text-gray-900">{formData.setsPerStudent}</dd>
+                      <dt className="text-sm text-gray-600">Number of Sets</dt>
+                      <dd className="font-medium text-gray-900">{formData.numberOfSets}</dd>
                     </div>
+                  </dl>
+                </div>
+
+                <div className="border-b pb-4">
+                  <h3 className="font-semibold text-gray-900 mb-3">Question Source</h3>
+                  <dl className="grid grid-cols-1 gap-3">
+                    <div>
+                      <dt className="text-sm text-gray-600">Source Type</dt>
+                      <dd className="font-medium text-gray-900 capitalize">{formData.questionSourceType}</dd>
+                    </div>
+                    {(formData.questionSourceType === 'text' || formData.questionSourceType === 'latex') && (
+                      <div>
+                        <dt className="text-sm text-gray-600">Content Preview</dt>
+                        <dd className="text-gray-900 text-sm bg-gray-50 p-3 rounded border border-gray-200 max-h-32 overflow-y-auto font-mono">
+                          {formData.questionContent.substring(0, 200)}{formData.questionContent.length > 200 ? '...' : ''}
+                        </dd>
+                      </div>
+                    )}
+                    {formData.questionSourceType === 'pdf' && formData.questionFile && (
+                      <div>
+                        <dt className="text-sm text-gray-600">PDF File</dt>
+                        <dd className="font-medium text-gray-900">{formData.questionFile.name}</dd>
+                      </div>
+                    )}
                   </dl>
                 </div>
 
@@ -535,7 +665,7 @@ export default function CreateExam() {
 
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-6">
                 <p className="text-sm text-yellow-800">
-                  <strong>Important:</strong> Once published, students will be able to see and take this exam. You can save as draft to edit later.
+                  <strong>Next Steps:</strong> After saving, you'll need to generate question sets before publishing the exam. Questions will be locked after generation.
                 </p>
               </div>
             </div>
@@ -559,7 +689,7 @@ export default function CreateExam() {
           </div>
 
           <div className="flex items-center gap-4">
-            {currentStep < 4 && (
+            {currentStep < 5 && (
               <button
                 type="button"
                 onClick={handleSaveDraft}
@@ -580,7 +710,7 @@ export default function CreateExam() {
               </button>
             )}
 
-            {currentStep < 4 ? (
+            {currentStep < 5 ? (
               <button
                 type="button"
                 onClick={handleNext}
@@ -593,19 +723,19 @@ export default function CreateExam() {
             ) : (
               <button
                 type="button"
-                onClick={handlePublish}
+                onClick={handleSaveDraft}
                 disabled={loading || saving}
-                className="px-8 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-8 py-3 bg-[#1f3c88] text-white rounded-lg font-medium hover:bg-[#152a5e] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                {loading ? (
+                {saving ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Publishing...
+                    Saving...
                   </>
                 ) : (
                   <>
-                    <Send className="w-5 h-5" />
-                    Publish Exam
+                    <Save className="w-5 h-5" />
+                    Save Draft
                   </>
                 )}
               </button>
