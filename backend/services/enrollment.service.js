@@ -53,10 +53,15 @@ async function enrollStudent(data) {
     throw new Error('Already enrolled in this class');
   }
 
+  // Auto-assign roll number based on enrollment count
+  const existingEnrollments = await Enrollment.countDocuments({ classId });
+  const rollNumber = existingEnrollments + 1;
+
   // Create enrollment
   const enrollment = await Enrollment.create({
     classId,
     studentId,
+    rollNumber,
     enrolledBy: enrolledBy || studentId, // Self-enrollment if no enrolledBy provided
     status: 'active'
   });
@@ -88,7 +93,7 @@ async function getClassStudents(classId, options = {}) {
 
   const enrollments = await Enrollment.find(query)
     .populate('studentId', 'name email')
-    .sort({ joinedAt: -1 })
+    .sort({ rollNumber: 1 }) // Sort by roll number
     .skip(skip)
     .limit(limit)
     .lean();
@@ -235,6 +240,74 @@ async function getClassEnrollmentCount(classId) {
   return count;
 }
 
+/**
+ * Patch missing roll numbers for existing enrollments
+ * @param {ObjectId} classId - Class ID (optional - if not provided, patches all classes)
+ * @returns {Promise<Object>} Patch result
+ */
+async function patchRollNumbers(classId = null) {
+  try {
+    const query = classId ? { classId } : {};
+    
+    // Find enrollments without roll numbers
+    const enrollmentsWithoutRoll = await Enrollment.find({
+      ...query,
+      rollNumber: { $exists: false }
+    }).sort({ joinedAt: 1 });
+
+    if (enrollmentsWithoutRoll.length === 0) {
+      return {
+        success: true,
+        message: 'No enrollments need patching',
+        patched: 0
+      };
+    }
+
+    // Group by class
+    const enrollmentsByClass = {};
+    enrollmentsWithoutRoll.forEach(enrollment => {
+      const cId = enrollment.classId.toString();
+      if (!enrollmentsByClass[cId]) {
+        enrollmentsByClass[cId] = [];
+      }
+      enrollmentsByClass[cId].push(enrollment);
+    });
+
+    let patchedCount = 0;
+
+    // Assign roll numbers per class
+    for (const cId in enrollmentsByClass) {
+      const classEnrollments = enrollmentsByClass[cId];
+      
+      // Get highest existing roll number for this class
+      const highestRoll = await Enrollment.findOne({ 
+        classId: cId,
+        rollNumber: { $exists: true }
+      })
+      .sort({ rollNumber: -1 })
+      .select('rollNumber');
+
+      let nextRoll = highestRoll ? highestRoll.rollNumber + 1 : 1;
+
+      // Assign roll numbers
+      for (const enrollment of classEnrollments) {
+        enrollment.rollNumber = nextRoll;
+        await enrollment.save();
+        nextRoll++;
+        patchedCount++;
+      }
+    }
+
+    return {
+      success: true,
+      message: `Successfully patched ${patchedCount} enrollments`,
+      patched: patchedCount
+    };
+  } catch (error) {
+    throw new Error(`Failed to patch roll numbers: ${error.message}`);
+  }
+}
+
 module.exports = {
   enrollStudent,
   getClassStudents,
@@ -243,5 +316,6 @@ module.exports = {
   blockStudent,
   unblockStudent,
   isStudentEnrolled,
-  getClassEnrollmentCount
+  getClassEnrollmentCount,
+  patchRollNumbers
 };

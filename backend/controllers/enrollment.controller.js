@@ -77,7 +77,7 @@ async function getClassStudents(req, res) {
       });
     }
 
-    const result = await enrollmentService.getEnrollmentsByClass(
+    const result = await enrollmentService.getClassStudents(
       classId,
       {
         page: parseInt(page),
@@ -89,12 +89,7 @@ async function getClassStudents(req, res) {
     res.status(200).json({
       success: true,
       data: result.enrollments,
-      pagination: {
-        page: result.page,
-        limit: result.limit,
-        total: result.total,
-        pages: result.pages
-      }
+      pagination: result.pagination
     });
   } catch (error) {
     res.status(500).json({
@@ -105,7 +100,34 @@ async function getClassStudents(req, res) {
   }
 }
 
+/**
+ * Patch roll numbers for existing enrollments
+ * @route POST /api/v2/enrollments/patch-roll-numbers
+ */
+async function patchRollNumbers(req, res) {
+  try {
+    const { classId } = req.body; // Optional
+
+    const result = await enrollmentService.patchRollNumbers(classId);
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: {
+        patched: result.patched
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to patch roll numbers',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   enrollStudent,
-  getClassStudents
+  getClassStudents,
+  patchRollNumbers
 };
