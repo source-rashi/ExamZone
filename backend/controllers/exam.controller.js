@@ -57,6 +57,61 @@ async function createExam(req, res) {
 }
 
 /**
+ * Update an exam
+ * @route PATCH /api/v2/exams/:id
+ */
+async function updateExam(req, res) {
+  try {
+    const { id } = req.params;
+    const teacherId = req.body.teacherId || req.user?.id;
+
+    if (!teacherId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Teacher ID required'
+      });
+    }
+
+    const exam = await examService.updateExam(id, req.body, teacherId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Exam updated successfully',
+      data: exam
+    });
+  } catch (error) {
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('Only the exam creator') || error.message.includes('not authorized')) {
+      return res.status(403).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('Cannot update') || 
+        error.message.includes('Cannot modify') || 
+        error.message.includes('Reset exam')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update exam',
+      error: error.message
+    });
+  }
+}
+
+/**
  * Publish an exam
  * @route PATCH /api/v2/exams/:examId/publish
  */
@@ -102,6 +157,13 @@ async function publishExam(req, res) {
     }
 
     if (error.message.includes('already published') || error.message.includes('cannot be published')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('generate question sets')) {
       return res.status(400).json({
         success: false,
         message: error.message
@@ -361,6 +423,7 @@ async function getPreparationData(req, res) {
 
 module.exports = {
   createExam,
+  updateExam,
   publishExam,
   generateQuestionPapers,
   triggerEvaluation,

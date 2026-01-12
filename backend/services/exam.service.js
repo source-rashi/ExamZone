@@ -11,7 +11,7 @@ const Enrollment = require('../models/Enrollment');
  * Create a new exam (draft state)
  */
 async function createExam(data, teacherId) {
-  const { classId, title, description, mode, startTime, endTime, duration, attemptsAllowed, setsPerStudent, totalMarks } = data;
+  const { classId, title, description, mode, startTime, endTime, duration, attemptsAllowed, numberOfSets, totalMarks, questionSource, questionSourceType, questionContent } = data;
 
   // Verify class exists
   const classDoc = await Class.findById(classId);
@@ -29,6 +29,16 @@ async function createExam(data, teacherId) {
     throw new Error('End time must be after start time');
   }
 
+  // Prepare question source if provided
+  let questionSourceData = null;
+  if (questionSourceType && (questionContent || questionSourceType === 'pdf')) {
+    questionSourceData = {
+      type: questionSourceType,
+      content: questionSourceType !== 'pdf' ? questionContent : '',
+      filePath: questionSourceType === 'pdf' ? data.questionFilePath : ''
+    };
+  }
+
   // Create exam
   const exam = await Exam.create({
     classId,
@@ -40,10 +50,78 @@ async function createExam(data, teacherId) {
     endTime: endTime ? new Date(endTime) : null,
     duration: parseInt(duration) || 60,
     attemptsAllowed: parseInt(attemptsAllowed) || 1,
-    setsPerStudent: parseInt(setsPerStudent) || 1,
+    numberOfSets: parseInt(numberOfSets) || 1,
     totalMarks: parseInt(totalMarks) || 100,
+    questionSource: questionSourceData,
+    generationStatus: 'draft',
+    lockedAfterGeneration: false,
     status: 'draft'
   });
+
+  return exam;
+}
+
+/**
+ * Update an exam (respects locking)
+ */
+async function updateExam(examId, data, teacherId) {
+  const exam = await Exam.findById(examId);
+
+  if (!exam) {
+    throw new Error('Exam not found');
+  }
+
+  // Verify teacher owns the exam
+  if (exam.createdBy.toString() !== teacherId) {
+    throw new Error('Only the exam creator can update it');
+  }
+
+  // Can only update drafts or ready (not published/running/closed)
+  if (['published', 'running', 'closed', 'evaluated'].includes(exam.status)) {
+    throw new Error(`Cannot update exam with status: ${exam.status}`);
+  }
+
+  // Check if exam is locked after generation
+  if (exam.lockedAfterGeneration && exam.generationStatus === 'ready') {
+    // Prevent changes to critical fields
+    const lockedFields = ['numberOfSets', 'questionSource'];
+    const attemptedChanges = lockedFields.filter(field => data[field] !== undefined);
+    
+    if (attemptedChanges.length > 0) {
+      throw new Error(`Cannot modify ${attemptedChanges.join(', ')} after question sets are generated. Reset exam to make changes.`);
+    }
+  }
+
+  // Update allowed fields
+  const allowedUpdates = {
+    title: data.title,
+    description: data.description,
+    mode: data.mode,
+    startTime: data.startTime ? new Date(data.startTime) : exam.startTime,
+    endTime: data.endTime ? new Date(data.endTime) : exam.endTime,
+    duration: data.duration !== undefined ? parseInt(data.duration) : exam.duration,
+    attemptsAllowed: data.attemptsAllowed !== undefined ? parseInt(data.attemptsAllowed) : exam.attemptsAllowed,
+    totalMarks: data.totalMarks !== undefined ? parseInt(data.totalMarks) : exam.totalMarks
+  };
+
+  // Allow numberOfSets and questionSource only if not locked
+  if (!exam.lockedAfterGeneration) {
+    if (data.numberOfSets !== undefined) {
+      allowedUpdates.numberOfSets = parseInt(data.numberOfSets);
+    }
+    if (data.questionSource !== undefined) {
+      allowedUpdates.questionSource = data.questionSource;
+    }
+  }
+
+  // Validate times if provided
+  if (allowedUpdates.startTime && allowedUpdates.endTime && 
+      new Date(allowedUpdates.endTime) <= new Date(allowedUpdates.startTime)) {
+    throw new Error('End time must be after start time');
+  }
+
+  Object.assign(exam, allowedUpdates);
+  await exam.save();
 
   return exam;
 }
@@ -63,9 +141,14 @@ async function publishExam(examId, teacherId) {
     throw new Error('Only the exam creator can publish it');
   }
 
-  // Can only publish drafts
-  if (exam.status !== 'draft') {
+  // Can only publish drafts or ready exams
+  if (!['draft', 'ready'].includes(exam.status)) {
     throw new Error(`Cannot publish exam with status: ${exam.status}`);
+  }
+
+  // PHASE 6.2.5 - Must generate sets before publishing
+  if (exam.generationStatus !== 'ready') {
+    throw new Error('Please generate question sets before publishing the exam');
   }
 
   // Validate required fields
@@ -327,6 +410,7 @@ async function getExamPreparationData(examId) {
 
 module.exports = {
   createExam,
+  updateExam,
   publishExam,
   closeExam,
   getClassExams,

@@ -6,7 +6,8 @@
 const express = require('express');
 const router = express.Router();
 const { 
-  createExam, 
+  createExam,
+  updateExam,
   publishExam, 
   generateQuestionPapers, 
   triggerEvaluation,
@@ -23,6 +24,13 @@ const { teacherOnly } = require('../middleware/role.middleware');
  * @access Teacher only
  */
 router.post('/', authenticate, teacherOnly, createExam);
+
+/**
+ * @route PATCH /api/v2/exams/:id
+ * @desc Update an exam (respects locking)
+ * @access Teacher only (creator only)
+ */
+router.patch('/:id', authenticate, teacherOnly, updateExam);
 
 /**
  * @route PATCH /api/v2/exams/:examId/publish
