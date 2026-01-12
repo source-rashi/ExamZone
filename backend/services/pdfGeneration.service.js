@@ -249,14 +249,17 @@ async function generateStudentPapers(examId) {
     // Update exam with student papers
     exam.studentPapers = studentPapers;
     exam.status = 'generated';
+    console.log('[Student Papers] BEFORE SAVE - Status:', exam.status);
     await exam.save();
+    console.log('[Student Papers] AFTER SAVE - Status:', exam.status);
 
-    console.log(`[Student Papers] Generated ${studentPapers.length} papers successfully`);
+    console.log(`[Student Papers] ✅ Generated ${studentPapers.length} papers successfully`);
 
     return {
       success: true,
       papersGenerated: studentPapers.length,
-      message: `Successfully generated ${studentPapers.length} student papers`
+      message: `Successfully generated ${studentPapers.length} student papers`,
+      exam: exam.toObject() // Return updated exam
     };
   } catch (error) {
     console.error('[Student Papers] Error:', error.message);

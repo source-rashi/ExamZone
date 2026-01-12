@@ -177,9 +177,11 @@ async function publishExam(examId, teacherId) {
     throw new Error('Start time and end time are required to publish');
   }
 
+  console.log('[Publish] BEFORE SAVE - Status:', exam.status);
   exam.status = 'published';
   exam.publishedAt = new Date();
   await exam.save();
+  console.log('[Publish] AFTER SAVE - Status:', exam.status);
 
   return exam;
 }

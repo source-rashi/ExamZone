@@ -771,12 +771,23 @@ function ExamsTab({ classId, isTeacher }) {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const teacherId = user.id || user._id;
       
+      console.log('🚀 Calling generateQuestionPapers for exam:', examId);
       const result = await examAPI.generateQuestionPapers(examId, teacherId);
       
-      alert(`Success! Generated ${result.data?.numberOfSets || 0} question sets.`);
-      loadExams(); // Reload to update status
+      console.log('✅ Generation response:', result);
+      console.log('📊 Updated exam status:', result.data?.exam?.status);
+      
+      // CRITICAL: Update exam in state immediately without reload
+      if (result.data?.exam) {
+        setExams(prev => 
+          prev.map(e => e._id === examId ? result.data.exam : e)
+        );
+        console.log('✅ Exam state updated in UI');
+      }
+      
+      alert(`Success! Generated ${result.data?.numberOfSets || 0} question sets.\nExam is now in "${result.data?.exam?.status}" status.`);
     } catch (error) {
-      console.error('Failed to generate papers:', error);
+      console.error('❌ Failed to generate papers:', error);
       const errorMsg = error.response?.data?.message || error.message || 'Failed to generate papers';
       alert(`Error: ${errorMsg}`);
     } finally {
@@ -791,12 +802,24 @@ function ExamsTab({ classId, isTeacher }) {
     try {
       setGeneratingPapers(prev => ({ ...prev, [examId]: true }));
       
+      console.log('🚀 Generating student papers for exam:', examId);
       const result = await examAPI.generateStudentPapers(examId);
       
+      console.log('✅ Student papers generated:', result);
+      
+      // Update exam state if exam object is returned
+      if (result.data?.exam) {
+        setExams(prev => 
+          prev.map(e => e._id === examId ? result.data.exam : e)
+        );
+      } else {
+        // Fallback: reload exams
+        loadExams();
+      }
+      
       alert(`Success! Generated ${result.data?.papersGenerated || 0} student papers.`);
-      loadExams();
     } catch (error) {
-      console.error('Failed to generate student papers:', error);
+      console.error('❌ Failed to generate student papers:', error);
       const errorMsg = error.response?.data?.message || error.message || 'Failed to generate student papers';
       alert(`Error: ${errorMsg}`);
     } finally {
@@ -809,11 +832,24 @@ function ExamsTab({ classId, isTeacher }) {
     if (!confirm) return;
 
     try {
-      await examAPI.publishExam(examId);
+      console.log('🚀 Publishing exam:', examId);
+      const result = await examAPI.publishExam(examId);
+      
+      console.log('✅ Exam published:', result);
+      
+      // Update exam state
+      if (result.data?.exam || result.exam) {
+        const updatedExam = result.data?.exam || result.exam;
+        setExams(prev => 
+          prev.map(e => e._id === examId ? updatedExam : e)
+        );
+      } else {
+        loadExams();
+      }
+      
       alert('Exam published successfully!');
-      loadExams();
     } catch (error) {
-      console.error('Failed to publish exam:', error);
+      console.error('❌ Failed to publish exam:', error);
       const errorMsg = error.response?.data?.message || error.message || 'Failed to publish exam';
       alert(`Error: ${errorMsg}`);
     }

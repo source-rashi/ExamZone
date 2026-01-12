@@ -428,24 +428,28 @@ async function generateExamSetsWithAI(examId) {
 
     // STEP 6: Move exam to 'prepared' status
     exam = await Exam.findById(examId);
+    console.log('[AI Pipeline] BEFORE SAVE - Status:', exam.status, 'GenStatus:', exam.generationStatus);
+    
     exam.status = 'prepared';
     exam.generationStatus = 'generated';
     exam.lockedAfterGeneration = true;
     await exam.save();
     
-    console.log('[AI Pipeline] Exam moved to PREPARED status. Ready for student paper generation.');
+    console.log('[AI Pipeline] AFTER SAVE - Status:', exam.status, 'GenStatus:', exam.generationStatus);
+    console.log('[AI Pipeline] ✅ Exam moved to PREPARED status. Ready for student paper generation.');
 
-    // STEP 7: Return summary
+    // STEP 7: Return summary WITH updated exam
     const summary = {
       success: true,
       message: 'Question sets generated successfully',
       numberOfSets: storageResult.setsStored,
       totalQuestions: storageResult.totalQuestions,
       studentsDistributed: studentDistribution.length,
-      generatedAt: new Date()
+      generatedAt: new Date(),
+      exam: exam.toObject() // CRITICAL: Return the updated exam
     };
 
-    console.log('[AI Pipeline] Generation complete:', summary);
+    console.log('[AI Pipeline] ✅ Generation complete:', summary);
 
     return summary;
   } catch (error) {

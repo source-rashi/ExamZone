@@ -200,7 +200,7 @@ async function generateQuestionPapers(req, res) {
       });
     }
 
-    console.log('[Generate Papers] Starting generation for exam:', id);
+    console.log('[Generate Papers] ⚡ Starting generation for exam:', id);
 
     // TASK 2 - Validate question source first
     await examService.prepareExam(id, teacherId);
@@ -208,6 +208,9 @@ async function generateQuestionPapers(req, res) {
     // TASK 3 - Use PHASE 6.3 AI Generation Service
     const result = await aiGenerationService.generateExamSetsWithAI(id);
 
+    console.log('[Generate Papers] ✅ Generation complete. Exam status:', result.exam?.status);
+
+    // CRITICAL: Return the updated exam object so frontend can update state
     res.status(200).json({
       success: true,
       message: result.message,
@@ -215,7 +218,8 @@ async function generateQuestionPapers(req, res) {
         numberOfSets: result.numberOfSets,
         totalQuestions: result.totalQuestions,
         studentsDistributed: result.studentsDistributed,
-        generatedAt: result.generatedAt
+        generatedAt: result.generatedAt,
+        exam: result.exam // CRITICAL: Include updated exam
       }
     });
   } catch (error) {
@@ -283,16 +287,19 @@ async function generateStudentPapers(req, res) {
       });
     }
 
-    console.log('[Generate Student Papers] Starting for exam:', id);
+    console.log('[Generate Student Papers] ⚡ Starting for exam:', id);
 
     // Generate PDF papers for all students
     const result = await pdfGenerationService.generateStudentPapers(id);
+
+    console.log('[Generate Student Papers] ✅ Complete. Exam status:', result.exam?.status);
 
     res.status(200).json({
       success: true,
       message: result.message,
       data: {
-        papersGenerated: result.papersGenerated
+        papersGenerated: result.papersGenerated,
+        exam: result.exam // Return updated exam
       }
     });
   } catch (error) {
