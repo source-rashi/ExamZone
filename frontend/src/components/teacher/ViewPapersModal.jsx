@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { examAPI } from '../../api/exam.api';
 import { FileText, Users, Download, CheckCircle, AlertCircle } from 'lucide-react';
 
-export default function ViewPapersModal({ examId, onClose }) {
+export default function ViewPapersModal({ examId, isOpen, onClose }) {
   const [examDetails, setExamDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -14,8 +14,10 @@ export default function ViewPapersModal({ examId, onClose }) {
   const [activeTab, setActiveTab] = useState('students');
 
   useEffect(() => {
-    loadExamDetails();
-  }, [examId]);
+    if (isOpen && examId) {
+      loadExamDetails();
+    }
+  }, [examId, isOpen]);
 
   const loadExamDetails = async () => {
     try {

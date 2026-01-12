@@ -137,7 +137,7 @@ async function generateStudentPapers(examId) {
   const classIdValue = exam.classId._id || exam.classId;
   const enrollments = await Enrollment.find({ 
     classId: classIdValue 
-  }).populate('userId');
+  }).populate('studentId', 'name email');
 
   if (enrollments.length === 0) {
     throw new Error('No students enrolled in this class');
@@ -151,9 +151,15 @@ async function generateStudentPapers(examId) {
 
   try {
     for (const enrollment of enrollments) {
+      // Skip if studentId not populated
+      if (!enrollment.studentId) {
+        console.warn('[Student Papers] Skipping enrollment - studentId not populated:', enrollment._id);
+        continue;
+      }
+
       const student = {
-        userId: enrollment.userId._id,
-        name: enrollment.userId.name,
+        userId: enrollment.studentId._id,
+        name: enrollment.studentId.name,
         rollNumber: enrollment.rollNumber
       };
 
