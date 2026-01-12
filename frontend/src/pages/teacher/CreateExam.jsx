@@ -32,6 +32,9 @@ export default function CreateExam() {
     attemptsAllowed: 1,
     numberOfSets: 1, // Manual input instead of dropdown
     
+    // PHASE 6.3.6: Question Authority Mode
+    questionMode: 'teacher_provided', // 'teacher_provided' or 'ai_generated'
+    
     // Step 3: Question Source (PHASE 6.2.5)
     questionSourceType: 'text', // 'latex', 'text', 'pdf'
     questionContent: '', // For latex/text
@@ -113,14 +116,18 @@ export default function CreateExam() {
           setError('Question source type is required');
           return false;
         }
-        if ((formData.questionSourceType === 'latex' || formData.questionSourceType === 'text') && !formData.questionContent.trim()) {
-          setError('Question content is required');
-          return false;
+        // PHASE 6.3.6: Validate based on question mode
+        if (formData.questionMode === 'teacher_provided') {
+          if ((formData.questionSourceType === 'latex' || formData.questionSourceType === 'text') && !formData.questionContent.trim()) {
+            setError('Question content is required for teacher-provided mode');
+            return false;
+          }
+          if (formData.questionSourceType === 'pdf' && !formData.questionFile) {
+            setError('PDF file is required for teacher-provided mode');
+            return false;
+          }
         }
-        if (formData.questionSourceType === 'pdf' && !formData.questionFile) {
-          setError('PDF file is required');
-          return false;
-        }
+        // AI-generated mode doesn't require question content
         break;
       
       case 4:
@@ -436,69 +443,135 @@ export default function CreateExam() {
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Question Source</h2>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Source Type <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-3 gap-4">
-                  {[
-                    { value: 'text', label: 'Plain Text' },
-                    { value: 'latex', label: 'LaTeX' },
-                    { value: 'pdf', label: 'PDF Upload' }
-                  ].map(type => (
-                    <button
-                      key={type.value}
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, questionSourceType: type.value, questionContent: '', questionFile: null }))}
-                      className={`px-6 py-4 border-2 rounded-lg font-medium transition-all ${
-                        formData.questionSourceType === type.value
-                          ? 'border-[#1f3c88] bg-gradient-to-br from-[#1f3c88]/5 to-[#1f3c88]/10 text-[#1f3c88] shadow-sm'
-                          : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50'
-                      }`}
-                    >
-                      {type.label}
-                    </button>
-                  ))}
+              {/* PHASE 6.3.6: Question Mode Toggle */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6">
+                <div className="flex items-start gap-4">
+                  <input
+                    type="checkbox"
+                    id="aiGenerateToggle"
+                    checked={formData.questionMode === 'ai_generated'}
+                    onChange={(e) => setFormData(prev => ({ 
+                      ...prev, 
+                      questionMode: e.target.checked ? 'ai_generated' : 'teacher_provided',
+                      questionContent: '',
+                      questionFile: null
+                    }))}
+                    className="mt-1 w-5 h-5 text-[#1f3c88] border-gray-300 rounded focus:ring-[#1f3c88]"
+                  />
+                  <div className="flex-1">
+                    <label htmlFor="aiGenerateToggle" className="block font-semibold text-gray-900 cursor-pointer">
+                      🤖 Use AI to generate questions
+                    </label>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {formData.questionMode === 'ai_generated' 
+                        ? '✓ AI will generate questions based on your exam configuration and syllabus'
+                        : '✓ You will provide all questions (default). AI will only format and organize them.'}
+                    </p>
+                  </div>
                 </div>
               </div>
+              
+              {formData.questionMode === 'teacher_provided' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Source Type <span className="text-red-500">*</span>
+                    </label>
+                    <div className="grid grid-cols-3 gap-4">
+                      {[
+                        { value: 'text', label: 'Plain Text' },
+                        { value: 'latex', label: 'LaTeX' },
+                        { value: 'pdf', label: 'PDF Upload' }
+                      ].map(type => (
+                        <button
+                          key={type.value}
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, questionSourceType: type.value, questionContent: '', questionFile: null }))}
+                          className={`px-6 py-4 border-2 rounded-lg font-medium transition-all ${
+                            formData.questionSourceType === type.value
+                              ? 'border-[#1f3c88] bg-gradient-to-br from-[#1f3c88]/5 to-[#1f3c88]/10 text-[#1f3c88] shadow-sm'
+                              : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50'
+                          }`}
+                        >
+                          {type.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-              {(formData.questionSourceType === 'text' || formData.questionSourceType === 'latex') && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {formData.questionSourceType === 'latex' ? 'LaTeX Content' : 'Question Text'} <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    name="questionContent"
-                    value={formData.questionContent}
-                    onChange={handleInputChange}
-                    rows={12}
-                    placeholder={formData.questionSourceType === 'latex' 
-                      ? 'Enter LaTeX formatted questions...\n\nExample:\n\\begin{enumerate}\n  \\item Question 1\n  \\item Question 2\n\\end{enumerate}'
-                      : 'Enter your questions here...\n\n1. Question 1\n2. Question 2'}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88] focus:border-transparent font-mono text-sm"
-                    required
-                  />
-                  <p className="text-sm text-gray-500 mt-2">
-                    {formData.questionSourceType === 'latex' 
-                      ? 'Provide questions in LaTeX format. These will be used to generate question sets.'
-                      : 'Provide questions in plain text format. These will be used to generate question sets.'}
-                  </p>
-                </div>
+                  {(formData.questionSourceType === 'text' || formData.questionSourceType === 'latex') && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {formData.questionSourceType === 'latex' ? 'LaTeX Content' : 'Question Text'} <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        name="questionContent"
+                        value={formData.questionContent}
+                        onChange={handleInputChange}
+                        rows={12}
+                        placeholder={formData.questionSourceType === 'latex' 
+                          ? 'Enter LaTeX formatted questions...\n\nExample:\n\\begin{enumerate}\n  \\item Question 1\n  \\item Question 2\n\\end{enumerate}'
+                          : 'Enter your questions here...\n\n1. Question 1\n2. Question 2'}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88] focus:border-transparent font-mono text-sm"
+                        required
+                      />
+                      <p className="text-sm text-gray-500 mt-2">
+                        {formData.questionSourceType === 'latex' 
+                          ? '✓ Your LaTeX questions will be used verbatim. AI will only format them into sets.'
+                          : '✓ Your questions will be used verbatim. AI will only format them into sets.'}
+                      </p>
+                    </div>
+                  )}
+
+                  {formData.questionSourceType === 'pdf' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Upload PDF <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        onChange={(e) => setFormData(prev => ({ ...prev, questionFile: e.target.files[0] }))}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88]"
+                        required
+                      />
+                      <p className="text-sm text-gray-500 mt-2">
+                        ✓ Upload your question paper PDF. AI will extract and format questions.
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
 
-              {formData.questionSourceType === 'pdf' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Upload PDF <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    onChange={(e) => setFormData(prev => ({ ...prev, questionFile: e.target.files[0] }))}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88]"
-                    required
-                  />
-                  {formData.questionFile && (
+              {formData.questionMode === 'ai_generated' && (
+                <div className="space-y-4">
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-sm text-yellow-800">
+                      <strong>⚠️ AI Generation Mode:</strong> The system will automatically generate questions based on your exam configuration.
+                      You don't need to provide question content.
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      AI Instructions (Optional)
+                    </label>
+                    <textarea
+                      name="questionContent"
+                      value={formData.questionContent}
+                      onChange={handleInputChange}
+                      rows={6}
+                      placeholder="Provide additional instructions for AI (e.g., focus areas, question types, difficulty preferences)..."
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88] focus:border-transparent"
+                    />
+                    <p className="text-sm text-gray-500 mt-2">
+                      Optional: Guide the AI with specific requirements or focus areas.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}                  {formData.questionFile && (
                     <p className="text-sm text-green-600 mt-2">
                       Selected: {formData.questionFile.name}
                     </p>

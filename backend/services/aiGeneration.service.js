@@ -109,6 +109,27 @@ async function buildExamAIPayload(examId) {
 async function aiNormalizeQuestions(payload) {
   try {
     console.log('[AI Normalize] Processing question source:', payload.questionSource.type);
+    
+    // PHASE 6.3.6 - CRITICAL GUARD: Check question mode
+    const exam = await Exam.findById(payload.examId);
+    if (!exam) {
+      throw new Error('Exam not found');
+    }
+    
+    const questionMode = exam.questionMode || 'teacher_provided';
+    console.log(`[Question Mode] Mode: ${questionMode}`);
+    
+    // STRICT GUARD: If teacher-provided mode, validate source exists
+    if (questionMode === 'teacher_provided') {
+      if (!payload.questionSource.content && !payload.questionSource.filePath) {
+        throw new Error('Teacher-provided mode requires question source content or file');
+      }
+      console.log('[Question Mode] Teacher-provided questions used');
+      // Continue to normalize teacher questions - AI ONLY formats, never invents
+    } else if (questionMode === 'ai_generated') {
+      console.log('[Question Mode] AI-generated questions used');
+      // AI can generate new questions
+    }
 
     // MOCK MODE: Return sample questions without calling AI
     if (MOCK_MODE) {

@@ -64,6 +64,12 @@ const examSchema = new mongoose.Schema({
     default: 1,
     min: 1
   },
+  // PHASE 6.3.6 - Question Authority Mode (CRITICAL SAFETY)
+  questionMode: {
+    type: String,
+    enum: ['teacher_provided', 'ai_generated'],
+    default: 'teacher_provided'
+  },
   questionSource: {
     type: {
       type: String,
