@@ -6,6 +6,7 @@ import * as classroomAPI from '../../api/classroom.api';
 import * as announcementAPI from '../../api/announcement.api';
 import * as assignmentAPI from '../../api/assignment.api';
 import examAPI from '../../api/exam.api';
+import ViewPapersModal from '../../components/teacher/ViewPapersModal';
 import { 
   BookOpen, 
   Users, 
@@ -741,6 +742,7 @@ function ExamsTab({ classId, isTeacher }) {
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generatingPapers, setGeneratingPapers] = useState({}); // Track generation per exam
+  const [viewPapersModal, setViewPapersModal] = useState({ open: false, examId: null });
 
   useEffect(() => {
     loadExams();
@@ -987,6 +989,13 @@ function ExamsTab({ classId, isTeacher }) {
                     {exam.status === 'prepared' && (
                       <>
                         <button 
+                          onClick={() => setViewPapersModal({ open: true, examId: exam._id })}
+                          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium flex items-center gap-2 border border-gray-300"
+                        >
+                          <FileText className="w-4 h-4" />
+                          View Sets
+                        </button>
+                        <button 
                           onClick={() => handleGenerateStudentPapers(exam._id)}
                           disabled={generatingPapers[exam._id]}
                           className="px-4 py-2 bg-[#1f3c88] text-white rounded-lg hover:bg-[#152a5e] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-2"
@@ -1009,6 +1018,13 @@ function ExamsTab({ classId, isTeacher }) {
                     {/* PHASE 6 - Generated Status: Publish */}
                     {exam.status === 'generated' && (
                       <>
+                        <button 
+                          onClick={() => setViewPapersModal({ open: true, examId: exam._id })}
+                          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium flex items-center gap-2 border border-gray-300"
+                        >
+                          <FileText className="w-4 h-4" />
+                          View Papers
+                        </button>
                         <button 
                           onClick={() => handlePublishExam(exam._id)}
                           className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-2"
@@ -1047,6 +1063,15 @@ function ExamsTab({ classId, isTeacher }) {
             </div>
           ))}
         </div>
+      )}
+
+      {/* View Papers Modal */}
+      {viewPapersModal.open && (
+        <ViewPapersModal
+          examId={viewPapersModal.examId}
+          isOpen={viewPapersModal.open}
+          onClose={() => setViewPapersModal({ open: false, examId: null })}
+        />
       )}
     </div>
   );

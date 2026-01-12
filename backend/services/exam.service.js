@@ -348,9 +348,27 @@ async function resetExamGeneration(examId, teacherId) {
     throw new Error('Only the exam creator can reset the exam');
   }
 
-  // TASK 8 - Cannot reset if published, running, or closed
+  // PHASE 6.4 - Cannot reset if published, running, or closed
   if (['published', 'running', 'closed', 'evaluated'].includes(exam.status)) {
     throw new Error(`Cannot reset exam with status: ${exam.status}. Unpublish the exam first.`);
+  }
+
+  // PHASE 6.4 - Delete student paper files if they exist
+  if (exam.studentPapers && exam.studentPapers.length > 0) {
+    const fs = require('fs').promises;
+    const path = require('path');
+    const STORAGE_BASE = path.join(__dirname, '../../storage/exams');
+    
+    console.log('[Reset] Deleting', exam.studentPapers.length, 'student paper files');
+    
+    for (const paper of exam.studentPapers) {
+      try {
+        const filepath = path.join(STORAGE_BASE, paper.paperPath);
+        await fs.unlink(filepath);
+      } catch (error) {
+        console.warn('[Reset] Could not delete file:', paper.paperPath, error.message);
+      }
+    }
   }
 
   // Clear generation data
@@ -360,6 +378,8 @@ async function resetExamGeneration(examId, teacherId) {
   exam.generationStatus = 'none';
   exam.lockedAfterGeneration = false;
   exam.status = 'draft';
+  
+  console.log('[Reset] Exam reset to draft status');
   await exam.save();
 
   return exam;
