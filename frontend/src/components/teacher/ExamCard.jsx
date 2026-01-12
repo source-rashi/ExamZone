@@ -152,12 +152,6 @@ export default function ExamCard({ exam, onPublish, onGeneratePapers, onGenerate
           </>
         )}
       </div>
-            className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors"
-          >
-            Publish Exam
-          </button>
-        )}
-      </div>
     </div>
   );
 }

@@ -53,7 +53,7 @@ async function createExam(data, teacherId) {
     numberOfSets: parseInt(numberOfSets) || 1,
     totalMarks: parseInt(totalMarks) || 100,
     questionSource: questionSourceData,
-    generationStatus: 'draft',
+    generationStatus: 'none',
     lockedAfterGeneration: false,
     status: 'draft'
   });
@@ -313,7 +313,7 @@ async function generateQuestionSets(examId, teacherId) {
 
   // Update exam
   exam.setMap = setMap;
-  exam.generationStatus = 'ready';
+  exam.generationStatus = 'generated';
   exam.lockedAfterGeneration = true;
   await exam.save();
 
@@ -346,7 +346,7 @@ async function resetExamGeneration(examId, teacherId) {
 
   // Clear generation data
   exam.setMap = [];
-  exam.generationStatus = 'draft';
+  exam.generationStatus = 'none';
   exam.lockedAfterGeneration = false;
   await exam.save();
 
