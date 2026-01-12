@@ -431,6 +431,8 @@ async function generateExamSetsWithAI(examId) {
     exam.generationStatus = 'generated';
     exam.lockedAfterGeneration = true;
     await exam.save();
+    
+    console.log('[AI Pipeline] Exam moved to PREPARED status. Ready for student paper generation.');
 
     // STEP 7: Return summary
     const summary = {

@@ -29,14 +29,19 @@ async function createExam(data, teacherId) {
     throw new Error('End time must be after start time');
   }
 
-  // Prepare question source if provided
+  // PHASE 6.2 - Prepare question source if provided
   let questionSourceData = null;
   if (questionSourceType && (questionContent || questionSourceType === 'pdf')) {
     questionSourceData = {
       type: questionSourceType,
-      content: questionSourceType !== 'pdf' ? questionContent : '',
-      filePath: questionSourceType === 'pdf' ? data.questionFilePath : ''
+      content: questionSourceType !== 'pdf' ? (questionContent || '') : '',
+      filePath: questionSourceType === 'pdf' ? (data.questionFilePath || '') : ''
     };
+    
+    // TASK 2 - Validate question source is non-empty
+    if (questionSourceType !== 'pdf' && (!questionContent || questionContent.trim() === '')) {
+      throw new Error('Question content cannot be empty');
+    }
   }
 
   // Create exam
@@ -425,6 +430,50 @@ async function getExamPreparationData(examId) {
 }
 
 /**
+ * TASK 2 - Prepare Exam (Validate Question Source)
+ * Validates question source before generation
+ * Locks the exam for editing
+ */
+async function prepareExam(examId, teacherId) {
+  const exam = await Exam.findById(examId);
+
+  if (!exam) {
+    throw new Error('Exam not found');
+  }
+
+  // Verify teacher owns the exam
+  if (exam.createdBy.toString() !== teacherId) {
+    throw new Error('Only the exam creator can prepare the exam');
+  }
+
+  // Can only prepare from draft
+  if (exam.status !== 'draft') {
+    throw new Error(`Cannot prepare exam with status: ${exam.status}`);
+  }
+
+  // TASK 2 - Validate question source
+  if (!exam.questionSource || !exam.questionSource.type) {
+    throw new Error('Question source is required. Please add questions before preparation.');
+  }
+
+  const { type, content, filePath } = exam.questionSource;
+
+  if (type === 'pdf') {
+    if (!filePath || filePath.trim() === '') {
+      throw new Error('PDF file path is required for PDF question source');
+    }
+  } else {
+    // text or latex
+    if (!content || content.trim() === '') {
+      throw new Error('Question content cannot be empty');
+    }
+  }
+
+  // Validation passed
+  return exam;
+}
+
+/**
  * Get exam by ID with generated sets
  * PHASE 6.3 - For teacher review panel
  */
@@ -451,5 +500,6 @@ module.exports = {
   generateQuestionSets,
   resetExamGeneration,
   getExamPreparationData,
-  getExamById
+  getExamById,
+  prepareExam
 };

@@ -16,7 +16,10 @@ const {
   resetGeneration,
   getPreparationData,
   generateExamSetsWithAI,
-  getExamById
+  getExamById,
+  getStudentPapers,
+  getMyPaper,
+  downloadPaper
 } = require('../controllers/exam.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 const { teacherOnly } = require('../middleware/role.middleware');
@@ -106,5 +109,29 @@ router.post('/:id/generate', authenticate, teacherOnly, generateExamSetsWithAI);
  * @access Authenticated users
  */
 router.get('/:id', authenticate, getExamById);
+
+/**
+ * TASK 5 — Teacher Paper Management
+ * @route GET /api/v2/exams/:id/papers
+ * @desc Get all student papers for an exam (teacher view)
+ * @access Teacher only (exam creator only)
+ */
+router.get('/:id/papers', authenticate, teacherOnly, getStudentPapers);
+
+/**
+ * TASK 6 — Student Paper Access
+ * @route GET /api/v2/exams/:id/my-paper
+ * @desc Get student's own paper for an exam
+ * @access Student only (enrolled)
+ */
+router.get('/:id/my-paper', authenticate, getMyPaper);
+
+/**
+ * TASK 5 & 6 — Paper Download
+ * @route GET /api/v2/exams/:id/papers/:rollNumber/download
+ * @desc Download paper PDF
+ * @access Teacher (exam creator) or Student (own paper only)
+ */
+router.get('/:id/papers/:rollNumber/download', authenticate, downloadPaper);
 
 module.exports = router;

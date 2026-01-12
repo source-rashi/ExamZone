@@ -5,6 +5,7 @@ import StudentTable from '../../components/teacher/StudentTable';
 import ExamCard from '../../components/teacher/ExamCard';
 import InviteModal from '../../components/teacher/InviteModal';
 import ViewSetsModal from '../../components/teacher/ViewSetsModal';
+import ViewPapersModal from '../../components/teacher/ViewPapersModal';
 
 /**
  * ClassDetails - Show class info, students, exams, and actions
@@ -19,6 +20,7 @@ export default function ClassDetails() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [generatingExamId, setGeneratingExamId] = useState(null);
   const [viewingSetsExamId, setViewingSetsExamId] = useState(null);
+  const [viewingPapersExamId, setViewingPapersExamId] = useState(null);
 
   useEffect(() => {
     loadClassDetails();
@@ -99,8 +101,7 @@ export default function ClassDetails() {
   };
 
   const handleViewPapers = (examId) => {
-    // TODO: Navigate to papers view or open modal
-    alert('View Papers feature coming soon');
+    setViewingPapersExamId(examId);
   };
 
   if (loading) {
@@ -208,6 +209,14 @@ export default function ClassDetails() {
         />
       )}
 
+
+      {/* TASK 5 - View Student Papers Modal */}
+      {viewingPapersExamId && (
+        <ViewPapersModal
+          examId={viewingPapersExamId}
+          onClose={() => setViewingPapersExamId(null)}
+        />
+      )}
       {/* Generating Overlay */}
       {generatingExamId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

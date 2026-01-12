@@ -99,4 +99,28 @@ export const teacherAPI = {
     const response = await apiClient.post(`/exams/${examId}/generate-student-papers`);
     return response.data;
   },
+
+  /**
+   * Get all student papers for an exam (TASK 5)
+   * Teacher view of all generated papers
+   * @param {string} examId - Exam ID
+   * @returns {Promise<{examTitle: string, totalPapers: number, papers: Array}>}
+   */
+  getStudentPapers: async (examId) => {
+    const response = await apiClient.get(`/exams/${examId}/papers`);
+    return response.data;
+  },
+
+  /**
+   * Download a specific paper PDF (TASK 5)
+   * @param {string} examId - Exam ID
+   * @param {number} rollNumber - Student roll number
+   * @returns {Promise<Blob>}
+   */
+  downloadPaper: async (examId, rollNumber) => {
+    const response = await apiClient.get(`/exams/${examId}/papers/${rollNumber}/download`, {
+      responseType: 'blob'
+    });
+    return response.data;
+  },
 };

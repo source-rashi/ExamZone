@@ -202,7 +202,10 @@ async function generateQuestionPapers(req, res) {
 
     console.log('[Generate Papers] Starting generation for exam:', id);
 
-    // Use PHASE 6.3 AI Generation Service
+    // TASK 2 - Validate question source first
+    await examService.prepareExam(id, teacherId);
+
+    // TASK 3 - Use PHASE 6.3 AI Generation Service
     const result = await aiGenerationService.generateExamSetsWithAI(id);
 
     res.status(200).json({
@@ -211,6 +214,7 @@ async function generateQuestionPapers(req, res) {
       data: {
         numberOfSets: result.numberOfSets,
         totalQuestions: result.totalQuestions,
+        studentsDistributed: result.studentsDistributed,
         generatedAt: result.generatedAt
       }
     });
@@ -604,6 +608,182 @@ async function getExamById(req, res) {
   }
 }
 
+/**
+ * TASK 5 - Get Student Papers for Teacher View
+ * @route GET /api/v2/exams/:id/papers
+ */
+async function getStudentPapers(req, res) {
+  try {
+    const { id } = req.params;
+    const teacherId = req.user?.id;
+
+    if (!teacherId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Teacher ID required'
+      });
+    }
+
+    const exam = await examService.getExamById(id, teacherId);
+
+    // Verify teacher owns the exam
+    if (exam.createdBy._id.toString() !== teacherId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the exam creator can view student papers'
+      });
+    }
+
+    // Populate student details
+    await exam.populate('studentPapers.studentId', 'name email');
+
+    res.status(200).json({
+      success: true,
+      data: {
+        examTitle: exam.title,
+        totalPapers: exam.studentPapers?.length || 0,
+        papers: exam.studentPapers || []
+      }
+    });
+  } catch (error) {
+    console.error('[Get Student Papers] Error:', error.message);
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get student papers',
+      error: error.message
+    });
+  }
+}
+
+/**
+ * TASK 6 - Download Student's Own Paper
+ * @route GET /api/v2/exams/:id/my-paper
+ */
+async function getMyPaper(req, res) {
+  try {
+    const { id } = req.params;
+    const studentId = req.user?.id;
+
+    if (!studentId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    const paper = await pdfGenerationService.getStudentPaper(id, studentId);
+
+    // Check if exam is published
+    const exam = await examService.getExamById(id, studentId);
+    if (exam.status !== 'published') {
+      return res.status(403).json({
+        success: false,
+        message: 'Exam paper not yet available. Please wait for teacher to publish.'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        rollNumber: paper.rollNumber,
+        setId: paper.setId,
+        pdfPath: paper.pdfPath,
+        generatedAt: paper.generatedAt
+      }
+    });
+  } catch (error) {
+    console.error('[Get My Paper] Error:', error.message);
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get paper',
+      error: error.message
+    });
+  }
+}
+
+/**
+ * TASK 6 - Download Paper PDF
+ * @route GET /api/v2/exams/:id/papers/:rollNumber/download
+ */
+async function downloadPaper(req, res) {
+  try {
+    const { id, rollNumber } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    const exam = await examService.getExamById(id, userId);
+
+    // Find paper
+    const paper = exam.studentPapers?.find(p => p.rollNumber === parseInt(rollNumber));
+
+    if (!paper) {
+      return res.status(404).json({
+        success: false,
+        message: 'Paper not found'
+      });
+    }
+
+    // Check authorization
+    const isTeacher = exam.createdBy._id.toString() === userId;
+    const isStudent = paper.studentId.toString() === userId;
+
+    if (!isTeacher && !isStudent) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to download this paper'
+      });
+    }
+
+    // For students, check if exam is published
+    if (isStudent && exam.status !== 'published') {
+      return res.status(403).json({
+        success: false,
+        message: 'Paper not yet available'
+      });
+    }
+
+    // Send file
+    res.download(paper.pdfPath, `${exam.title}_Roll_${rollNumber}.pdf`);
+  } catch (error) {
+    console.error('[Download Paper] Error:', error.message);
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to download paper',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   createExam,
   updateExam,
@@ -615,5 +795,8 @@ module.exports = {
   resetGeneration,
   getPreparationData,
   generateExamSetsWithAI,
-  getExamById
+  getExamById,
+  getStudentPapers,
+  getMyPaper,
+  downloadPaper
 };
