@@ -246,7 +246,7 @@ async function aiGenerateExamSets(normalizedQuestions, numberOfSets, constraints
  * @param {Array} generatedSets - Sets from aiGenerateExamSets
  * @returns {Promise<Object>} Storage result
  */
-async function validateAndStoreSets(examId, generatedSets) {
+async function validateAndStoreSets(examId, generatedSets, studentDistribution = []) {
   try {
     console.log('[Validate & Store] Validating', generatedSets.length, 'sets');
 
@@ -320,19 +320,37 @@ async function validateAndStoreSets(examId, generatedSets) {
       generatedAt: new Date()
     }));
 
-    // Update exam with generated sets
+    // Update exam with generated sets and student distribution
     exam.generatedSets = setsToStore;
-    exam.generationStatus = 'generated';
-    exam.lockedAfterGeneration = true;
+    
+    // Prepare setMap from student distribution
+    if (studentDistribution && studentDistribution.length > 0) {
+      const setGroups = {};
+      studentDistribution.forEach(mapping => {
+        if (!setGroups[mapping.setId]) {
+          setGroups[mapping.setId] = [];
+        }
+        setGroups[mapping.setId].push(mapping.rollNumber);
+      });
+      
+      exam.setMap = Object.keys(setGroups).map(setId => ({
+        setId: setId,
+        assignedRollNumbers: setGroups[setId]
+      }));
+    }
 
     await exam.save();
 
     console.log('[Validate & Store] Stored', setsToStore.length, 'sets successfully');
+    if (studentDistribution && studentDistribution.length > 0) {
+      console.log('[Validate & Store] Distributed', studentDistribution.length, 'students');
+    }
 
     return {
       success: true,
       setsStored: setsToStore.length,
-      totalQuestions: setsToStore.reduce((sum, set) => sum + set.questions.length, 0)
+      totalQuestions: setsToStore.reduce((sum, set) => sum + set.questions.length, 0),
+      studentsDistributed: studentDistribution ? studentDistribution.length : 0
     };
   } catch (error) {
     console.error('[Validate & Store] Error:', error.message);
@@ -341,15 +359,16 @@ async function validateAndStoreSets(examId, generatedSets) {
 }
 
 /**
- * TASK 5 — Complete Generation Pipeline
+ * TASK 5 — Complete Generation Pipeline (PHASE 6.2-6.3)
  * 
  * Orchestrates the full AI generation flow:
- * 1. Load preparation payload
- * 2. Normalize via AI
- * 3. Generate sets via AI
- * 4. Validate
- * 5. Store
- * 6. Return summary
+ * 1. Prepare exam (validate & lock)
+ * 2. Load preparation payload
+ * 3. Normalize via AI
+ * 4. Generate sets via AI
+ * 5. Distribute students to sets
+ * 6. Validate & Store
+ * 7. Move to 'prepared' status
  * 
  * @param {string} examId - Exam ID
  * @returns {Promise<Object>} Generation summary
@@ -360,18 +379,23 @@ async function generateExamSetsWithAI(examId) {
   try {
     console.log('[AI Pipeline] Starting generation for exam:', examId);
 
-    // Load exam and set to 'generating' status immediately
-    exam = await Exam.findById(examId);
+    // Load exam and verify status
+    exam = await Exam.findById(examId).populate('classId');
     if (!exam) {
       throw new Error('Exam not found');
     }
 
-    // PART B.3: Set generating status immediately
-    if (exam.generationStatus === 'generated') {
-      throw new Error('Exam papers already generated');
+    // Only allow generation from draft status
+    if (exam.status !== 'draft') {
+      throw new Error(`Cannot generate from ${exam.status} status. Must be in draft.`);
     }
 
-    exam.generationStatus = 'generating';
+    if (exam.generationStatus === 'generated') {
+      throw new Error('Exam sets already generated');
+    }
+
+    // Set to preparing status
+    exam.generationStatus = 'preparing';
     await exam.save();
 
     // STEP 1: Build payload
@@ -390,16 +414,31 @@ async function generateExamSetsWithAI(examId) {
       payload.constraints
     );
 
-    // STEP 4 & 5: Validate and store
-    console.log('[AI Pipeline] Step 4: Validating and storing...');
-    const storageResult = await validateAndStoreSets(examId, generatedSets);
+    // STEP 4: Distribute students to sets
+    console.log('[AI Pipeline] Step 4: Distributing students...');
+    const studentDistribution = distributeStudentsToSets(
+      payload.students,
+      generatedSets
+    );
 
-    // STEP 6: Return summary
+    // STEP 5: Validate and store
+    console.log('[AI Pipeline] Step 5: Validating and storing...');
+    const storageResult = await validateAndStoreSets(examId, generatedSets, studentDistribution);
+
+    // STEP 6: Move exam to 'prepared' status
+    exam = await Exam.findById(examId);
+    exam.status = 'prepared';
+    exam.generationStatus = 'generated';
+    exam.lockedAfterGeneration = true;
+    await exam.save();
+
+    // STEP 7: Return summary
     const summary = {
       success: true,
-      message: 'Exam sets generated successfully',
+      message: 'Question sets generated successfully',
       numberOfSets: storageResult.setsStored,
       totalQuestions: storageResult.totalQuestions,
+      studentsDistributed: studentDistribution.length,
       generatedAt: new Date()
     };
 
@@ -409,9 +448,9 @@ async function generateExamSetsWithAI(examId) {
   } catch (error) {
     console.error('[AI Pipeline] Generation failed:', error.message);
     
-    // Reset to draft if generation fails
-    if (exam && exam.generationStatus === 'generating') {
-      exam.generationStatus = 'draft';
+    // Reset to none if generation fails
+    if (exam && exam.generationStatus === 'preparing') {
+      exam.generationStatus = 'none';
       await exam.save();
     }
     
@@ -419,10 +458,51 @@ async function generateExamSetsWithAI(examId) {
   }
 }
 
+/**
+ * Distribute Students to Sets
+ * 
+ * Randomly assigns students to question sets
+ * Ensures even distribution
+ * 
+ * @param {Array} students - List of students with rollNumber
+ * @param {Array} sets - Generated question sets
+ * @returns {Array} Student distribution map
+ */
+function distributeStudentsToSets(students, sets) {
+  if (!students || students.length === 0) {
+    return [];
+  }
+
+  if (!sets || sets.length === 0) {
+    throw new Error('Cannot distribute students: No sets available');
+  }
+
+  // Shuffle students for random distribution
+  const shuffledStudents = [...students].sort(() => Math.random() - 0.5);
+  
+  const distribution = [];
+  
+  shuffledStudents.forEach((student, index) => {
+    const setIndex = index % sets.length;
+    const assignedSet = sets[setIndex];
+    
+    distribution.push({
+      studentId: student.studentId || student.rollNumber, // Use studentId if available
+      rollNumber: student.rollNumber,
+      setId: assignedSet.setId
+    });
+  });
+
+  console.log(`[Distribution] Assigned ${distribution.length} students across ${sets.length} sets`);
+
+  return distribution;
+}
+
 module.exports = {
   buildExamAIPayload,
   aiNormalizeQuestions,
   aiGenerateExamSets,
   validateAndStoreSets,
-  generateExamSetsWithAI
+  generateExamSetsWithAI,
+  distributeStudentsToSets
 };
