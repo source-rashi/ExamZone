@@ -327,11 +327,44 @@ async function resetGeneration(req, res) {
   }
 }
 
+/**
+ * Get exam preparation data
+ * @route GET /api/v2/exams/:id/preparation-data
+ */
+async function getPreparationData(req, res) {
+  try {
+    const { id } = req.params;
+
+    const data = await examService.getExamPreparationData(id);
+
+    res.status(200).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    console.error('[Get Preparation Data] Error:', error.message);
+    
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve exam preparation data',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   createExam,
   publishExam,
   generateQuestionPapers,
   triggerEvaluation,
   generateSets,
-  resetGeneration
+  resetGeneration,
+  getPreparationData
 };

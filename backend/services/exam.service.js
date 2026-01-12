@@ -254,6 +254,77 @@ async function resetExamGeneration(examId, teacherId) {
   return exam;
 }
 
+/**
+ * Get exam preparation data (for PDF generation)
+ * Returns structured payload with all exam details and student mappings
+ */
+async function getExamPreparationData(examId) {
+  const exam = await Exam.findById(examId)
+    .populate('classId', 'name title code')
+    .populate('createdBy', 'name email')
+    .lean();
+
+  if (!exam) {
+    throw new Error('Exam not found');
+  }
+
+  // Get all enrollments with student details
+  const enrollments = await Enrollment.find({
+    classId: exam.classId._id,
+    status: 'active'
+  })
+    .populate('studentId', 'name email')
+    .sort({ rollNumber: 1 })
+    .lean();
+
+  // Build roll-to-student map
+  const studentMap = {};
+  enrollments.forEach(enrollment => {
+    studentMap[enrollment.rollNumber] = {
+      rollNumber: enrollment.rollNumber,
+      studentId: enrollment.studentId._id,
+      name: enrollment.studentId.name,
+      email: enrollment.studentId.email
+    };
+  });
+
+  // Build set-to-students map
+  const setDetails = exam.setMap?.map(set => ({
+    setId: set.setId,
+    students: set.assignedRollNumbers.map(rollNum => studentMap[rollNum]).filter(Boolean)
+  })) || [];
+
+  return {
+    exam: {
+      _id: exam._id,
+      title: exam.title,
+      description: exam.description,
+      totalMarks: exam.totalMarks,
+      duration: exam.duration,
+      mode: exam.mode,
+      startTime: exam.startTime,
+      endTime: exam.endTime,
+      status: exam.status,
+      generationStatus: exam.generationStatus,
+      numberOfSets: exam.numberOfSets
+    },
+    class: {
+      _id: exam.classId._id,
+      name: exam.classId.name || exam.classId.title,
+      code: exam.classId.code
+    },
+    teacher: {
+      _id: exam.createdBy._id,
+      name: exam.createdBy.name,
+      email: exam.createdBy.email
+    },
+    questionSource: exam.questionSource || null,
+    setMap: exam.setMap || [],
+    setDetails,
+    totalStudents: enrollments.length
+  };
+}
+
 module.exports = {
   createExam,
   publishExam,
@@ -261,5 +332,6 @@ module.exports = {
   getClassExams,
   getStudentExams,
   generateQuestionSets,
-  resetExamGeneration
+  resetExamGeneration,
+  getExamPreparationData
 };

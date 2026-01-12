@@ -11,7 +11,8 @@ const {
   generateQuestionPapers, 
   triggerEvaluation,
   generateSets,
-  resetGeneration
+  resetGeneration,
+  getPreparationData
 } = require('../controllers/exam.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 const { teacherOnly } = require('../middleware/role.middleware');
@@ -57,5 +58,12 @@ router.post('/:id/generate-sets', authenticate, teacherOnly, generateSets);
  * @access Teacher only (exam creator only)
  */
 router.post('/:id/reset-generation', authenticate, teacherOnly, resetGeneration);
+
+/**
+ * @route GET /api/v2/exams/:id/preparation-data
+ * @desc Get exam preparation data with roll-to-set mapping (PHASE 6.2.5)
+ * @access Teacher only
+ */
+router.get('/:id/preparation-data', authenticate, teacherOnly, getPreparationData);
 
 module.exports = router;
