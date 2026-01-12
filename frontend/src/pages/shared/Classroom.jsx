@@ -761,7 +761,7 @@ function ExamsTab({ classId, isTeacher }) {
   };
 
   const handleGeneratePapers = async (examId) => {
-    const confirm = window.confirm('Generate AI question papers for all students? This cannot be undone.');
+    const confirm = window.confirm('Generate question papers? This will create question sets and distribute students.');
     if (!confirm) return;
 
     try {
@@ -773,7 +773,7 @@ function ExamsTab({ classId, isTeacher }) {
       
       const result = await examAPI.generateQuestionPapers(examId, teacherId);
       
-      alert(`Success! Generated ${result.data?.totalPapers || 0} question papers.`);
+      alert(`Success! Generated ${result.data?.numberOfSets || 0} question sets.`);
       loadExams(); // Reload to update status
     } catch (error) {
       console.error('Failed to generate papers:', error);
@@ -781,6 +781,41 @@ function ExamsTab({ classId, isTeacher }) {
       alert(`Error: ${errorMsg}`);
     } finally {
       setGeneratingPapers(prev => ({ ...prev, [examId]: false }));
+    }
+  };
+
+  const handleGenerateStudentPapers = async (examId) => {
+    const confirm = window.confirm('Generate student-specific PDF papers? This may take a few moments.');
+    if (!confirm) return;
+
+    try {
+      setGeneratingPapers(prev => ({ ...prev, [examId]: true }));
+      
+      const result = await examAPI.generateStudentPapers(examId);
+      
+      alert(`Success! Generated ${result.data?.papersGenerated || 0} student papers.`);
+      loadExams();
+    } catch (error) {
+      console.error('Failed to generate student papers:', error);
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to generate student papers';
+      alert(`Error: ${errorMsg}`);
+    } finally {
+      setGeneratingPapers(prev => ({ ...prev, [examId]: false }));
+    }
+  };
+
+  const handlePublishExam = async (examId) => {
+    const confirm = window.confirm('Publish this exam? Students will be able to see and download their papers.');
+    if (!confirm) return;
+
+    try {
+      await examAPI.publishExam(examId);
+      alert('Exam published successfully!');
+      loadExams();
+    } catch (error) {
+      console.error('Failed to publish exam:', error);
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to publish exam';
+      alert(`Error: ${errorMsg}`);
     }
   };
 
@@ -889,30 +924,71 @@ function ExamsTab({ classId, isTeacher }) {
               <div className="flex items-center gap-3">
                 {isTeacher ? (
                   <>
+                    {/* PHASE 6 - Draft Status: Generate Question Papers */}
                     {exam.status === 'draft' && (
-                      <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
-                        Edit Draft
-                      </button>
+                      <>
+                        <button 
+                          onClick={() => handleGeneratePapers(exam._id)}
+                          disabled={generatingPapers[exam._id]}
+                          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-2"
+                        >
+                          {generatingPapers[exam._id] ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <FileText className="w-4 h-4" />
+                              Generate Question Papers
+                            </>
+                          )}
+                        </button>
+                      </>
                     )}
+
+                    {/* PHASE 6 - Prepared Status: Generate Student Papers */}
+                    {exam.status === 'prepared' && (
+                      <>
+                        <button 
+                          onClick={() => handleGenerateStudentPapers(exam._id)}
+                          disabled={generatingPapers[exam._id]}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-2"
+                        >
+                          {generatingPapers[exam._id] ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Generating Papers...
+                            </>
+                          ) : (
+                            <>
+                              <FileText className="w-4 h-4" />
+                              Generate Student Papers
+                            </>
+                          )}
+                        </button>
+                      </>
+                    )}
+
+                    {/* PHASE 6 - Generated Status: Publish */}
+                    {exam.status === 'generated' && (
+                      <>
+                        <button 
+                          onClick={() => handlePublishExam(exam._id)}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-2"
+                        >
+                          Publish Exam
+                        </button>
+                      </>
+                    )}
+
+                    {/* Published Status */}
                     {exam.status === 'published' && (
-                      <button 
-                        onClick={() => handleGeneratePapers(exam._id)}
-                        disabled={generatingPapers[exam._id]}
-                        className="px-4 py-2 bg-[#1f3c88] text-white rounded-lg hover:bg-[#152a5e] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-2"
-                      >
-                        {generatingPapers[exam._id] ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <FileText className="w-4 h-4" />
-                            Generate Question Papers
-                          </>
-                        )}
-                      </button>
+                      <span className="px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium border border-green-200">
+                        📡 Exam Live
+                      </span>
                     )}
+
                     <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
                       View Details
                     </button>

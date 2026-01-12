@@ -69,6 +69,14 @@ export async function generateQuestionPapers(examId, teacherId) {
   return response.data;
 }
 
+/**
+ * Generate student-specific PDF papers (Phase 6.4)
+ */
+export async function generateStudentPapers(examId) {
+  const response = await apiClient.post(`/exams/${examId}/generate-student-papers`);
+  return response.data;
+}
+
 export const examAPI = {
   createExam,
   publishExam,
@@ -78,6 +86,7 @@ export const examAPI = {
   updateExam,
   deleteExam,
   generateQuestionPapers,
+  generateStudentPapers,
 };
 
 export default examAPI;
