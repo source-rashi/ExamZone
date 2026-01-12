@@ -7,6 +7,7 @@ import * as announcementAPI from '../../api/announcement.api';
 import * as assignmentAPI from '../../api/assignment.api';
 import examAPI from '../../api/exam.api';
 import ViewPapersModal from '../../components/teacher/ViewPapersModal';
+import ExamDetailsModal from '../../components/teacher/ExamDetailsModal';
 import { 
   BookOpen, 
   Users, 
@@ -743,6 +744,8 @@ function ExamsTab({ classId, isTeacher }) {
   const [loading, setLoading] = useState(true);
   const [generatingPapers, setGeneratingPapers] = useState({}); // Track generation per exam
   const [viewPapersModal, setViewPapersModal] = useState({ open: false, examId: null });
+  const [examDetailsModal, setExamDetailsModal] = useState({ open: false, examId: null });
+  const [examDetailsModal, setExamDetailsModal] = useState({ open: false, examId: null });
 
   useEffect(() => {
     loadExams();
@@ -1043,7 +1046,13 @@ function ExamsTab({ classId, isTeacher }) {
                       </span>
                     )}
 
-                    <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                    <button 
+                      onClick={() => {
+                        console.log('[Classroom] Opening ExamDetailsModal for exam:', exam._id);
+                        setExamDetailsModal({ open: true, examId: exam._id });
+                      }}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+                    >
                       View Details
                     </button>
                   </>
@@ -1056,7 +1065,13 @@ function ExamsTab({ classId, isTeacher }) {
                           Start Exam
                         </button>
                       )}
-                    <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                    <button 
+                      onClick={() => {
+                        console.log('[Classroom] Opening ExamDetailsModal for exam:', exam._id);
+                        setExamDetailsModal({ open: true, examId: exam._id });
+                      }}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+                    >
                       View Details
                     </button>
                   </>
@@ -1080,6 +1095,25 @@ function ExamsTab({ classId, isTeacher }) {
             }}
           />
         </>
+      )}
+
+      {/* Exam Details Modal */}
+      {examDetailsModal.open && (
+        <ExamDetailsModal
+          examId={examDetailsModal.examId}
+          isOpen={examDetailsModal.open}
+          onClose={() => {
+            console.log('[Classroom] Closing ExamDetailsModal');
+            setExamDetailsModal({ open: false, examId: null });
+          }}
+          onUpdate={(updatedExam) => {
+            console.log('[Classroom] Exam updated:', updatedExam);
+            // Update the exam in the list
+            setExams(prev =>
+              prev.map(e => e._id === updatedExam._id ? updatedExam : e)
+            );
+          }}
+        />
       )}
     </div>
   );
