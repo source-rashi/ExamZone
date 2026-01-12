@@ -1,0 +1,186 @@
+{
+  "examId": "6964f65ce02e10769e60a918",
+  "examTitle": "d",
+  "description": "xzc",
+  "className": "CSE12",
+  "studentInfo": {
+    "id": "69651a3802ab13d07c6b0fe7",
+    "name": "Bob Smith",
+    "rollNumber": 102
+  },
+  "setInfo": {
+    "setId": "SET-001",
+    "setName": "Set SET-001"
+  },
+  "questions": [
+    {
+      "number": 1,
+      "text": "Sample question 1: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Physics",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 2,
+      "text": "Sample question 2: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Mathematics",
+      "difficulty": "medium",
+      "options": []
+    },
+    {
+      "number": 3,
+      "text": "Sample question 3: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Chemistry",
+      "difficulty": "hard",
+      "options": []
+    },
+    {
+      "number": 4,
+      "text": "Sample question 4: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Biology",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 5,
+      "text": "Sample question 5: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Physics",
+      "difficulty": "medium",
+      "options": []
+    },
+    {
+      "number": 6,
+      "text": "Sample question 6: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Mathematics",
+      "difficulty": "hard",
+      "options": []
+    },
+    {
+      "number": 7,
+      "text": "Sample question 7: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Chemistry",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 8,
+      "text": "Sample question 8: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Biology",
+      "difficulty": "medium",
+      "options": []
+    },
+    {
+      "number": 9,
+      "text": "Sample question 9: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Physics",
+      "difficulty": "hard",
+      "options": []
+    },
+    {
+      "number": 10,
+      "text": "Sample question 10: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Mathematics",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 11,
+      "text": "Sample question 11: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Chemistry",
+      "difficulty": "medium",
+      "options": []
+    },
+    {
+      "number": 12,
+      "text": "Sample question 12: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Biology",
+      "difficulty": "hard",
+      "options": []
+    },
+    {
+      "number": 13,
+      "text": "Sample question 13: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Physics",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 14,
+      "text": "Sample question 14: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Mathematics",
+      "difficulty": "medium",
+      "options": []
+    },
+    {
+      "number": 15,
+      "text": "Sample question 15: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Chemistry",
+      "difficulty": "hard",
+      "options": []
+    },
+    {
+      "number": 16,
+      "text": "Sample question 16: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Biology",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 17,
+      "text": "Sample question 17: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Physics",
+      "difficulty": "medium",
+      "options": []
+    },
+    {
+      "number": 18,
+      "text": "Sample question 18: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Mathematics",
+      "difficulty": "hard",
+      "options": []
+    },
+    {
+      "number": 19,
+      "text": "Sample question 19: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Chemistry",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 20,
+      "text": "Sample question 20: Explain the concept in detail.",
+      "marks": 5,
+      "topic": "Biology",
+      "difficulty": "medium",
+      "options": []
+    }
+  ],
+  "examMetadata": {
+    "totalMarks": 100,
+    "duration": 60,
+    "startTime": "2026-01-12T15:27:00.000Z",
+    "endTime": "2026-01-12T17:30:00.000Z",
+    "attemptsAllowed": 1
+  },
+  "instructions": "",
+  "generatedAt": "2026-01-12T16:03:50.414Z"
+}

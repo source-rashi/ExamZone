@@ -985,7 +985,10 @@ function ExamsTab({ classId, isTeacher }) {
                     {exam.status === 'prepared' && (
                       <>
                         <button 
-                          onClick={() => setViewPapersModal({ open: true, examId: exam._id })}
+                          onClick={() => {
+                            console.log('[Classroom] Opening ViewPapersModal for exam:', exam._id);
+                            setViewPapersModal({ open: true, examId: exam._id });
+                          }}
                           className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium flex items-center gap-2 border border-gray-300"
                         >
                           <FileText className="w-4 h-4" />
@@ -1015,7 +1018,10 @@ function ExamsTab({ classId, isTeacher }) {
                     {exam.status === 'generated' && (
                       <>
                         <button 
-                          onClick={() => setViewPapersModal({ open: true, examId: exam._id })}
+                          onClick={() => {
+                            console.log('[Classroom] Opening ViewPapersModal for exam:', exam._id);
+                            setViewPapersModal({ open: true, examId: exam._id });
+                          }}
                           className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium flex items-center gap-2 border border-gray-300"
                         >
                           <FileText className="w-4 h-4" />
@@ -1063,11 +1069,17 @@ function ExamsTab({ classId, isTeacher }) {
 
       {/* View Papers Modal */}
       {viewPapersModal.open && (
-        <ViewPapersModal
-          examId={viewPapersModal.examId}
-          isOpen={viewPapersModal.open}
-          onClose={() => setViewPapersModal({ open: false, examId: null })}
-        />
+        <>
+          {console.log('[Classroom] Rendering ViewPapersModal:', viewPapersModal)}
+          <ViewPapersModal
+            examId={viewPapersModal.examId}
+            isOpen={viewPapersModal.open}
+            onClose={() => {
+              console.log('[Classroom] Closing ViewPapersModal');
+              setViewPapersModal({ open: false, examId: null });
+            }}
+          />
+        </>
       )}
     </div>
   );

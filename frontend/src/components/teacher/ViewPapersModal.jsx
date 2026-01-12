@@ -15,6 +15,7 @@ export default function ViewPapersModal({ examId, isOpen, onClose }) {
 
   useEffect(() => {
     if (isOpen && examId) {
+      console.log('[ViewPapersModal] Loading details for exam:', examId);
       loadExamDetails();
     }
   }, [examId, isOpen]);
@@ -22,10 +23,14 @@ export default function ViewPapersModal({ examId, isOpen, onClose }) {
   const loadExamDetails = async () => {
     try {
       setLoading(true);
+      setError('');
+      console.log('[ViewPapersModal] Fetching exam details...');
       const result = await examAPI.getExamDetails(examId);
+      console.log('[ViewPapersModal] Received data:', result);
       setExamDetails(result.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load exam details');
+      console.error('[ViewPapersModal] Error loading details:', err);
+      setError(err.response?.data?.message || err.message || 'Failed to load exam details');
     } finally {
       setLoading(false);
     }
@@ -69,13 +74,21 @@ export default function ViewPapersModal({ examId, isOpen, onClose }) {
         {/* Content */}
         <div className="overflow-y-auto max-h-[calc(85vh-80px)]">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1f3c88]"></div>
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1f3c88] mb-4"></div>
+              <p className="text-gray-600">Loading exam details...</p>
             </div>
           ) : error ? (
             <div className="p-6">
               <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
-                {error}
+                <p className="font-medium mb-2">Error loading exam details</p>
+                <p className="text-sm">{error}</p>
+                <button
+                  onClick={loadExamDetails}
+                  className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                >
+                  Retry
+                </button>
               </div>
             </div>
           ) : examDetails ? (
@@ -273,7 +286,20 @@ export default function ViewPapersModal({ examId, isOpen, onClose }) {
                 )}
               </div>
             </>
-          ) : null}
+          ) : (
+            <div className="p-6">
+              <div className="text-center py-12">
+                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-500 font-medium">No exam data available</p>
+                <button
+                  onClick={loadExamDetails}
+                  className="mt-4 px-4 py-2 bg-[#1f3c88] text-white rounded hover:bg-[#152a5e] transition-colors"
+                >
+                  Load Details
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
