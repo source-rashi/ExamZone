@@ -64,7 +64,46 @@ const examSchema = new mongoose.Schema({
     default: 1,
     min: 1
   },
-  // PHASE 6.3.9 - Per-Set Configuration (Priority-Driven Construction)
+  // PHASE 6.3.10 - Exam Configuration Binding & Marks Enforcement
+  paperConfig: {
+    questionsPerSet: {
+      type: Number,
+      required: true,
+      min: 1,
+      default: 20
+    },
+    totalMarksPerSet: {
+      type: Number,
+      required: true,
+      min: 1,
+      default: 100
+    },
+    marksStrategy: {
+      type: String,
+      enum: ['equal', 'manual'],
+      default: 'equal'
+    },
+    defaultMarksPerQuestion: {
+      type: Number,
+      default: 5
+    },
+    subject: {
+      type: String,
+      default: 'General',
+      trim: true
+    },
+    difficulty: {
+      type: String,
+      enum: ['easy', 'medium', 'hard', 'mixed'],
+      default: 'mixed'
+    },
+    instructions: {
+      type: String,
+      default: '',
+      trim: true
+    }
+  },
+  // PHASE 6.3.9 - Legacy per-set fields (kept for backward compatibility)
   questionsPerSet: {
     type: Number,
     default: 20,
