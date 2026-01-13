@@ -8,7 +8,7 @@
 
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('../middleware/auth.middleware');
+const { authenticate } = require('../middleware/auth.middleware');
 const { isTeacher } = require('../middleware/role.middleware');
 const Exam = require('../models/Exam');
 const Enrollment = require('../models/Enrollment');
@@ -21,7 +21,7 @@ const fs = require('fs').promises;
  * 
  * Student can download only their assigned paper
  */
-router.get('/student/:examId', authMiddleware, async (req, res) => {
+router.get('/student/:examId', authenticate, async (req, res) => {
   try {
     const { examId } = req.params;
     const studentId = req.user.userId;
@@ -73,7 +73,7 @@ router.get('/student/:examId', authMiddleware, async (req, res) => {
  * Teacher can download any student's paper
  */
 router.get('/exam/:examId/student/:rollNumber', 
-  authMiddleware, 
+  authenticate, 
   isTeacher, 
   async (req, res) => {
     try {
@@ -136,7 +136,7 @@ router.get('/exam/:examId/student/:rollNumber',
  * Teacher can download master copy of any set
  */
 router.get('/exam/:examId/set/:setId', 
-  authMiddleware, 
+  authenticate, 
   isTeacher, 
   async (req, res) => {
     try {
@@ -202,7 +202,7 @@ router.get('/exam/:examId/set/:setId',
  * Returns metadata for all student papers and set masters
  */
 router.get('/exam/:examId/list', 
-  authMiddleware, 
+  authenticate, 
   isTeacher, 
   async (req, res) => {
     try {
