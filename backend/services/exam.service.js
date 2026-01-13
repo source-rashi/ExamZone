@@ -11,7 +11,11 @@ const Enrollment = require('../models/Enrollment');
  * Create a new exam (draft state)
  */
 async function createExam(data, teacherId) {
-  const { classId, title, description, mode, startTime, endTime, duration, attemptsAllowed, numberOfSets, totalMarks, questionSource, questionSourceType, questionContent } = data;
+  const { 
+    classId, title, description, mode, startTime, endTime, duration, 
+    attemptsAllowed, numberOfSets, totalMarks, questionSource, 
+    questionSourceType, questionContent, paperConfig 
+  } = data;
 
   // Verify class exists
   const classDoc = await Class.findById(classId);
@@ -22,6 +26,22 @@ async function createExam(data, teacherId) {
   // Verify teacher owns this class
   if (classDoc.teacher.toString() !== teacherId) {
     throw new Error('Only the class teacher can create exams');
+  }
+
+  // PHASE 6.3.11 - Validate paperConfig if provided
+  if (paperConfig) {
+    if (!paperConfig.subject || !paperConfig.subject.trim()) {
+      throw new Error('Subject is required in paperConfig');
+    }
+    if (!paperConfig.difficulty) {
+      throw new Error('Difficulty level is required in paperConfig');
+    }
+    if (!paperConfig.questionsPerSet || paperConfig.questionsPerSet <= 0) {
+      throw new Error('Questions per set must be greater than 0');
+    }
+    if (!paperConfig.totalMarksPerSet || paperConfig.totalMarksPerSet <= 0) {
+      throw new Error('Total marks per set must be greater than 0');
+    }
   }
 
   // Validate times if provided
@@ -68,6 +88,7 @@ async function createExam(data, teacherId) {
     totalMarks: parseInt(totalMarks) || 100,
     questionMode: data.questionMode || 'teacher_provided', // PHASE 6.3.6
     questionSource: questionSourceData,
+    paperConfig: paperConfig || undefined, // PHASE 6.3.11 - Include paperConfig
     generationStatus: 'none',
     lockedAfterGeneration: false,
     status: 'draft'
@@ -128,6 +149,11 @@ async function updateExam(examId, data, teacherId) {
     attemptsAllowed: data.attemptsAllowed !== undefined ? parseInt(data.attemptsAllowed) : exam.attemptsAllowed,
     totalMarks: data.totalMarks !== undefined ? parseInt(data.totalMarks) : exam.totalMarks
   };
+
+  // PHASE 6.3.11 - Allow paperConfig updates if provided
+  if (data.paperConfig !== undefined) {
+    allowedUpdates.paperConfig = data.paperConfig;
+  }
 
   // Allow numberOfSets and questionSource only if not locked
   if (!exam.lockedAfterGeneration) {

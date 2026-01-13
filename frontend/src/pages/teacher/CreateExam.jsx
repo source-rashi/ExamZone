@@ -846,12 +846,6 @@ export default function CreateExam() {
                     ✓ No default values used - all configuration from teacher input
                   </div>
                 </div>
-                    <div>
-                      <dt className="text-sm text-gray-600">Number of Sets</dt>
-                      <dd className="font-medium text-gray-900">{formData.numberOfSets}</dd>
-                    </div>
-                  </dl>
-                </div>
 
                 <div className="border-b pb-4">
                   <h3 className="font-semibold text-gray-900 mb-3">Question Source</h3>
