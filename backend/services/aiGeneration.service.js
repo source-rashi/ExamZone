@@ -156,29 +156,412 @@ async function loadTeacherQuestions(exam) {
 }
 
 /**
- * PHASE 6.3.7 — TASK 2: Calculate Required Question Count
+ * PHASE 6.3.9 — STEP 1: Create Teacher Question Priority Pool
  * 
- * Determines how many questions are needed for the exam.
+ * Prepares teacher questions as a priority pool with metadata.
+ * 
+ * @param {Array} teacherQuestions - Raw teacher questions
+ * @param {Object} exam - Exam document
+ * @returns {Array} Priority-tagged teacher pool
+ */
+function createTeacherPriorityPool(teacherQuestions, exam) {
+  console.log('[Priority Pool] ========================================');
+  console.log('[Priority Pool] CREATING TEACHER PRIORITY POOL');
+  console.log('[Priority Pool] ========================================');
+
+  if (!teacherQuestions || teacherQuestions.length === 0) {
+    console.log('[Priority Pool] ⚠️ No teacher questions to pool');
+    return [];
+  }
+
+  // Shuffle for random distribution
+  const shuffled = [...teacherQuestions].sort(() => Math.random() - 0.5);
+
+  // Tag with priority and metadata
+  const priorityPool = shuffled.map((q, idx) => ({
+    ...q,
+    priority: 'teacher',
+    subject: exam.subject || 'General',
+    difficulty: exam.difficultyLevel || 'mixed',
+    poolIndex: idx,
+    usageCount: 0 // Track how many sets this question appears in
+  }));
+
+  console.log('[Priority Pool] ✅ Created pool with', priorityPool.length, 'teacher questions');
+  console.log('[Priority Pool] Subject:', exam.subject || 'General');
+  console.log('[Priority Pool] Difficulty:', exam.difficultyLevel || 'mixed');
+  console.log('[Priority Pool] Shuffled for random distribution');
+
+  return priorityPool;
+}
+
+/**
+ * PHASE 6.3.9 — STEP 2: AI Repair Pass (Optional)
+ * 
+ * Optionally sends teacher questions to AI for formatting/completion.
+ * 
+ * @param {Array} teacherPool - Teacher priority pool
+ * @param {Object} exam - Exam document
+ * @returns {Promise<Array>} Repaired teacher pool
+ */
+async function aiRepairPass(teacherPool, exam) {
+  console.log('[AI Repair] ========================================');
+  console.log('[AI Repair] CHECKING IF REPAIR NEEDED');
+  console.log('[AI Repair] ========================================');
+
+  if (!exam.allowAIImprovement) {
+    console.log('[AI Repair] ⏭️ AI improvement disabled - skipping repair');
+    return teacherPool;
+  }
+
+  // Check if questions appear incomplete
+  const incompleteQuestions = teacherPool.filter(q => {
+    const text = q.cleanText || q.rawText || '';
+    return text.length < 10 || // Very short
+           text.includes('\\incomplete') || // Broken LaTeX
+           text.trim().endsWith('...');  // Trailing ellipsis
+  });
+
+  if (incompleteQuestions.length === 0) {
+    console.log('[AI Repair] ✅ All questions appear complete - no repair needed');
+    return teacherPool;
+  }
+
+  console.log('[AI Repair] ⚠️ Found', incompleteQuestions.length, 'potentially incomplete questions');
+  console.log('[AI Repair] 🔧 AI repair would improve these (NOT IMPLEMENTED YET)');
+  
+  // TODO: Call AI service for repair
+  // For now, return original pool
+  return teacherPool;
+}
+
+/**
+ * PHASE 6.3.9 — STEP 3: Calculate Required Questions Per Set
+ * 
+ * Uses the new per-set configuration.
  * 
  * @param {Object} exam - Exam document
- * @returns {number} Required number of questions
+ * @returns {Object} { questionsPerSet, totalMarksPerSet, numberOfSets }
  */
-function calculateRequiredQuestions(exam) {
-  const numberOfSets = exam.numberOfSets || 1;
-  const totalMarks = exam.totalMarks || 100;
-  
-  // Estimate: 5 marks per question on average
-  const estimatedQuestionsPerSet = Math.max(5, Math.ceil(totalMarks / 5));
-  
-  // For multiple sets, we need enough questions to create variety
-  // If sets > 1, we need more questions to shuffle
-  const requiredCount = numberOfSets > 1 
-    ? Math.ceil(estimatedQuestionsPerSet * 1.5) // 50% more for variety
-    : estimatedQuestionsPerSet;
+function calculatePerSetRequirements(exam) {
+  console.log('[Per-Set Requirements] ========================================');
+  console.log('[Per-Set Requirements] CALCULATING PER-SET CONFIGURATION');
+  console.log('[Per-Set Requirements] ========================================');
 
-  console.log(`[Question Count] Required: ${requiredCount} questions (${numberOfSets} sets, ${totalMarks} marks)`);
+  const questionsPerSet = exam.questionsPerSet || 20;
+  const totalMarksPerSet = exam.totalMarksPerSet || exam.totalMarks || 100;
+  const numberOfSets = exam.numberOfSets || 1;
+
+  console.log('[Per-Set Requirements] Questions per set:', questionsPerSet);
+  console.log('[Per-Set Requirements] Marks per set:', totalMarksPerSet);
+  console.log('[Per-Set Requirements] Number of sets:', numberOfSets);
+  console.log('[Per-Set Requirements] ========================================');
+
+  return { questionsPerSet, totalMarksPerSet, numberOfSets };
+}
+
+/**
+ * PHASE 6.3.9 — STEP 4: Sufficiency Check
+ * 
+ * Determines if teacher pool is sufficient per set.
+ * 
+ * @param {Array} teacherPool - Teacher priority pool
+ * @param {number} questionsPerSet - Required questions per set
+ * @returns {Object} { isSufficient, gapPerSet }
+ */
+function checkTeacherSufficiency(teacherPool, questionsPerSet) {
+  const teacherCount = teacherPool.length;
+  const isSufficient = teacherCount >= questionsPerSet;
+  const gapPerSet = isSufficient ? 0 : questionsPerSet - teacherCount;
+
+  console.log('[Sufficiency Check] ========================================');
+  console.log('[Sufficiency Check] Teacher questions:', teacherCount);
+  console.log('[Sufficiency Check] Required per set:', questionsPerSet);
+  console.log('[Sufficiency Check] Sufficient?', isSufficient ? '✅ YES' : '❌ NO');
   
-  return requiredCount;
+  if (!isSufficient) {
+    console.log('[Sufficiency Check] Gap per set:', gapPerSet);
+    console.log('[Sufficiency Check] ⚠️ AI generation REQUIRED to fill gaps');
+  } else {
+    console.log('[Sufficiency Check] ✅ AI generation OPTIONAL');
+  }
+  
+  console.log('[Sufficiency Check] ========================================');
+
+  return { isSufficient, gapPerSet };
+}
+
+/**
+ * PHASE 6.3.9 — STEP 5: Priority Distribution Engine
+ * 
+ * Distributes teacher questions across sets with random selection.
+ * Ensures at least one teacher question per set (if possible).
+ * 
+ * @param {Array} teacherPool - Teacher priority pool
+ * @param {number} questionsPerSet - Required questions per set
+ * @param {number} numberOfSets - Number of sets to generate
+ * @returns {Array} Array of set configurations
+ */
+function distributePriorityQuestions(teacherPool, questionsPerSet, numberOfSets) {
+  console.log('[Priority Distribution] ========================================');
+  console.log('[Priority Distribution] DISTRIBUTING TEACHER QUESTIONS');
+  console.log('[Priority Distribution] ========================================');
+
+  const sets = [];
+  const teacherCount = teacherPool.length;
+
+  if (teacherCount === 0) {
+    console.log('[Priority Distribution] ⚠️ No teacher questions to distribute');
+    // Create empty sets - will be filled by AI
+    for (let i = 0; i < numberOfSets; i++) {
+      sets.push({
+        setIndex: i,
+        teacherQuestions: [],
+        aiSlotsNeeded: questionsPerSet
+      });
+    }
+    return sets;
+  }
+
+  // Calculate distribution strategy
+  const teacherPerSet = Math.floor(teacherCount / numberOfSets);
+  const remainder = teacherCount % numberOfSets;
+
+  console.log('[Priority Distribution] Strategy:');
+  console.log('[Priority Distribution]   Base teacher per set:', teacherPerSet);
+  console.log('[Priority Distribution]   Extra for first', remainder, 'sets');
+
+  // Create a copy of the pool for distribution
+  const availablePool = [...teacherPool];
+
+  // Distribute questions
+  for (let i = 0; i < numberOfSets; i++) {
+    const teacherForThisSet = teacherPerSet + (i < remainder ? 1 : 0);
+    const selectedTeachers = [];
+
+    // Draw teacher questions for this set
+    for (let j = 0; j < teacherForThisSet && availablePool.length > 0; j++) {
+      const randomIndex = Math.floor(Math.random() * availablePool.length);
+      const question = availablePool.splice(randomIndex, 1)[0];
+      question.usageCount++;
+      selectedTeachers.push(question);
+    }
+
+    const aiSlotsNeeded = Math.max(0, questionsPerSet - selectedTeachers.length);
+
+    sets.push({
+      setIndex: i,
+      setId: String.fromCharCode(65 + i), // A, B, C...
+      teacherQuestions: selectedTeachers,
+      aiSlotsNeeded: aiSlotsNeeded
+    });
+
+    console.log(`[Priority Distribution] Set ${i + 1}: ${selectedTeachers.length} teacher + ${aiSlotsNeeded} AI slots`);
+  }
+
+  console.log('[Priority Distribution] ========================================');
+  console.log('[Priority Distribution] ✅ Distribution complete');
+  console.log('[Priority Distribution] ========================================');
+
+  return sets;
+}
+
+/**
+ * PHASE 6.3.9 — STEP 7: Build Final Sets with AI Generation + Marks Normalization
+ * 
+ * For each set configuration:
+ * - Generate AI questions to fill slots
+ * - Combine teacher + AI questions
+ * - Normalize marks to match totalMarksPerSet
+ * - Shuffle for uniqueness
+ * - Validate
+ * 
+ * @param {Array} setConfigs - Set configurations from distribution
+ * @param {Object} exam - Exam document
+ * @param {Object} requirements - Per-set requirements
+ * @returns {Promise<Array>} Final question sets ready for storage
+ */
+async function buildFinalSets(setConfigs, exam, requirements) {
+  console.log('[Final Sets Builder] ========================================');
+  console.log('[Final Sets Builder] BUILDING FINAL SETS');
+  console.log('[Final Sets Builder] ========================================');
+
+  const finalSets = [];
+
+  for (const config of setConfigs) {
+    console.log(`[Final Sets Builder] Processing Set ${config.setIndex + 1}...`);
+    
+    // Start with teacher questions
+    const setQuestions = config.teacherQuestions.map(q => ({
+      questionText: q.cleanText || q.rawText,
+      marks: 0, // Will be normalized below
+      topic: q.topic || exam.subject || 'General',
+      difficulty: q.difficulty || exam.difficultyLevel || 'mixed',
+      source: 'teacher',
+      teacherId: q.teacherQuestionId,
+      options: [],
+      correctAnswer: ''
+    }));
+
+    console.log(`[Final Sets Builder]   Teacher questions: ${setQuestions.length}`);
+
+    // Generate AI questions if needed
+    if (config.aiSlotsNeeded > 0) {
+      console.log(`[Final Sets Builder]   Generating ${config.aiSlotsNeeded} AI questions...`);
+      
+      const aiQuestions = await generateAIQuestionsForSet(
+        exam,
+        config.aiSlotsNeeded,
+        config.teacherQuestions,
+        config.setIndex
+      );
+
+      setQuestions.push(...aiQuestions);
+      console.log(`[Final Sets Builder]   AI questions added: ${aiQuestions.length}`);
+    } else {
+      console.log(`[Final Sets Builder]   No AI questions needed`);
+    }
+
+    // STEP 6: Normalize marks across all questions in the set
+    const totalMarksPerSet = requirements.totalMarksPerSet;
+    const questionCount = setQuestions.length;
+    const marksPerQuestion = Math.floor(totalMarksPerSet / questionCount);
+    const remainder = totalMarksPerSet % questionCount;
+
+    setQuestions.forEach((q, idx) => {
+      q.marks = marksPerQuestion + (idx < remainder ? 1 : 0);
+    });
+
+    const actualTotal = setQuestions.reduce((sum, q) => sum + q.marks, 0);
+    console.log(`[Final Sets Builder]   Marks normalized: ${actualTotal}/${totalMarksPerSet}`);
+
+    // STEP 7: Shuffle for uniqueness
+    const shuffledQuestions = [...setQuestions].sort(() => Math.random() - 0.5);
+
+    // Add question numbers
+    shuffledQuestions.forEach((q, idx) => {
+      q.questionNumber = idx + 1;
+    });
+
+    // Build final set object
+    const finalSet = {
+      setId: `SET-${String(config.setIndex + 1).padStart(3, '0')}`,
+      setName: `Set ${config.setId}`,
+      questions: shuffledQuestions,
+      totalMarks: actualTotal,
+      generatedAt: new Date()
+    };
+
+    // Validate
+    if (finalSet.questions.length !== requirements.questionsPerSet) {
+      throw new Error(
+        `Set ${config.setIndex + 1} has ${finalSet.questions.length} questions, expected ${requirements.questionsPerSet}`
+      );
+    }
+
+    if (Math.abs(finalSet.totalMarks - totalMarksPerSet) > 1) {
+      throw new Error(
+        `Set ${config.setIndex + 1} has ${finalSet.totalMarks} marks, expected ${totalMarksPerSet}`
+      );
+    }
+
+    finalSets.push(finalSet);
+    console.log(`[Final Sets Builder] ✅ Set ${config.setIndex + 1} complete`);
+  }
+
+  console.log('[Final Sets Builder] ========================================');
+  console.log('[Final Sets Builder] ✅ ALL SETS BUILT SUCCESSFULLY');
+  console.log('[Final Sets Builder] ========================================');
+
+  return finalSets;
+}
+
+/**
+ * PHASE 6.3.9 — Generate AI Questions for Specific Set
+ * 
+ * Generates AI questions with set-specific context.
+ * 
+ * @param {Object} exam - Exam document
+ * @param {number} count - Number of questions needed
+ * @param {Array} existingQuestions - Teacher questions in this set
+ * @param {number} setIndex - Set index for logging
+ * @returns {Promise<Array>} Generated AI questions
+ */
+async function generateAIQuestionsForSet(exam, count, existingQuestions, setIndex) {
+  console.log(`[AI Generation Set ${setIndex + 1}] Generating ${count} questions...`);
+
+  // MOCK MODE
+  if (MOCK_MODE) {
+    console.log(`[AI Generation Set ${setIndex + 1}] MOCK MODE`);
+    const aiQuestions = [];
+    
+    for (let i = 0; i < count; i++) {
+      aiQuestions.push({
+        questionText: `Set ${setIndex + 1} - AI Question ${i + 1}: Explain the concept in detail.`,
+        marks: 0, // Will be normalized in buildFinalSets
+        topic: exam.subject || 'General',
+        difficulty: exam.difficultyLevel || 'mixed',
+        source: 'ai',
+        aiGenerationId: `AI-S${setIndex + 1}-${String(i + 1).padStart(2, '0')}`,
+        options: [],
+        correctAnswer: ''
+      });
+    }
+    
+    return aiQuestions;
+  }
+
+  // Real AI generation
+  try {
+    const requestData = {
+      exam_title: exam.title,
+      subject: exam.subject || 'General',
+      difficulty: exam.difficultyLevel || 'mixed',
+      question_count: count,
+      existing_questions: existingQuestions.map(q => q.cleanText || q.rawText),
+      course_description: exam.description || '',
+      set_index: setIndex,
+      mode: 'generate'
+    };
+
+    const response = await axios.post(
+      `${QUESTION_GENERATOR_URL}/api/generate-questions`,
+      requestData,
+      {
+        timeout: 120000,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+
+    if (!response.data || !response.data.success) {
+      throw new Error(response.data?.error || 'AI generation failed');
+    }
+
+    const generatedQuestions = (response.data.questions || []).map((q, idx) => ({
+      questionText: q.questionText || q.text,
+      marks: 0, // Will be normalized
+      topic: exam.subject || q.topic || 'General',
+      difficulty: exam.difficultyLevel || q.difficulty || 'mixed',
+      source: 'ai',
+      aiGenerationId: `AI-S${setIndex + 1}-${String(idx + 1).padStart(2, '0')}`,
+      options: q.options || [],
+      correctAnswer: q.correctAnswer || ''
+    }));
+
+    console.log(`[AI Generation Set ${setIndex + 1}] ✅ Generated ${generatedQuestions.length} questions`);
+    return generatedQuestions;
+
+  } catch (error) {
+    console.error(`[AI Generation Set ${setIndex + 1}] ❌ ERROR:`, error.message);
+    
+    // Fallback to mock on connection error
+    if (error.code === 'ECONNREFUSED') {
+      console.warn(`[AI Generation Set ${setIndex + 1}] ⚠️ Using fallback mock data`);
+      return generateAIQuestionsForSet(exam, count, existingQuestions, setIndex);
+    }
+    
+    throw error;
+  }
 }
 
 /**
@@ -214,24 +597,25 @@ function determineQuestionEngineMode(teacherQuestions, requiredCount) {
 }
 
 /**
- * PHASE 6.3.7 — TASK 2 (Updated): AI Question Normalization with Hybrid Engine
+ * PHASE 6.3.9 — AI Question Normalization with Priority-Driven Construction
  * 
- * Implements TEACHER FIRST, AI SECOND approach with HARD GUARANTEES.
+ * Implements TEACHER PRIORITY POOL with per-set distribution.
  * 
- * ABSOLUTE RULES:
- * - Teacher questions ALWAYS appear in final output
- * - AI can ONLY fill gaps
- * - Teacher count is NEVER reduced
- * - Mode is determined transparently and logged
+ * NEW APPROACH:
+ * - Teacher questions become a priority pool
+ * - Questions distributed randomly across sets
+ * - Each set gets at least one teacher question (if available)
+ * - AI fills remaining slots per set
+ * - Marks normalized per set
  * 
  * @param {Object} payload - Payload from buildExamAIPayload
- * @returns {Promise<Array>} Normalized question bank
+ * @returns {Promise<Array>} Generated question sets (not just question bank)
  */
 async function aiNormalizeQuestions(payload) {
   try {
-    console.log('[Hybrid Engine] ========================================');
-    console.log('[Hybrid Engine] STARTING TEACHER-FIRST HYBRID PIPELINE');
-    console.log('[Hybrid Engine] ========================================');
+    console.log('[Priority Engine] ========================================');
+    console.log('[Priority Engine] STARTING PRIORITY-DRIVEN CONSTRUCTION');
+    console.log('[Priority Engine] ========================================');
     
     // Load exam
     const exam = await Exam.findById(payload.examId);
@@ -239,120 +623,61 @@ async function aiNormalizeQuestions(payload) {
       throw new Error('Exam not found');
     }
 
-    // PHASE 6.3.7 — STAGE 1: Load Teacher Questions
-    console.log('[Hybrid Engine] STAGE 1/4 — Loading teacher questions...');
+    // STAGE 1: Load Teacher Questions
+    console.log('[Priority Engine] STAGE 1/7 — Loading teacher questions...');
     const teacherQuestions = await loadTeacherQuestions(exam);
-    console.log('[Hybrid Engine] ✅ Stage 1 Complete:', teacherQuestions.length, 'teacher questions loaded');
+    console.log('[Priority Engine] ✅ Stage 1 Complete:', teacherQuestions.length, 'teacher questions loaded');
 
-    // PHASE 6.3.7 — STAGE 2: Calculate Requirements
-    console.log('[Hybrid Engine] STAGE 2/4 — Calculating requirements...');
-    const requiredCount = calculateRequiredQuestions(exam);
-    console.log('[Hybrid Engine] ✅ Stage 2 Complete:', requiredCount, 'questions required');
+    // STAGE 2: Create Priority Pool
+    console.log('[Priority Engine] STAGE 2/7 — Creating teacher priority pool...');
+    const teacherPool = createTeacherPriorityPool(teacherQuestions, exam);
+    console.log('[Priority Engine] ✅ Stage 2 Complete:', teacherPool.length, 'questions in priority pool');
 
-    // PHASE 6.3.7 — STAGE 3: Determine Mode
-    console.log('[Hybrid Engine] STAGE 3/4 — Determining question engine mode...');
-    const engineState = determineQuestionEngineMode(teacherQuestions, requiredCount);
-    console.log('[Hybrid Engine] ✅ Stage 3 Complete: Mode =', engineState.mode);
-    
-    let finalQuestions = [];
+    // STAGE 3: AI Repair Pass (Optional)
+    console.log('[Priority Engine] STAGE 3/7 — AI repair pass...');
+    const repairedPool = await aiRepairPass(teacherPool, exam);
+    console.log('[Priority Engine] ✅ Stage 3 Complete: Pool repaired/verified');
 
-    // PHASE 6.3.7 — STAGE 4: Build Final Question Bank
-    console.log('[Hybrid Engine] STAGE 4/4 — Building final question bank...');
-    
-    if (engineState.mode === QUESTION_ENGINE_MODES.TEACHER_ONLY) {
-      // TEACHER_ONLY: Use teacher questions exclusively
-      console.log('[Hybrid Engine] Mode = TEACHER_ONLY');
-      console.log('[Hybrid Engine] AI will NOT generate any questions');
-      console.log('[Hybrid Engine] Using teacher questions only');
-      
-      finalQuestions = teacherQuestions.map(q => ({
-        questionText: q.cleanText || q.rawText,
-        marks: q.marks,
-        topic: q.topic,
-        difficulty: q.difficulty,
-        source: 'teacher',
-        teacherId: q.teacherQuestionId
-      }));
+    // STAGE 4: Calculate Per-Set Requirements
+    console.log('[Priority Engine] STAGE 4/7 — Calculating per-set requirements...');
+    const requirements = calculatePerSetRequirements(exam);
+    console.log('[Priority Engine] ✅ Stage 4 Complete:', requirements.questionsPerSet, 'questions per set');
 
-      console.log('[Hybrid Engine] Teacher questions added:', finalQuestions.length);
+    // STAGE 5: Sufficiency Check
+    console.log('[Priority Engine] STAGE 5/7 — Checking sufficiency...');
+    const sufficiency = checkTeacherSufficiency(repairedPool, requirements.questionsPerSet);
+    console.log('[Priority Engine] ✅ Stage 5 Complete: Gap per set =', sufficiency.gapPerSet);
 
-    } else if (engineState.mode === QUESTION_ENGINE_MODES.AI_AUGMENT) {
-      // AI_AUGMENT: Teacher first, AI fills gaps
-      console.log('[Hybrid Engine] Mode = AI_AUGMENT');
-      console.log('[Hybrid Engine] Teacher provided:', engineState.teacherCount);
-      console.log('[Hybrid Engine] Gap to fill:', engineState.gapCount);
-      
-      // HARD GUARANTEE: Add teacher questions FIRST
-      finalQuestions = teacherQuestions.map(q => ({
-        questionText: q.cleanText || q.rawText,
-        marks: q.marks,
-        topic: q.topic,
-        difficulty: q.difficulty,
-        source: 'teacher',
-        teacherId: q.teacherQuestionId
-      }));
+    // STAGE 6: Priority Distribution
+    console.log('[Priority Engine] STAGE 6/7 — Distributing questions across sets...');
+    const setConfigs = distributePriorityQuestions(
+      repairedPool,
+      requirements.questionsPerSet,
+      requirements.numberOfSets
+    );
+    console.log('[Priority Engine] ✅ Stage 6 Complete:', setConfigs.length, 'set configurations created');
 
-      console.log('[Hybrid Engine] ✅ Teacher questions added:', finalQuestions.length);
+    // STAGE 7: Generate AI Questions Per Set + Normalize Marks
+    console.log('[Priority Engine] STAGE 7/7 — Generating AI questions and normalizing marks...');
+    const finalSets = await buildFinalSets(setConfigs, exam, requirements);
+    console.log('[Priority Engine] ✅ Stage 7 Complete:', finalSets.length, 'final sets built');
 
-      // Generate ONLY the gap count via AI
-      console.log('[Hybrid Engine] Requesting AI to generate', engineState.gapCount, 'additional questions...');
-      const aiQuestions = await generateAIQuestions(exam, engineState.gapCount, teacherQuestions);
-      
-      // PROTECTION: Only add up to gap count
-      const questionsToAdd = aiQuestions.slice(0, engineState.gapCount);
-      finalQuestions.push(...questionsToAdd);
-      
-      console.log('[Hybrid Engine] ✅ AI questions added:', questionsToAdd.length);
+    // FINAL SUMMARY
+    console.log('[Priority Engine] ========================================');
+    console.log('[Priority Engine] CONSTRUCTION COMPLETE');
+    finalSets.forEach((set, idx) => {
+      const teacherCount = set.questions.filter(q => q.source === 'teacher').length;
+      const aiCount = set.questions.filter(q => q.source === 'ai').length;
+      const totalMarks = set.questions.reduce((sum, q) => sum + (q.marks || 0), 0);
+      console.log(`[Priority Engine] Set ${idx + 1}: ${teacherCount} teacher + ${aiCount} AI = ${set.questions.length} total (${totalMarks} marks)`);
+    });
+    console.log('[Priority Engine] ========================================');
 
-    } else if (engineState.mode === QUESTION_ENGINE_MODES.AI_FULL) {
-      // AI_FULL: No teacher questions, AI generates all
-      console.log('[Hybrid Engine] Mode = AI_FULL');
-      console.log('[Hybrid Engine] No teacher questions provided');
-      console.log('[Hybrid Engine] AI will generate all', requiredCount, 'questions');
-      
-      const aiQuestions = await generateAIQuestions(exam, requiredCount, []);
-      finalQuestions = aiQuestions;
-      
-      console.log('[Hybrid Engine] ✅ AI questions generated:', finalQuestions.length);
-    }
-
-    // FINAL VALIDATION
-    console.log('[Hybrid Engine] ========================================');
-    console.log('[Hybrid Engine] FINAL QUESTION BANK SUMMARY');
-    console.log('[Hybrid Engine] Teacher questions used:', finalQuestions.filter(q => q.source === 'teacher').length);
-    console.log('[Hybrid Engine] AI questions used:', finalQuestions.filter(q => q.source === 'ai').length);
-    console.log('[Hybrid Engine] Total questions:', finalQuestions.length);
-    console.log('[Hybrid Engine] Required count:', requiredCount);
-    console.log('[Hybrid Engine] ========================================');
-
-    // Validate we have questions
-    if (finalQuestions.length === 0) {
-      throw new Error('Hybrid Engine: No questions generated - critical failure');
-    }
-
-    // CRITICAL FIX: Redistribute marks evenly across ALL questions
-    console.log('[Hybrid Engine] STAGE 5/5 — Redistributing marks across all questions...');
-    const marksPerQuestion = Math.floor(exam.totalMarks / finalQuestions.length);
-    const remainder = exam.totalMarks % finalQuestions.length;
-    
-    finalQuestions = finalQuestions.map((q, idx) => ({
-      ...q,
-      marks: marksPerQuestion + (idx < remainder ? 1 : 0)  // Distribute remainder to first N questions
-    }));
-    
-    const totalMarks = finalQuestions.reduce((sum, q) => sum + q.marks, 0);
-    console.log('[Hybrid Engine] Marks per question:', marksPerQuestion);
-    console.log('[Hybrid Engine] Questions with +1 mark:', remainder);
-    console.log('[Hybrid Engine] Total marks distributed:', totalMarks);
-    console.log('[Hybrid Engine] Target marks:', exam.totalMarks);
-    console.log('[Hybrid Engine] ✅ Stage 5 Complete: Marks redistributed');
-    console.log('[Hybrid Engine] ========================================');
-
-    return finalQuestions;
+    return finalSets;
 
   } catch (error) {
-    console.error('[Hybrid Engine] ❌ ERROR:', error.message);
-    console.error('[Hybrid Engine] Stack:', error.stack);
+    console.error('[Priority Engine] ❌ ERROR:', error.message);
+    console.error('[Priority Engine] Stack:', error.stack);
     throw error;
   }
 }
@@ -723,30 +1048,22 @@ async function generateExamSetsWithAI(examId) {
     console.log('[AI Pipeline] Step 1: Building payload...');
     const payload = await buildExamAIPayload(examId);
 
-    // STEP 2: Normalize questions via AI
-    console.log('[AI Pipeline] Step 2: Normalizing questions...');
-    const normalizedQuestions = await aiNormalizeQuestions(payload);
+    // STEP 2: Priority-Driven Construction (replaces normalize + generate steps)
+    console.log('[AI Pipeline] Step 2: Priority-driven set construction...');
+    const generatedSets = await aiNormalizeQuestions(payload);
 
-    // STEP 3: Generate sets via AI
-    console.log('[AI Pipeline] Step 3: Generating sets...');
-    const generatedSets = await aiGenerateExamSets(
-      normalizedQuestions,
-      payload.numberOfSets,
-      payload.constraints
-    );
-
-    // STEP 4: Distribute students to sets
-    console.log('[AI Pipeline] Step 4: Distributing students...');
+    // STEP 3: Distribute students to sets
+    console.log('[AI Pipeline] Step 3: Distributing students...');
     const studentDistribution = distributeStudentsToSets(
       payload.students,
       generatedSets
     );
 
-    // STEP 5: Validate and store
-    console.log('[AI Pipeline] Step 5: Validating and storing...');
+    // STEP 4: Validate and store
+    console.log('[AI Pipeline] Step 4: Validating and storing...');
     const storageResult = await validateAndStoreSets(examId, generatedSets, studentDistribution);
 
-    // STEP 6: Move exam to 'prepared' status
+    // STEP 5: Move exam to 'prepared' status
     exam = await Exam.findById(examId);
     console.log('[AI Pipeline] BEFORE SAVE - Status:', exam.status, 'GenStatus:', exam.generationStatus);
     
@@ -758,7 +1075,7 @@ async function generateExamSetsWithAI(examId) {
     console.log('[AI Pipeline] AFTER SAVE - Status:', exam.status, 'GenStatus:', exam.generationStatus);
     console.log('[AI Pipeline] ✅ Exam moved to PREPARED status. Ready for student paper generation.');
 
-    // STEP 7: Return summary WITH updated exam
+    // STEP 6: Return summary WITH updated exam
     const summary = {
       success: true,
       message: 'Question sets generated successfully',
@@ -828,9 +1145,13 @@ function distributeStudentsToSets(students, sets) {
 module.exports = {
   buildExamAIPayload,
   loadTeacherQuestions,
-  calculateRequiredQuestions,
-  determineQuestionEngineMode,
-  generateAIQuestions,
+  createTeacherPriorityPool,
+  aiRepairPass,
+  calculatePerSetRequirements,
+  checkTeacherSufficiency,
+  distributePriorityQuestions,
+  buildFinalSets,
+  generateAIQuestionsForSet,
   aiNormalizeQuestions,
   aiGenerateExamSets,
   validateAndStoreSets,

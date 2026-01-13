@@ -64,6 +64,31 @@ const examSchema = new mongoose.Schema({
     default: 1,
     min: 1
   },
+  // PHASE 6.3.9 - Per-Set Configuration (Priority-Driven Construction)
+  questionsPerSet: {
+    type: Number,
+    default: 20,
+    min: 1
+  },
+  totalMarksPerSet: {
+    type: Number,
+    default: 100,
+    min: 0
+  },
+  subject: {
+    type: String,
+    default: 'General',
+    trim: true
+  },
+  difficultyLevel: {
+    type: String,
+    enum: ['easy', 'medium', 'hard', 'mixed'],
+    default: 'mixed'
+  },
+  allowAIImprovement: {
+    type: Boolean,
+    default: false
+  },
   // PHASE 6.3.6 - Question Authority Mode (CRITICAL SAFETY)
   questionMode: {
     type: String,
