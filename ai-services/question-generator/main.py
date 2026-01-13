@@ -480,6 +480,7 @@ class QuestionSourceRequest(BaseModel):
     file_path: str
     total_marks: int
     exam_title: str
+    question_mode: Optional[str] = 'teacher_provided'  # PHASE 6.3.6: 'teacher_provided' or 'ai_generated'
 
 class QuestionNormalized(BaseModel):
     questionText: str
@@ -506,9 +507,25 @@ async def normalize_questions(request: QuestionSourceRequest):
     
     Reads teacher input, extracts questions, normalizes formatting,
     and tags questions by topic, difficulty, marks.
+    
+    PHASE 6.3.6: Respects question_mode
+    - teacher_provided: Only format/parse, NEVER invent
+    - ai_generated: Can generate new questions
     """
     try:
-        logger.info(f"[Normalize] Processing {request.source_type} source")
+        question_mode = request.question_mode or 'teacher_provided'
+        logger.info(f"[Normalize] Processing {request.source_type} source in {question_mode} mode")
+        
+        # CRITICAL GUARD: Enforce teacher authority
+        if question_mode == 'teacher_provided':
+            if not request.content and not request.file_path:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="VALIDATION ERROR: Teacher-provided mode requires question source"
+                )
+            logger.info("[Question Mode] Teacher-provided — AI will ONLY format, NOT invent")
+        elif question_mode == 'ai_generated':
+            logger.info("[Question Mode] AI-generated — AI can create questions")
         
         normalized_questions = []
         
@@ -528,7 +545,14 @@ async def normalize_questions(request: QuestionSourceRequest):
                     continue
                 
                 try:
-                    normalized_q = normalize_single_question_with_ai(q_text, idx + 1, request.total_marks, len(question_patterns))
+                    # PHASE 6.3.6: Pass question_mode to normalize function
+                    normalized_q = normalize_single_question_with_ai(
+                        q_text, 
+                        idx + 1, 
+                        request.total_marks, 
+                        len(question_patterns),
+                        question_mode
+                    )
                     if normalized_q:
                         normalized_questions.append(normalized_q)
                 except Exception as e:
@@ -564,9 +588,13 @@ async def normalize_questions(request: QuestionSourceRequest):
         raise HTTPException(status_code=500, detail=f"Normalization failed: {str(e)}")
 
 
-def normalize_single_question_with_ai(question_text: str, question_num: int, total_marks: int, total_questions: int) -> dict:
+def normalize_single_question_with_ai(question_text: str, question_num: int, total_marks: int, total_questions: int, question_mode: str = 'teacher_provided') -> dict:
     """
     Use Gemini AI to normalize a single question and extract metadata
+    
+    PHASE 6.3.6: Respects question_mode
+    - teacher_provided: Only clean formatting, extract metadata, NEVER modify content
+    - ai_generated: Can complete/improve questions
     """
     if not GOOGLE_API_KEY:
         # Return basic normalization without AI
@@ -582,7 +610,29 @@ def normalize_single_question_with_ai(question_text: str, question_num: int, tot
     try:
         model = genai.GenerativeModel(available_model)
         
-        prompt = f"""Analyze this exam question and provide structured metadata:
+        # PHASE 6.3.6: Different prompts based on mode
+        if question_mode == 'teacher_provided':
+            prompt = f"""Analyze this teacher-provided exam question and extract metadata. DO NOT modify the question content.
+
+Question: {question_text}
+
+Provide response in this exact JSON format:
+{{
+    "questionText": "<exact question text with only minor formatting cleanup>",
+    "marks": <suggested marks based on complexity>,
+    "topic": "main topic (e.g., Mathematics, Physics, History)",
+    "difficulty": "easy|medium|hard",
+    "options": ["option1", "option2", ...] (if multiple choice, else empty array),
+    "correctAnswer": "correct answer if obvious, else empty string"
+}}
+
+IMPORTANT: Keep the question text EXACTLY as provided. Only clean obvious formatting issues.
+Total exam marks: {total_marks}
+Total questions: {total_questions}
+Suggested marks per question: {max(1, total_marks // max(1, total_questions))}
+"""
+        else:  # ai_generated mode
+            prompt = f"""Analyze this exam question and provide structured metadata:
 
 Question: {question_text}
 

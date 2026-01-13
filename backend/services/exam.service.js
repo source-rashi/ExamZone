@@ -43,6 +43,15 @@ async function createExam(data, teacherId) {
       throw new Error('Question content cannot be empty');
     }
   }
+  
+  // PHASE 6.3.6 - Validate questionMode requirements
+  const questionMode = data.questionMode || 'teacher_provided';
+  if (questionMode === 'teacher_provided') {
+    // Teacher-provided mode requires question source
+    if (!questionSourceData && !data.questionSource) {
+      console.warn('[Exam Creation] Teacher-provided mode without questions - will require questions before generation');
+    }
+  }
 
   // Create exam
   const exam = await Exam.create({
@@ -57,6 +66,7 @@ async function createExam(data, teacherId) {
     attemptsAllowed: parseInt(attemptsAllowed) || 1,
     numberOfSets: parseInt(numberOfSets) || 1,
     totalMarks: parseInt(totalMarks) || 100,
+    questionMode: data.questionMode || 'teacher_provided', // PHASE 6.3.6
     questionSource: questionSourceData,
     generationStatus: 'none',
     lockedAfterGeneration: false,

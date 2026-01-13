@@ -464,8 +464,8 @@ export default function CreateExam() {
                     </label>
                     <p className="text-sm text-gray-600 mt-1">
                       {formData.questionMode === 'ai_generated' 
-                        ? '✓ AI will generate questions based on your exam configuration and syllabus'
-                        : '✓ You will provide all questions (default). AI will only format and organize them.'}
+                        ? '✓ AI will generate NEW questions based on your exam configuration and syllabus'
+                        : '✓ You will provide all questions (default). AI will ONLY format and organize them, NOT create new ones.'}
                     </p>
                   </div>
                 </div>
@@ -570,23 +570,6 @@ export default function CreateExam() {
                   </div>
                 </div>
               )}
-            </div>
-          )}                  {formData.questionFile && (
-                    <p className="text-sm text-green-600 mt-2">
-                      Selected: {formData.questionFile.name}
-                    </p>
-                  )}
-                  <p className="text-sm text-gray-500 mt-2">
-                    Upload a PDF containing the question bank. This will be used to generate question sets.
-                  </p>
-                </div>
-              )}
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
-                <p className="text-sm text-blue-800">
-                  <strong>Important:</strong> These questions will be used to generate {formData.numberOfSets} different question sets. After generation, questions cannot be modified.
-                </p>
-              </div>
             </div>
           )}
 

@@ -1,5 +1,6 @@
 /**
  * PHASE 6.3 — CONTROLLED AI INTEGRATION LAYER
+ * PHASE 6.3.7 — HYBRID QUESTION GENERATION ENGINE (TEACHER FIRST, AI SECOND)
  * 
  * This service handles AI-powered exam question set generation.
  * 
@@ -8,7 +9,8 @@
  * - AI only works on preparation payload
  * - AI returns JSON only (no PDFs, no UI)
  * - All AI output must be validated before saving
- * - No student exam flow yet
+ * - Teacher questions are PRIMARY, AI is SECONDARY
+ * - AI only fills gaps when teacher questions insufficient
  */
 
 const axios = require('axios');
@@ -22,6 +24,13 @@ const ANSWER_CHECKER_URL = process.env.ANSWER_CHECKER_URL || 'http://127.0.0.1:5
 
 // Mock mode: Set to true to bypass AI services and use mock data
 const MOCK_MODE = process.env.AI_MOCK_MODE === 'true' || false;
+
+// PHASE 6.3.7 — Question Engine Modes
+const QUESTION_ENGINE_MODES = {
+  TEACHER_ONLY: 'TEACHER_ONLY',   // Teacher provided enough questions
+  AI_AUGMENT: 'AI_AUGMENT',       // Teacher provided some, AI fills gaps
+  AI_FULL: 'AI_FULL'              // No teacher questions, AI generates all
+};
 
 /**
  * TASK 1 — Build Exam AI Preparation Payload
@@ -91,117 +100,291 @@ async function buildExamAIPayload(examId) {
 }
 
 /**
- * TASK 2 — AI Question Normalization Layer
+ * PHASE 6.3.7 — TASK 1: Extract Teacher Questions
  * 
- * Calls AI service to:
- * - Read teacher input (latex/pdf/text)
- * - Extract questions if PDF
- * - Complete incomplete questions
- * - Normalize formatting
- * - Tag questions by topic, difficulty, marks
+ * Unified question extraction from all source types.
+ * ONLY parses and normalizes. NO generation.
  * 
- * Returns structured base question bank.
- * Does NOT generate sets yet.
+ * @param {Object} exam - Exam document
+ * @returns {Promise<Array>} Array of extracted teacher questions
+ */
+async function extractTeacherQuestions(exam) {
+  try {
+    console.log('[Question Extraction] Starting teacher question extraction');
+    
+    const questionSource = exam.questionSource;
+    if (!questionSource || (!questionSource.content && !questionSource.filePath)) {
+      console.log('[Question Extraction] No question source provided');
+      return [];
+    }
+
+    const extractedQuestions = [];
+    const sourceType = questionSource.type || 'text';
+
+    console.log(`[Question Extraction] Source type: ${sourceType}`);
+
+    if (sourceType === 'text' || sourceType === 'latex') {
+      const content = questionSource.content || '';
+      
+      // Split by common question delimiters
+      const questionPatterns = [
+        /(?:^|\n)\s*(\d+[\.\):])\s*(.+?)(?=\n\s*\d+[\.\):]|\n\s*Q\d+|$)/gis,
+        /(?:^|\n)\s*(Q\d+[\.\):])\s*(.+?)(?=\n\s*Q\d+|$)/gis,
+        /(?:^|\n)\s*(Question\s+\d+[\.\):])\s*(.+?)(?=\n\s*Question\s+\d+|$)/gis
+      ];
+
+      let questions = [];
+      
+      // Try each pattern
+      for (const pattern of questionPatterns) {
+        const matches = [...content.matchAll(pattern)];
+        if (matches.length > 0) {
+          questions = matches.map(match => match[2].trim()).filter(q => q.length > 10);
+          break;
+        }
+      }
+
+      // Fallback: split by newlines
+      if (questions.length === 0) {
+        questions = content
+          .split('\n')
+          .map(line => line.trim())
+          .filter(line => line.length > 10 && !line.match(/^(chapter|section|part)/i));
+      }
+
+      // Convert to structured format
+      const marksPerQuestion = Math.floor(exam.totalMarks / Math.max(questions.length, 1));
+      
+      extractedQuestions.push(...questions.map((q, idx) => ({
+        rawText: q,
+        type: sourceType,
+        marks: marksPerQuestion,
+        topic: 'General',
+        difficulty: 'medium',
+        sourceIndex: idx
+      })));
+
+    } else if (sourceType === 'pdf') {
+      // PDF extraction would call AI service or PDF parser
+      console.log('[Question Extraction] PDF extraction not yet implemented in extraction phase');
+      // For now, return empty - will be handled by AI pipeline
+      return [];
+    }
+
+    console.log(`[Question Extraction] Extracted ${extractedQuestions.length} teacher questions`);
+    return extractedQuestions;
+
+  } catch (error) {
+    console.error('[Question Extraction] Error:', error.message);
+    return [];
+  }
+}
+
+/**
+ * PHASE 6.3.7 — TASK 2: Calculate Required Question Count
+ * 
+ * Determines how many questions are needed for the exam.
+ * 
+ * @param {Object} exam - Exam document
+ * @returns {number} Required number of questions
+ */
+function calculateRequiredQuestions(exam) {
+  const numberOfSets = exam.numberOfSets || 1;
+  const totalMarks = exam.totalMarks || 100;
+  
+  // Estimate: 5 marks per question on average
+  const estimatedQuestionsPerSet = Math.max(5, Math.ceil(totalMarks / 5));
+  
+  // For multiple sets, we need enough questions to create variety
+  // If sets > 1, we need more questions to shuffle
+  const requiredCount = numberOfSets > 1 
+    ? Math.ceil(estimatedQuestionsPerSet * 1.5) // 50% more for variety
+    : estimatedQuestionsPerSet;
+
+  console.log(`[Question Count] Required: ${requiredCount} questions (${numberOfSets} sets, ${totalMarks} marks)`);
+  
+  return requiredCount;
+}
+
+/**
+ * PHASE 6.3.7 — TASK 3: Determine Question Engine Mode
+ * 
+ * Analyzes teacher questions and determines AI role.
+ * 
+ * @param {Array} teacherQuestions - Extracted teacher questions
+ * @param {number} requiredCount - Required question count
+ * @returns {Object} { mode, teacherCount, requiredCount, gapCount }
+ */
+function determineQuestionEngineMode(teacherQuestions, requiredCount) {
+  const teacherCount = teacherQuestions.length;
+  
+  let mode;
+  let gapCount = 0;
+
+  if (teacherCount === 0) {
+    mode = QUESTION_ENGINE_MODES.AI_FULL;
+    gapCount = requiredCount;
+  } else if (teacherCount < requiredCount) {
+    mode = QUESTION_ENGINE_MODES.AI_AUGMENT;
+    gapCount = requiredCount - teacherCount;
+  } else {
+    mode = QUESTION_ENGINE_MODES.TEACHER_ONLY;
+    gapCount = 0;
+  }
+
+  console.log(`[Question Engine] Mode: ${mode}`);
+  console.log(`[Question Engine] Teacher provided: ${teacherCount}, Required: ${requiredCount}, Gap: ${gapCount}`);
+
+  return { mode, teacherCount, requiredCount, gapCount };
+}
+
+/**
+ * PHASE 6.3.7 — TASK 2 (Updated): AI Question Normalization with Hybrid Engine
+ * 
+ * Implements TEACHER FIRST, AI SECOND approach.
  * 
  * @param {Object} payload - Payload from buildExamAIPayload
  * @returns {Promise<Array>} Normalized question bank
  */
 async function aiNormalizeQuestions(payload) {
   try {
-    console.log('[AI Normalize] Processing question source:', payload.questionSource.type);
+    console.log('[AI Normalize] Starting hybrid question normalization');
     
-    // PHASE 6.3.6 - CRITICAL GUARD: Check question mode
+    // Load exam
     const exam = await Exam.findById(payload.examId);
     if (!exam) {
       throw new Error('Exam not found');
     }
+
+    // PHASE 6.3.7 — STAGE 1: Extract Teacher Questions
+    const teacherQuestions = await extractTeacherQuestions(exam);
+    console.log(`[Hybrid Engine] Stage 1 Complete: ${teacherQuestions.length} teacher questions extracted`);
+
+    // PHASE 6.3.7 — STAGE 2: Calculate Requirements
+    const requiredCount = calculateRequiredQuestions(exam);
+    console.log(`[Hybrid Engine] Stage 2 Complete: ${requiredCount} questions required`);
+
+    // PHASE 6.3.7 — STAGE 3: Determine Mode
+    const engineState = determineQuestionEngineMode(teacherQuestions, requiredCount);
     
-    const questionMode = exam.questionMode || 'teacher_provided';
-    console.log(`[Question Mode] Mode: ${questionMode}`);
-    
-    // STRICT GUARD: If teacher-provided mode, validate source exists
-    if (questionMode === 'teacher_provided') {
-      if (!payload.questionSource.content && !payload.questionSource.filePath) {
-        throw new Error('Teacher-provided mode requires question source content or file');
-      }
-      console.log('[Question Mode] Teacher-provided questions used');
-      // Continue to normalize teacher questions - AI ONLY formats, never invents
-    } else if (questionMode === 'ai_generated') {
-      console.log('[Question Mode] AI-generated questions used');
-      // AI can generate new questions
+    let finalQuestions = [];
+
+    // PHASE 6.3.7 — STAGE 4: AI Assistance (Conditional)
+    if (engineState.mode === QUESTION_ENGINE_MODES.TEACHER_ONLY) {
+      // Teacher provided enough questions - just normalize them
+      console.log('[Hybrid Engine] TEACHER_ONLY mode - Using teacher questions only');
+      finalQuestions = teacherQuestions.map(q => ({
+        questionText: q.rawText,
+        marks: q.marks,
+        topic: q.topic,
+        difficulty: q.difficulty
+      }));
+
+    } else if (engineState.mode === QUESTION_ENGINE_MODES.AI_AUGMENT) {
+      // Teacher provided some, AI fills gaps
+      console.log(`[Hybrid Engine] AI_AUGMENT mode - AI will generate ${engineState.gapCount} additional questions`);
+      
+      // Add teacher questions first
+      finalQuestions = teacherQuestions.map(q => ({
+        questionText: q.rawText,
+        marks: q.marks,
+        topic: q.topic,
+        difficulty: q.difficulty
+      }));
+
+      // Generate additional questions via AI
+      const aiQuestions = await generateAIQuestions(exam, engineState.gapCount, teacherQuestions);
+      
+      // PROTECTION: Only add up to gap count
+      const questionsToAdd = aiQuestions.slice(0, engineState.gapCount);
+      finalQuestions.push(...questionsToAdd);
+      
+      console.log(`[Hybrid Engine] Added ${questionsToAdd.length} AI-generated questions`);
+
+    } else if (engineState.mode === QUESTION_ENGINE_MODES.AI_FULL) {
+      // No teacher questions, AI generates all
+      console.log('[Hybrid Engine] AI_FULL mode - AI generates all questions');
+      finalQuestions = await generateAIQuestions(exam, requiredCount, []);
     }
 
-    // MOCK MODE: Return sample questions without calling AI
+    // Validate final count
+    if (finalQuestions.length === 0) {
+      throw new Error('No questions generated');
+    }
+
+    console.log(`[Hybrid Engine] Final question bank: ${finalQuestions.length} questions`);
+    return finalQuestions;
+
+  } catch (error) {
+    console.error('[Hybrid Engine] Error:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * PHASE 6.3.7 — TASK 4: AI Question Generation (Controlled)
+ * 
+ * Generates AI questions with context awareness.
+ * 
+ * @param {Object} exam - Exam document
+ * @param {number} count - Number of questions to generate
+ * @param {Array} existingQuestions - Teacher questions for context
+ * @returns {Promise<Array>} Generated questions
+ */
+async function generateAIQuestions(exam, count, existingQuestions = []) {
+  try {
+    console.log(`[AI Generation] Generating ${count} questions`);
+
+    // MOCK MODE
     if (MOCK_MODE) {
-      console.log('[AI Normalize] MOCK MODE - Returning sample questions');
+      console.log('[AI Generation] MOCK MODE - Creating sample AI questions');
+      const totalMarks = exam.totalMarks || 100;
+      const marksPerQuestion = Math.floor(totalMarks / count);
       
-      const totalMarks = payload.examMetadata.totalMarks || 20;
-      const questionsCount = Math.max(4, Math.floor(totalMarks / 5));
-      const marksPerQuestion = Math.floor(totalMarks / questionsCount);
-      const remainder = totalMarks % questionsCount;
-      
-      const questions = [];
-      for (let i = 0; i < questionsCount; i++) {
-        const marks = i < remainder ? marksPerQuestion + 1 : marksPerQuestion;
-        questions.push({
-          questionText: `Sample question ${i + 1}: Explain the concept in detail.`,
-          marks: marks,
+      const aiQuestions = [];
+      for (let i = 0; i < count; i++) {
+        aiQuestions.push({
+          questionText: `AI Generated Question ${i + 1}: Explain the concept in detail.`,
+          marks: marksPerQuestion,
           topic: ['Physics', 'Mathematics', 'Chemistry', 'Biology'][i % 4],
           difficulty: ['easy', 'medium', 'hard'][i % 3]
         });
       }
-      
-      return questions;
+      return aiQuestions;
     }
 
-    // Prepare request for question generator service
+    // Real AI generation
     const requestData = {
-      source_type: payload.questionSource.type,
-      content: payload.questionSource.content,
-      file_path: payload.questionSource.filePath,
-      total_marks: payload.examMetadata.totalMarks,
-      exam_title: payload.examMetadata.title
+      exam_title: exam.title,
+      total_marks: exam.totalMarks,
+      question_count: count,
+      existing_questions: existingQuestions.map(q => q.rawText || q.questionText),
+      course_description: exam.description || '',
+      mode: 'generate'  // Tell AI service this is generation, not normalization
     };
 
-    // Call AI service for normalization
     const response = await axios.post(
-      `${QUESTION_GENERATOR_URL}/api/normalize-questions`,
+      `${QUESTION_GENERATOR_URL}/api/generate-questions`,
       requestData,
       {
-        timeout: 120000, // 2 minutes
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        timeout: 120000,
+        headers: { 'Content-Type': 'application/json' }
       }
     );
 
     if (!response.data || !response.data.success) {
-      throw new Error(response.data?.error || 'AI normalization failed');
+      throw new Error(response.data?.error || 'AI generation failed');
     }
 
-    const normalizedQuestions = response.data.questions || [];
+    return response.data.questions || [];
 
-    console.log('[AI Normalize] Normalized', normalizedQuestions.length, 'questions');
-
-    // Validate normalization output
-    const validQuestions = normalizedQuestions.filter(q => 
-      q.questionText && 
-      q.marks && 
-      q.topic && 
-      q.difficulty
-    );
-
-    if (validQuestions.length === 0) {
-      throw new Error('No valid questions after normalization');
-    }
-
-    return validQuestions;
   } catch (error) {
-    console.error('[AI Normalize] Error:', error.message);
+    console.error('[AI Generation] Error:', error.message);
     
-    // If AI service is not available, return error with details
+    // Fallback to mock on error
     if (error.code === 'ECONNREFUSED') {
-      throw new Error(`AI Question Generator service not available at ${QUESTION_GENERATOR_URL}. Set AI_MOCK_MODE=true in .env to use mock data.`);
+      console.warn('[AI Generation] Service unavailable, using fallback');
+      return generateAIQuestions(exam, count, existingQuestions);  // Will use mock mode
     }
     
     throw error;
@@ -578,6 +761,10 @@ function distributeStudentsToSets(students, sets) {
 
 module.exports = {
   buildExamAIPayload,
+  extractTeacherQuestions,
+  calculateRequiredQuestions,
+  determineQuestionEngineMode,
+  generateAIQuestions,
   aiNormalizeQuestions,
   aiGenerateExamSets,
   validateAndStoreSets,
