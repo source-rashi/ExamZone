@@ -101,6 +101,40 @@ async function buildExamAIPayload(examId) {
 }
 
 /**
+ * PHASE 6.3.10 — Get Exam Configuration (with backward compatibility)
+ * 
+ * Extracts exam configuration from paperConfig or legacy fields.
+ * 
+ * @param {Object} exam - Exam document
+ * @returns {Object} Configuration object
+ */
+function getExamConfig(exam) {
+  // PHASE 6.3.10: Use paperConfig if available, otherwise fallback to legacy fields
+  if (exam.paperConfig && exam.paperConfig.questionsPerSet) {
+    return {
+      questionsPerSet: exam.paperConfig.questionsPerSet,
+      totalMarksPerSet: exam.paperConfig.totalMarksPerSet,
+      marksStrategy: exam.paperConfig.marksStrategy || 'equal',
+      defaultMarksPerQuestion: exam.paperConfig.defaultMarksPerQuestion || 5,
+      subject: exam.paperConfig.subject || 'General',
+      difficulty: exam.paperConfig.difficulty || 'mixed',
+      instructions: exam.paperConfig.instructions || ''
+    };
+  }
+
+  // Fallback to legacy fields
+  return {
+    questionsPerSet: exam.questionsPerSet || 20,
+    totalMarksPerSet: exam.totalMarksPerSet || exam.totalMarks || 100,
+    marksStrategy: 'equal',
+    defaultMarksPerQuestion: 5,
+    subject: exam.subject || 'General',
+    difficulty: exam.difficultyLevel || 'mixed',
+    instructions: ''
+  };
+}
+
+/**
  * PHASE 6.3.7 — TASK 1: Load Teacher Questions
  * 
  * Uses dedicated extraction module to load teacher-provided questions.
@@ -174,6 +208,9 @@ function createTeacherPriorityPool(teacherQuestions, exam) {
     return [];
   }
 
+  // Get exam configuration
+  const config = getExamConfig(exam);
+
   // Shuffle for random distribution
   const shuffled = [...teacherQuestions].sort(() => Math.random() - 0.5);
 
@@ -181,15 +218,15 @@ function createTeacherPriorityPool(teacherQuestions, exam) {
   const priorityPool = shuffled.map((q, idx) => ({
     ...q,
     priority: 'teacher',
-    subject: exam.subject || 'General',
-    difficulty: exam.difficultyLevel || 'mixed',
+    subject: config.subject,
+    difficulty: config.difficulty,
     poolIndex: idx,
     usageCount: 0 // Track how many sets this question appears in
   }));
 
   console.log('[Priority Pool] ✅ Created pool with', priorityPool.length, 'teacher questions');
-  console.log('[Priority Pool] Subject:', exam.subject || 'General');
-  console.log('[Priority Pool] Difficulty:', exam.difficultyLevel || 'mixed');
+  console.log('[Priority Pool] Subject:', config.subject);
+  console.log('[Priority Pool] Difficulty:', config.difficulty);
   console.log('[Priority Pool] Shuffled for random distribution');
 
   return priorityPool;
@@ -248,16 +285,28 @@ function calculatePerSetRequirements(exam) {
   console.log('[Per-Set Requirements] CALCULATING PER-SET CONFIGURATION');
   console.log('[Per-Set Requirements] ========================================');
 
-  const questionsPerSet = exam.questionsPerSet || 20;
-  const totalMarksPerSet = exam.totalMarksPerSet || exam.totalMarks || 100;
+  // Get configuration with backward compatibility
+  const config = getExamConfig(exam);
   const numberOfSets = exam.numberOfSets || 1;
 
-  console.log('[Per-Set Requirements] Questions per set:', questionsPerSet);
-  console.log('[Per-Set Requirements] Marks per set:', totalMarksPerSet);
+  console.log('[Per-Set Requirements] Questions per set:', config.questionsPerSet);
+  console.log('[Per-Set Requirements] Marks per set:', config.totalMarksPerSet);
   console.log('[Per-Set Requirements] Number of sets:', numberOfSets);
+  console.log('[Per-Set Requirements] Marks strategy:', config.marksStrategy);
+  console.log('[Per-Set Requirements] Subject:', config.subject);
+  console.log('[Per-Set Requirements] Difficulty:', config.difficulty);
   console.log('[Per-Set Requirements] ========================================');
 
-  return { questionsPerSet, totalMarksPerSet, numberOfSets };
+  return {
+    questionsPerSet: config.questionsPerSet,
+    totalMarksPerSet: config.totalMarksPerSet,
+    marksStrategy: config.marksStrategy,
+    defaultMarksPerQuestion: config.defaultMarksPerQuestion,
+    subject: config.subject,
+    difficulty: config.difficulty,
+    instructions: config.instructions,
+    numberOfSets
+  };
 }
 
 /**
@@ -422,15 +471,50 @@ async function buildFinalSets(setConfigs, exam, requirements) {
       console.log(`[Final Sets Builder]   No AI questions needed`);
     }
 
-    // STEP 6: Normalize marks across all questions in the set
+    // PHASE 6.3.10 — STEP 6: Normalize marks based on strategy
     const totalMarksPerSet = requirements.totalMarksPerSet;
+    const marksStrategy = requirements.marksStrategy || 'equal';
     const questionCount = setQuestions.length;
-    const marksPerQuestion = Math.floor(totalMarksPerSet / questionCount);
-    const remainder = totalMarksPerSet % questionCount;
 
-    setQuestions.forEach((q, idx) => {
-      q.marks = marksPerQuestion + (idx < remainder ? 1 : 0);
-    });
+    console.log(`[Final Sets Builder]   Applying marks strategy: ${marksStrategy}`);
+
+    if (marksStrategy === 'equal') {
+      // Equal distribution
+      const marksPerQuestion = Math.floor(totalMarksPerSet / questionCount);
+      const remainder = totalMarksPerSet % questionCount;
+
+      setQuestions.forEach((q, idx) => {
+        q.marks = marksPerQuestion + (idx < remainder ? 1 : 0);
+      });
+    } else if (marksStrategy === 'manual') {
+      // Preserve teacher marks, AI fills remaining
+      let usedMarks = 0;
+      let aiQuestionCount = 0;
+
+      // Calculate marks already assigned to teacher questions
+      setQuestions.forEach(q => {
+        if (q.source === 'teacher' && q.marks > 0) {
+          usedMarks += q.marks;
+        } else if (q.source === 'ai') {
+          aiQuestionCount++;
+        }
+      });
+
+      // Distribute remaining marks to AI questions
+      const remainingMarks = totalMarksPerSet - usedMarks;
+      if (aiQuestionCount > 0) {
+        const aiMarksPerQuestion = Math.floor(remainingMarks / aiQuestionCount);
+        const aiRemainder = remainingMarks % aiQuestionCount;
+
+        let aiIndex = 0;
+        setQuestions.forEach(q => {
+          if (q.source === 'ai') {
+            q.marks = aiMarksPerQuestion + (aiIndex < aiRemainder ? 1 : 0);
+            aiIndex++;
+          }
+        });
+      }
+    }
 
     const actualTotal = setQuestions.reduce((sum, q) => sum + q.marks, 0);
     console.log(`[Final Sets Builder]   Marks normalized: ${actualTotal}/${totalMarksPerSet}`);
@@ -443,19 +527,23 @@ async function buildFinalSets(setConfigs, exam, requirements) {
       q.questionNumber = idx + 1;
     });
 
-    // Build final set object
+    // PHASE 6.3.10 — Build final set object with complete metadata
     const finalSet = {
       setId: `SET-${String(config.setIndex + 1).padStart(3, '0')}`,
       setName: `Set ${config.setId}`,
       questions: shuffledQuestions,
       totalMarks: actualTotal,
+      questionCount: shuffledQuestions.length,
+      subject: requirements.subject,
+      difficulty: requirements.difficulty,
+      instructions: requirements.instructions || '',
       generatedAt: new Date()
     };
 
-    // Validate
-    if (finalSet.questions.length !== requirements.questionsPerSet) {
+    // PHASE 6.3.10 — Strict validation
+    if (finalSet.questionCount !== requirements.questionsPerSet) {
       throw new Error(
-        `Set ${config.setIndex + 1} has ${finalSet.questions.length} questions, expected ${requirements.questionsPerSet}`
+        `Set ${config.setIndex + 1} has ${finalSet.questionCount} questions, expected ${requirements.questionsPerSet}`
       );
     }
 
@@ -490,6 +578,9 @@ async function buildFinalSets(setConfigs, exam, requirements) {
 async function generateAIQuestionsForSet(exam, count, existingQuestions, setIndex) {
   console.log(`[AI Generation Set ${setIndex + 1}] Generating ${count} questions...`);
 
+  // Get exam configuration
+  const config = getExamConfig(exam);
+
   // MOCK MODE
   if (MOCK_MODE) {
     console.log(`[AI Generation Set ${setIndex + 1}] MOCK MODE`);
@@ -499,8 +590,8 @@ async function generateAIQuestionsForSet(exam, count, existingQuestions, setInde
       aiQuestions.push({
         questionText: `Set ${setIndex + 1} - AI Question ${i + 1}: Explain the concept in detail.`,
         marks: 0, // Will be normalized in buildFinalSets
-        topic: exam.subject || 'General',
-        difficulty: exam.difficultyLevel || 'mixed',
+        topic: config.subject,
+        difficulty: config.difficulty,
         source: 'ai',
         aiGenerationId: `AI-S${setIndex + 1}-${String(i + 1).padStart(2, '0')}`,
         options: [],
@@ -511,18 +602,28 @@ async function generateAIQuestionsForSet(exam, count, existingQuestions, setInde
     return aiQuestions;
   }
 
-  // Real AI generation
+  // Real AI generation with EXPLICIT PROMPT
   try {
+    // PHASE 6.3.10 — Explicit AI Prompt
+    const aiPrompt = `You must generate exactly ${count} questions for this exam set.
+Subject: ${config.subject}
+Difficulty Level: ${config.difficulty}
+Questions must be appropriate for ${config.difficulty} difficulty level.
+Each question should relate to ${config.subject}.`;
+
     const requestData = {
       exam_title: exam.title,
-      subject: exam.subject || 'General',
-      difficulty: exam.difficultyLevel || 'mixed',
+      subject: config.subject,
+      difficulty: config.difficulty,
       question_count: count,
       existing_questions: existingQuestions.map(q => q.cleanText || q.rawText),
       course_description: exam.description || '',
+      explicit_prompt: aiPrompt,
       set_index: setIndex,
       mode: 'generate'
     };
+
+    console.log(`[AI Generation Set ${setIndex + 1}] Sending prompt: ${aiPrompt}`);
 
     const response = await axios.post(
       `${QUESTION_GENERATOR_URL}/api/generate-questions`,
@@ -540,8 +641,8 @@ async function generateAIQuestionsForSet(exam, count, existingQuestions, setInde
     const generatedQuestions = (response.data.questions || []).map((q, idx) => ({
       questionText: q.questionText || q.text,
       marks: 0, // Will be normalized
-      topic: exam.subject || q.topic || 'General',
-      difficulty: exam.difficultyLevel || q.difficulty || 'mixed',
+      topic: config.subject,
+      difficulty: config.difficulty,
       source: 'ai',
       aiGenerationId: `AI-S${setIndex + 1}-${String(idx + 1).padStart(2, '0')}`,
       options: q.options || [],
@@ -1153,6 +1254,7 @@ function distributeStudentsToSets(students, sets) {
 
 module.exports = {
   buildExamAIPayload,
+  getExamConfig,
   loadTeacherQuestions,
   createTeacherPriorityPool,
   aiRepairPass,
