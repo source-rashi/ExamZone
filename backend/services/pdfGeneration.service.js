@@ -332,19 +332,23 @@ async function generateAllPapersForExam(examId) {
       throw new Error('No set map found');
     }
     
-    // Get enrolled students
-    const enrollments = await Enrollment.find({ classId: exam.classId._id })
-      .populate('studentId');
+    // Get enrolled students with rollNumbers from Enrollment model
+    const enrollments = await Enrollment.find({ 
+      classId: exam.classId._id,
+      status: 'active'
+    }).populate('studentId');
     
     if (enrollments.length === 0) {
       throw new Error('No enrolled students found');
     }
     
-    const students = enrollments.map(e => ({
-      studentId: e.studentId._id,
-      name: e.studentId.name,
-      rollNumber: e.studentId.rollNumber
-    }));
+    const students = enrollments
+      .filter(e => e.studentId && e.rollNumber)
+      .map(e => ({
+        studentId: e.studentId._id,
+        name: e.studentId.name,
+        rollNumber: e.rollNumber  // From Enrollment, not User
+      }));
     
     // TASK 2: Generate master PDFs for each set
     console.log(`[PDF Gen] Generating ${exam.generatedSets.length} master set PDFs...`);

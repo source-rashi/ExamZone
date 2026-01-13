@@ -244,13 +244,15 @@ async function buildExamAIPayload(examId) {
 
     // Load enrolled students to get roll numbers
     const enrollments = await Enrollment.find({ 
-      classId: exam.classId._id 
-    }).populate('studentId', 'name email rollNumber');
+      classId: exam.classId._id,
+      status: 'active'
+    }).populate('studentId', 'name email');
 
     const students = enrollments
-      .filter(e => e.studentId && e.studentId.rollNumber)
+      .filter(e => e.studentId && e.rollNumber)
       .map(e => ({
-        rollNumber: e.studentId.rollNumber,
+        studentId: e.studentId._id,
+        rollNumber: e.rollNumber,  // From Enrollment, not User
         name: e.studentId.name,
         email: e.studentId.email
       }));
