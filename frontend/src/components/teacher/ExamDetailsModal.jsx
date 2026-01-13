@@ -309,6 +309,92 @@ export default function ExamDetailsModal({ examId, isOpen, onClose, onUpdate }) 
                 </div>
               </div>
 
+              {/* PHASE 6.3.11: Paper Configuration Display */}
+              {exam.paperConfig && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-[#1f3c88]" />
+                    Paper Configuration
+                    <span className="text-xs font-normal text-blue-600 ml-2">(Teacher-Specified)</span>
+                  </h3>
+                  
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Subject
+                        </label>
+                        <p className="px-3 py-2 bg-white rounded-lg text-gray-900 font-semibold">
+                          {exam.paperConfig.subject}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Difficulty Level
+                        </label>
+                        <p className="px-3 py-2 bg-white rounded-lg text-gray-900 font-semibold capitalize">
+                          {exam.paperConfig.difficulty}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Questions Per Set
+                        </label>
+                        <p className="px-3 py-2 bg-white rounded-lg text-gray-900 font-semibold">
+                          {exam.paperConfig.questionsPerSet}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Total Marks Per Set
+                        </label>
+                        <p className="px-3 py-2 bg-white rounded-lg text-gray-900 font-semibold">
+                          {exam.paperConfig.totalMarksPerSet}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Marks Distribution
+                        </label>
+                        <p className="px-3 py-2 bg-white rounded-lg text-gray-900 font-semibold">
+                          {exam.paperConfig.marksMode === 'auto' ? 'Auto (Equal)' : 'Manual (Preserved)'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Marks Per Question
+                        </label>
+                        <p className="px-3 py-2 bg-white rounded-lg text-gray-900 font-semibold">
+                          {exam.paperConfig.marksMode === 'auto' 
+                            ? `~${Math.floor(exam.paperConfig.totalMarksPerSet / exam.paperConfig.questionsPerSet)}` 
+                            : 'Variable'}
+                        </p>
+                      </div>
+
+                      {exam.paperConfig.instructions && (
+                        <div className="md:col-span-3">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Instructions
+                          </label>
+                          <p className="px-3 py-2 bg-white rounded-lg text-gray-700">
+                            {exam.paperConfig.instructions}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="mt-3 text-xs text-blue-700 bg-blue-100 rounded px-3 py-2">
+                      ✓ All values teacher-specified • No default values used • AI strictly follows this configuration
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Schedule */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
