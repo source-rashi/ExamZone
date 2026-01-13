@@ -27,6 +27,11 @@ export default function StudentLayout() {
       label: 'Exams', 
       icon: FileText
     },
+    {
+      path: '/student/assignments',
+      label: 'Assignments',
+      icon: FileText
+    },
     { 
       path: '/student/profile', 
       label: 'Profile', 

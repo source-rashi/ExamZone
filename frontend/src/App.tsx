@@ -99,7 +99,9 @@ function App() {
               <Route index element={<Navigate to="/student/dashboard" replace />} />
               <Route path="dashboard" element={<StudentDashboard />} />
               <Route path="classes" element={<StudentClasses />} />
+              <Route path="class/:id" element={<StudentClasses />} />
               <Route path="exams" element={<StudentExams />} />
+              <Route path="assignments" element={<div>Assignments (TODO)</div>} />
               <Route path="profile" element={<StudentProfile />} />
             </Route>
 
