@@ -17,6 +17,7 @@ const axios = require('axios');
 const Exam = require('../models/Exam');
 const Class = require('../models/Class');
 const Enrollment = require('../models/Enrollment');
+const questionExtractor = require('./questionExtractor.service');
 
 // AI service URLs
 const QUESTION_GENERATOR_URL = process.env.QUESTION_GENERATOR_URL || 'http://127.0.0.1:5001';
@@ -100,82 +101,60 @@ async function buildExamAIPayload(examId) {
 }
 
 /**
- * PHASE 6.3.7 — TASK 1: Extract Teacher Questions
+ * PHASE 6.3.7 — TASK 1: Load Teacher Questions
  * 
- * Unified question extraction from all source types.
- * ONLY parses and normalizes. NO generation.
+ * Uses dedicated extraction module to load teacher-provided questions.
+ * This is a router function that calls the appropriate extractor.
  * 
  * @param {Object} exam - Exam document
  * @returns {Promise<Array>} Array of extracted teacher questions
  */
-async function extractTeacherQuestions(exam) {
+async function loadTeacherQuestions(exam) {
   try {
-    console.log('[Question Extraction] Starting teacher question extraction');
+    console.log('[Teacher Loader] ========================================');
+    console.log('[Teacher Loader] LOADING TEACHER QUESTIONS');
+    console.log('[Teacher Loader] ========================================');
     
     const questionSource = exam.questionSource;
     if (!questionSource || (!questionSource.content && !questionSource.filePath)) {
-      console.log('[Question Extraction] No question source provided');
+      console.log('[Teacher Loader] ⚠️ No question source provided');
       return [];
     }
 
-    const extractedQuestions = [];
     const sourceType = questionSource.type || 'text';
+    const sourceContent = questionSource.content || questionSource.filePath || '';
 
-    console.log(`[Question Extraction] Source type: ${sourceType}`);
+    console.log('[Teacher Loader] Source type:', sourceType);
+    console.log('[Teacher Loader] Content/Path length:', sourceContent.length);
 
-    if (sourceType === 'text' || sourceType === 'latex') {
-      const content = questionSource.content || '';
-      
-      // Split by common question delimiters
-      const questionPatterns = [
-        /(?:^|\n)\s*(\d+[\.\):])\s*(.+?)(?=\n\s*\d+[\.\):]|\n\s*Q\d+|$)/gis,
-        /(?:^|\n)\s*(Q\d+[\.\):])\s*(.+?)(?=\n\s*Q\d+|$)/gis,
-        /(?:^|\n)\s*(Question\s+\d+[\.\):])\s*(.+?)(?=\n\s*Question\s+\d+|$)/gis
-      ];
+    // Call dedicated extractor module
+    const extractedQuestions = await questionExtractor.extractTeacherQuestions(
+      sourceType,
+      sourceContent
+    );
 
-      let questions = [];
-      
-      // Try each pattern
-      for (const pattern of questionPatterns) {
-        const matches = [...content.matchAll(pattern)];
-        if (matches.length > 0) {
-          questions = matches.map(match => match[2].trim()).filter(q => q.length > 10);
-          break;
-        }
-      }
+    // Enhance with exam-specific metadata
+    const marksPerQuestion = extractedQuestions.length > 0
+      ? Math.floor(exam.totalMarks / extractedQuestions.length)
+      : 0;
 
-      // Fallback: split by newlines
-      if (questions.length === 0) {
-        questions = content
-          .split('\n')
-          .map(line => line.trim())
-          .filter(line => line.length > 10 && !line.match(/^(chapter|section|part)/i));
-      }
+    const enrichedQuestions = extractedQuestions.map((q, idx) => ({
+      ...q,
+      marks: q.marks || marksPerQuestion,
+      topic: q.topic || exam.title || 'General',
+      difficulty: q.difficulty || 'medium',
+      sourceIndex: idx
+    }));
 
-      // Convert to structured format
-      const marksPerQuestion = Math.floor(exam.totalMarks / Math.max(questions.length, 1));
-      
-      extractedQuestions.push(...questions.map((q, idx) => ({
-        rawText: q,
-        type: sourceType,
-        marks: marksPerQuestion,
-        topic: 'General',
-        difficulty: 'medium',
-        sourceIndex: idx
-      })));
+    console.log('[Teacher Loader] ========================================');
+    console.log('[Teacher Loader] ✅ LOADED', enrichedQuestions.length, 'TEACHER QUESTIONS');
+    console.log('[Teacher Loader] ========================================');
 
-    } else if (sourceType === 'pdf') {
-      // PDF extraction would call AI service or PDF parser
-      console.log('[Question Extraction] PDF extraction not yet implemented in extraction phase');
-      // For now, return empty - will be handled by AI pipeline
-      return [];
-    }
-
-    console.log(`[Question Extraction] Extracted ${extractedQuestions.length} teacher questions`);
-    return extractedQuestions;
+    return enrichedQuestions;
 
   } catch (error) {
-    console.error('[Question Extraction] Error:', error.message);
+    console.error('[Teacher Loader] ❌ ERROR:', error.message);
+    console.error('[Teacher Loader] Stack:', error.stack);
     return [];
   }
 }
@@ -241,14 +220,22 @@ function determineQuestionEngineMode(teacherQuestions, requiredCount) {
 /**
  * PHASE 6.3.7 — TASK 2 (Updated): AI Question Normalization with Hybrid Engine
  * 
- * Implements TEACHER FIRST, AI SECOND approach.
+ * Implements TEACHER FIRST, AI SECOND approach with HARD GUARANTEES.
+ * 
+ * ABSOLUTE RULES:
+ * - Teacher questions ALWAYS appear in final output
+ * - AI can ONLY fill gaps
+ * - Teacher count is NEVER reduced
+ * - Mode is determined transparently and logged
  * 
  * @param {Object} payload - Payload from buildExamAIPayload
  * @returns {Promise<Array>} Normalized question bank
  */
 async function aiNormalizeQuestions(payload) {
   try {
-    console.log('[AI Normalize] Starting hybrid question normalization');
+    console.log('[Hybrid Engine] ========================================');
+    console.log('[Hybrid Engine] STARTING TEACHER-FIRST HYBRID PIPELINE');
+    console.log('[Hybrid Engine] ========================================');
     
     // Load exam
     const exam = await Exam.findById(payload.examId);
@@ -256,67 +243,102 @@ async function aiNormalizeQuestions(payload) {
       throw new Error('Exam not found');
     }
 
-    // PHASE 6.3.7 — STAGE 1: Extract Teacher Questions
-    const teacherQuestions = await extractTeacherQuestions(exam);
-    console.log(`[Hybrid Engine] Stage 1 Complete: ${teacherQuestions.length} teacher questions extracted`);
+    // PHASE 6.3.7 — STAGE 1: Load Teacher Questions
+    console.log('[Hybrid Engine] STAGE 1/4 — Loading teacher questions...');
+    const teacherQuestions = await loadTeacherQuestions(exam);
+    console.log('[Hybrid Engine] ✅ Stage 1 Complete:', teacherQuestions.length, 'teacher questions loaded');
 
     // PHASE 6.3.7 — STAGE 2: Calculate Requirements
+    console.log('[Hybrid Engine] STAGE 2/4 — Calculating requirements...');
     const requiredCount = calculateRequiredQuestions(exam);
-    console.log(`[Hybrid Engine] Stage 2 Complete: ${requiredCount} questions required`);
+    console.log('[Hybrid Engine] ✅ Stage 2 Complete:', requiredCount, 'questions required');
 
     // PHASE 6.3.7 — STAGE 3: Determine Mode
+    console.log('[Hybrid Engine] STAGE 3/4 — Determining question engine mode...');
     const engineState = determineQuestionEngineMode(teacherQuestions, requiredCount);
+    console.log('[Hybrid Engine] ✅ Stage 3 Complete: Mode =', engineState.mode);
     
     let finalQuestions = [];
 
-    // PHASE 6.3.7 — STAGE 4: AI Assistance (Conditional)
+    // PHASE 6.3.7 — STAGE 4: Build Final Question Bank
+    console.log('[Hybrid Engine] STAGE 4/4 — Building final question bank...');
+    
     if (engineState.mode === QUESTION_ENGINE_MODES.TEACHER_ONLY) {
-      // Teacher provided enough questions - just normalize them
-      console.log('[Hybrid Engine] TEACHER_ONLY mode - Using teacher questions only');
+      // TEACHER_ONLY: Use teacher questions exclusively
+      console.log('[Hybrid Engine] Mode = TEACHER_ONLY');
+      console.log('[Hybrid Engine] AI will NOT generate any questions');
+      console.log('[Hybrid Engine] Using teacher questions only');
+      
       finalQuestions = teacherQuestions.map(q => ({
-        questionText: q.rawText,
+        questionText: q.cleanText || q.rawText,
         marks: q.marks,
         topic: q.topic,
-        difficulty: q.difficulty
+        difficulty: q.difficulty,
+        source: 'teacher',
+        teacherId: q.teacherQuestionId
       }));
+
+      console.log('[Hybrid Engine] Teacher questions added:', finalQuestions.length);
 
     } else if (engineState.mode === QUESTION_ENGINE_MODES.AI_AUGMENT) {
-      // Teacher provided some, AI fills gaps
-      console.log(`[Hybrid Engine] AI_AUGMENT mode - AI will generate ${engineState.gapCount} additional questions`);
+      // AI_AUGMENT: Teacher first, AI fills gaps
+      console.log('[Hybrid Engine] Mode = AI_AUGMENT');
+      console.log('[Hybrid Engine] Teacher provided:', engineState.teacherCount);
+      console.log('[Hybrid Engine] Gap to fill:', engineState.gapCount);
       
-      // Add teacher questions first
+      // HARD GUARANTEE: Add teacher questions FIRST
       finalQuestions = teacherQuestions.map(q => ({
-        questionText: q.rawText,
+        questionText: q.cleanText || q.rawText,
         marks: q.marks,
         topic: q.topic,
-        difficulty: q.difficulty
+        difficulty: q.difficulty,
+        source: 'teacher',
+        teacherId: q.teacherQuestionId
       }));
 
-      // Generate additional questions via AI
+      console.log('[Hybrid Engine] ✅ Teacher questions added:', finalQuestions.length);
+
+      // Generate ONLY the gap count via AI
+      console.log('[Hybrid Engine] Requesting AI to generate', engineState.gapCount, 'additional questions...');
       const aiQuestions = await generateAIQuestions(exam, engineState.gapCount, teacherQuestions);
       
       // PROTECTION: Only add up to gap count
       const questionsToAdd = aiQuestions.slice(0, engineState.gapCount);
       finalQuestions.push(...questionsToAdd);
       
-      console.log(`[Hybrid Engine] Added ${questionsToAdd.length} AI-generated questions`);
+      console.log('[Hybrid Engine] ✅ AI questions added:', questionsToAdd.length);
 
     } else if (engineState.mode === QUESTION_ENGINE_MODES.AI_FULL) {
-      // No teacher questions, AI generates all
-      console.log('[Hybrid Engine] AI_FULL mode - AI generates all questions');
-      finalQuestions = await generateAIQuestions(exam, requiredCount, []);
+      // AI_FULL: No teacher questions, AI generates all
+      console.log('[Hybrid Engine] Mode = AI_FULL');
+      console.log('[Hybrid Engine] No teacher questions provided');
+      console.log('[Hybrid Engine] AI will generate all', requiredCount, 'questions');
+      
+      const aiQuestions = await generateAIQuestions(exam, requiredCount, []);
+      finalQuestions = aiQuestions;
+      
+      console.log('[Hybrid Engine] ✅ AI questions generated:', finalQuestions.length);
     }
 
-    // Validate final count
+    // FINAL VALIDATION
+    console.log('[Hybrid Engine] ========================================');
+    console.log('[Hybrid Engine] FINAL QUESTION BANK SUMMARY');
+    console.log('[Hybrid Engine] Teacher questions used:', finalQuestions.filter(q => q.source === 'teacher').length);
+    console.log('[Hybrid Engine] AI questions used:', finalQuestions.filter(q => q.source === 'ai').length);
+    console.log('[Hybrid Engine] Total questions:', finalQuestions.length);
+    console.log('[Hybrid Engine] Required count:', requiredCount);
+    console.log('[Hybrid Engine] ========================================');
+
+    // Validate we have questions
     if (finalQuestions.length === 0) {
-      throw new Error('No questions generated');
+      throw new Error('Hybrid Engine: No questions generated - critical failure');
     }
 
-    console.log(`[Hybrid Engine] Final question bank: ${finalQuestions.length} questions`);
     return finalQuestions;
 
   } catch (error) {
-    console.error('[Hybrid Engine] Error:', error.message);
+    console.error('[Hybrid Engine] ❌ ERROR:', error.message);
+    console.error('[Hybrid Engine] Stack:', error.stack);
     throw error;
   }
 }
@@ -324,22 +346,28 @@ async function aiNormalizeQuestions(payload) {
 /**
  * PHASE 6.3.7 — TASK 4: AI Question Generation (Controlled)
  * 
- * Generates AI questions with context awareness.
+ * Generates AI questions with context awareness and source tagging.
+ * 
+ * CRITICAL: This function ONLY generates AI questions.
+ * It must NEVER modify or replace teacher questions.
  * 
  * @param {Object} exam - Exam document
  * @param {number} count - Number of questions to generate
- * @param {Array} existingQuestions - Teacher questions for context
- * @returns {Promise<Array>} Generated questions
+ * @param {Array} existingQuestions - Teacher questions for context (to avoid duplicates)
+ * @returns {Promise<Array>} Generated AI questions with 'source: ai' tag
  */
 async function generateAIQuestions(exam, count, existingQuestions = []) {
   try {
-    console.log(`[AI Generation] Generating ${count} questions`);
+    console.log('[AI Generation] ========================================');
+    console.log('[AI Generation] GENERATING', count, 'AI QUESTIONS');
+    console.log('[AI Generation] Existing teacher questions:', existingQuestions.length);
+    console.log('[AI Generation] ========================================');
 
     // MOCK MODE
     if (MOCK_MODE) {
       console.log('[AI Generation] MOCK MODE - Creating sample AI questions');
       const totalMarks = exam.totalMarks || 100;
-      const marksPerQuestion = Math.floor(totalMarks / count);
+      const marksPerQuestion = Math.floor(totalMarks / Math.max(count, 1));
       
       const aiQuestions = [];
       for (let i = 0; i < count; i++) {
@@ -347,9 +375,13 @@ async function generateAIQuestions(exam, count, existingQuestions = []) {
           questionText: `AI Generated Question ${i + 1}: Explain the concept in detail.`,
           marks: marksPerQuestion,
           topic: ['Physics', 'Mathematics', 'Chemistry', 'Biology'][i % 4],
-          difficulty: ['easy', 'medium', 'hard'][i % 3]
+          difficulty: ['easy', 'medium', 'hard'][i % 3],
+          source: 'ai',
+          aiGenerationId: `AI-${String(i + 1).padStart(3, '0')}`
         });
       }
+      
+      console.log('[AI Generation] ✅ Generated', aiQuestions.length, 'mock AI questions');
       return aiQuestions;
     }
 
@@ -358,11 +390,12 @@ async function generateAIQuestions(exam, count, existingQuestions = []) {
       exam_title: exam.title,
       total_marks: exam.totalMarks,
       question_count: count,
-      existing_questions: existingQuestions.map(q => q.rawText || q.questionText),
+      existing_questions: existingQuestions.map(q => q.cleanText || q.rawText || q.questionText),
       course_description: exam.description || '',
       mode: 'generate'  // Tell AI service this is generation, not normalization
     };
 
+    console.log('[AI Generation] Calling AI service...');
     const response = await axios.post(
       `${QUESTION_GENERATOR_URL}/api/generate-questions`,
       requestData,
@@ -376,15 +409,38 @@ async function generateAIQuestions(exam, count, existingQuestions = []) {
       throw new Error(response.data?.error || 'AI generation failed');
     }
 
-    return response.data.questions || [];
+    const generatedQuestions = (response.data.questions || []).map((q, idx) => ({
+      ...q,
+      source: 'ai',
+      aiGenerationId: `AI-${String(idx + 1).padStart(3, '0')}`
+    }));
+
+    console.log('[AI Generation] ✅ Generated', generatedQuestions.length, 'AI questions');
+    return generatedQuestions;
 
   } catch (error) {
-    console.error('[AI Generation] Error:', error.message);
+    console.error('[AI Generation] ❌ ERROR:', error.message);
     
-    // Fallback to mock on error
-    if (error.code === 'ECONNREFUSED') {
-      console.warn('[AI Generation] Service unavailable, using fallback');
-      return generateAIQuestions(exam, count, existingQuestions);  // Will use mock mode
+    // Fallback to mock on connection error
+    if (error.code === 'ECONNREFUSED' && !MOCK_MODE) {
+      console.warn('[AI Generation] ⚠️ Service unavailable, using fallback mock data');
+      // Generate mock data directly instead of recursive call
+      const totalMarks = exam.totalMarks || 100;
+      const marksPerQuestion = Math.floor(totalMarks / Math.max(count, 1));
+      
+      const fallbackQuestions = [];
+      for (let i = 0; i < count; i++) {
+        fallbackQuestions.push({
+          questionText: `AI Generated Question ${i + 1}: Explain the concept in detail.`,
+          marks: marksPerQuestion,
+          topic: ['Physics', 'Mathematics', 'Chemistry', 'Biology'][i % 4],
+          difficulty: ['easy', 'medium', 'hard'][i % 3],
+          source: 'ai',
+          aiGenerationId: `AI-FALLBACK-${String(i + 1).padStart(3, '0')}`
+        });
+      }
+      
+      return fallbackQuestions;
     }
     
     throw error;
@@ -761,7 +817,7 @@ function distributeStudentsToSets(students, sets) {
 
 module.exports = {
   buildExamAIPayload,
-  extractTeacherQuestions,
+  loadTeacherQuestions,
   calculateRequiredQuestions,
   determineQuestionEngineMode,
   generateAIQuestions,
@@ -769,5 +825,6 @@ module.exports = {
   aiGenerateExamSets,
   validateAndStoreSets,
   generateExamSetsWithAI,
-  distributeStudentsToSets
+  distributeStudentsToSets,
+  QUESTION_ENGINE_MODES
 };
