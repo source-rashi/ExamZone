@@ -25,12 +25,20 @@ export default function CreateExam() {
     description: '',
     classId: id,
     
-    // Step 2: Configuration
+    // Step 2: Configuration (PHASE 6.3.11: All fields REQUIRED, no defaults)
     mode: 'online', // online, offline, hybrid
-    totalMarks: 100,
-    duration: 60, // minutes
+    totalMarks: '', // REMOVED default - teacher must provide
+    duration: '', // REMOVED default - teacher must provide
     attemptsAllowed: 1,
-    numberOfSets: 1, // Manual input instead of dropdown
+    numberOfSets: '', // REMOVED default - teacher must provide
+    
+    // PHASE 6.3.11: Paper Configuration (REQUIRED)
+    subject: '', // REQUIRED - no default
+    difficulty: 'medium', // REQUIRED - default for UX only
+    questionsPerSet: '', // REQUIRED - no default
+    totalMarksPerSet: '', // REQUIRED - no default
+    marksMode: 'auto', // 'auto' or 'manual'
+    instructions: '', // optional
     
     // PHASE 6.3.6: Question Authority Mode
     questionMode: 'teacher_provided', // 'teacher_provided' or 'ai_generated'
@@ -93,11 +101,24 @@ export default function CreateExam() {
         break;
       
       case 2:
-        if (formData.totalMarks <= 0) {
-          setError('Total marks must be greater than 0');
+        // PHASE 6.3.11: Strict validation - all fields required
+        if (!formData.subject || !formData.subject.trim()) {
+          setError('Subject is required - no default value allowed');
           return false;
         }
-        if (formData.duration <= 0) {
+        if (!formData.difficulty) {
+          setError('Difficulty level is required');
+          return false;
+        }
+        if (!formData.questionsPerSet || formData.questionsPerSet <= 0) {
+          setError('Questions per set must be greater than 0');
+          return false;
+        }
+        if (!formData.totalMarksPerSet || formData.totalMarksPerSet <= 0) {
+          setError('Total marks per set must be greater than 0');
+          return false;
+        }
+        if (!formData.duration || formData.duration <= 0) {
           setError('Duration must be greater than 0');
           return false;
         }
@@ -105,7 +126,7 @@ export default function CreateExam() {
           setError('Attempts allowed must be between 1 and 3');
           return false;
         }
-        if (formData.numberOfSets < 1) {
+        if (!formData.numberOfSets || formData.numberOfSets < 1) {
           setError('Number of sets must be at least 1');
           return false;
         }
@@ -165,9 +186,18 @@ export default function CreateExam() {
       setSaving(true);
       setError('');
       
+      // PHASE 6.3.11: Include paperConfig
       const examData = {
         ...formData,
         status: 'draft',
+        paperConfig: {
+          subject: formData.subject,
+          difficulty: formData.difficulty,
+          questionsPerSet: Number(formData.questionsPerSet),
+          totalMarksPerSet: Number(formData.totalMarksPerSet),
+          marksMode: formData.marksMode,
+          instructions: formData.instructions || ''
+        }
       };
       
       if (draftId) {
@@ -195,12 +225,23 @@ export default function CreateExam() {
       
       let examId = draftId;
       
+      // PHASE 6.3.11: Include paperConfig
+      const examDataWithConfig = {
+        ...formData,
+        status: 'draft',
+        paperConfig: {
+          subject: formData.subject,
+          difficulty: formData.difficulty,
+          questionsPerSet: Number(formData.questionsPerSet),
+          totalMarksPerSet: Number(formData.totalMarksPerSet),
+          marksMode: formData.marksMode,
+          instructions: formData.instructions || ''
+        }
+      };
+      
       // Create if not exists
       if (!examId) {
-        const createResponse = await examAPI.createExam({
-          ...formData,
-          status: 'draft',
-        });
+        const createResponse = await examAPI.createExam(examDataWithConfig);
         examId = createResponse.exam._id;
       }
       
@@ -343,6 +384,130 @@ export default function CreateExam() {
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Exam Configuration</h2>
               
+              {/* PHASE 6.3.11: Paper Configuration (REQUIRED FIELDS) */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-6 mb-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-1">📋 Paper Configuration</h3>
+                <p className="text-sm text-gray-600 mb-4">These settings control question generation and marks distribution</p>
+                
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Subject <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="subject"
+                      value={formData.subject}
+                      onChange={handleInputChange}
+                      placeholder="e.g., Mathematics, Physics, History"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88]"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Required for AI question generation</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Difficulty Level <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="difficulty"
+                      value={formData.difficulty}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88]"
+                      required
+                    >
+                      <option value="easy">Easy</option>
+                      <option value="medium">Medium</option>
+                      <option value="hard">Hard</option>
+                      <option value="mixed">Mixed</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Questions Per Set <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      name="questionsPerSet"
+                      value={formData.questionsPerSet}
+                      onChange={handleInputChange}
+                      min="1"
+                      placeholder="e.g., 20"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88]"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Number of questions in each set</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Total Marks Per Set <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      name="totalMarksPerSet"
+                      value={formData.totalMarksPerSet}
+                      onChange={handleInputChange}
+                      min="1"
+                      placeholder="e.g., 100"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88]"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Total marks for each set</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Marks Distribution Mode <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="marksMode"
+                      value={formData.marksMode}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88]"
+                      required
+                    >
+                      <option value="auto">Auto (Equal Distribution)</option>
+                      <option value="manual">Manual (Preserve Teacher Marks)</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">How marks are assigned to questions</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Number of Sets <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      name="numberOfSets"
+                      value={formData.numberOfSets}
+                      onChange={handleInputChange}
+                      min="1"
+                      placeholder="e.g., 3"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88]"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Different sets for different students</p>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Instructions (optional)
+                  </label>
+                  <textarea
+                    name="instructions"
+                    value={formData.instructions}
+                    onChange={handleInputChange}
+                    rows={3}
+                    placeholder="Special instructions for students (e.g., 'Use only black or blue pen')"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88]"
+                  />
+                </div>
+              </div>
+              
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
                   Exam Mode <span className="text-red-500">*</span>
@@ -368,22 +533,7 @@ export default function CreateExam() {
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Total Marks <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="totalMarks"
-                    value={formData.totalMarks}
-                    onChange={handleInputChange}
-                    min="1"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88]"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Duration (minutes) <span className="text-red-500">*</span>
+                    Exam Duration (minutes) <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -391,13 +541,12 @@ export default function CreateExam() {
                     value={formData.duration}
                     onChange={handleInputChange}
                     min="1"
+                    placeholder="e.g., 180 (3 hours)"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88]"
                     required
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Attempts Allowed <span className="text-red-500">*</span>
@@ -413,26 +562,11 @@ export default function CreateExam() {
                     <option value={3}>3 Attempts</option>
                   </select>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Number of Sets <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="numberOfSets"
-                    value={formData.numberOfSets}
-                    onChange={handleInputChange}
-                    min="1"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1f3c88]"
-                    required
-                  />
-                </div>
               </div>
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
                 <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> Multiple sets allow you to assign different question papers to different students.
+                  <strong>📌 Important:</strong> All configuration values are REQUIRED. The system will not use any default values - you must specify everything explicitly.
                 </p>
               </div>
             </div>
@@ -658,10 +792,6 @@ export default function CreateExam() {
                       <dd className="font-medium text-gray-900 capitalize">{formData.mode}</dd>
                     </div>
                     <div>
-                      <dt className="text-sm text-gray-600">Total Marks</dt>
-                      <dd className="font-medium text-gray-900">{formData.totalMarks}</dd>
-                    </div>
-                    <div>
                       <dt className="text-sm text-gray-600">Duration</dt>
                       <dd className="font-medium text-gray-900">{formData.duration} minutes</dd>
                     </div>
@@ -669,6 +799,53 @@ export default function CreateExam() {
                       <dt className="text-sm text-gray-600">Attempts Allowed</dt>
                       <dd className="font-medium text-gray-900">{formData.attemptsAllowed}</dd>
                     </div>
+                    <div>
+                      <dt className="text-sm text-gray-600">Number of Sets</dt>
+                      <dd className="font-medium text-gray-900">{formData.numberOfSets}</dd>
+                    </div>
+                  </dl>
+                </div>
+
+                {/* PHASE 6.3.11: Paper Configuration Display */}
+                <div className="border-b pb-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    📋 Paper Configuration
+                    <span className="text-xs text-blue-600 font-normal">(All values teacher-specified)</span>
+                  </h3>
+                  <dl className="grid grid-cols-2 gap-3">
+                    <div>
+                      <dt className="text-sm text-gray-600">Subject</dt>
+                      <dd className="font-medium text-gray-900">{formData.subject}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm text-gray-600">Difficulty Level</dt>
+                      <dd className="font-medium text-gray-900 capitalize">{formData.difficulty}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm text-gray-600">Questions Per Set</dt>
+                      <dd className="font-medium text-gray-900">{formData.questionsPerSet}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm text-gray-600">Total Marks Per Set</dt>
+                      <dd className="font-medium text-gray-900">{formData.totalMarksPerSet}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm text-gray-600">Marks Distribution</dt>
+                      <dd className="font-medium text-gray-900">
+                        {formData.marksMode === 'auto' ? 'Auto (Equal)' : 'Manual (Preserved)'}
+                      </dd>
+                    </div>
+                    {formData.instructions && (
+                      <div className="col-span-2">
+                        <dt className="text-sm text-gray-600">Instructions</dt>
+                        <dd className="text-gray-900">{formData.instructions}</dd>
+                      </div>
+                    )}
+                  </dl>
+                  <div className="mt-3 text-xs text-blue-700 bg-blue-100 rounded px-3 py-2">
+                    ✓ No default values used - all configuration from teacher input
+                  </div>
+                </div>
                     <div>
                       <dt className="text-sm text-gray-600">Number of Sets</dt>
                       <dd className="font-medium text-gray-900">{formData.numberOfSets}</dd>
