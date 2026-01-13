@@ -43,8 +43,8 @@ router.get('/student/:examId', authenticate, async (req, res) => {
       });
     }
     
-    // Check file exists
-    const filePath = path.join(__dirname, '../..', paper.paperPath);
+    // Check file exists (paperPath is already absolute)
+    const filePath = paper.paperPath;
     
     try {
       await fs.access(filePath);
@@ -105,8 +105,8 @@ router.get('/exam/:examId/student/:rollNumber',
         });
       }
       
-      // Check file exists
-      const filePath = path.join(__dirname, '../..', paper.paperPath);
+      // Check file exists (paperPath is already absolute)
+      const filePath = paper.paperPath;
       
       try {
         await fs.access(filePath);
@@ -167,8 +167,8 @@ router.get('/exam/:examId/set/:setId',
       
       // Construct file path
       const filePath = path.join(
-        __dirname, 
-        '../../storage/exams', 
+        process.cwd(), 
+        'storage/exams', 
         examId, 
         'sets', 
         `${setId}.pdf`

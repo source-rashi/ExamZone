@@ -1,0 +1,66 @@
+{
+  "examId": "69660770a34410def5756fc4",
+  "examTitle": "Physics",
+  "description": "",
+  "className": "Fake CSE Test Class",
+  "studentInfo": {
+    "id": "6965382916344a61ec940d11",
+    "name": "Fake Student 6",
+    "rollNumber": 106
+  },
+  "setInfo": {
+    "setId": "SET-001",
+    "setName": "Set SET-001"
+  },
+  "questions": [
+    {
+      "number": 1,
+      "text": "Physics?",
+      "marks": 2,
+      "topic": "Physics",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 2,
+      "text": "What is the SI unit of force?",
+      "marks": 2,
+      "topic": "Physics",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 3,
+      "text": "What is Newton's First Law of Motion?",
+      "marks": 2,
+      "topic": "Physics",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 4,
+      "text": "Define the term 'velocity'.",
+      "marks": 2,
+      "topic": "Physics",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 5,
+      "text": "Explain the difference between mass and weight.",
+      "marks": 2,
+      "topic": "Physics",
+      "difficulty": "easy",
+      "options": []
+    }
+  ],
+  "examMetadata": {
+    "totalMarks": 10,
+    "duration": 30,
+    "startTime": "2026-01-13T08:50:00.000Z",
+    "endTime": "2026-01-13T09:50:00.000Z",
+    "attemptsAllowed": 1
+  },
+  "instructions": "",
+  "generatedAt": "2026-01-13T08:51:50.675Z"
+}
