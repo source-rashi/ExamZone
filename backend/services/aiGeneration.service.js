@@ -593,20 +593,21 @@ function distributePriorityQuestions(teacherPool, questionsPerSet, numberOfSets)
     return sets;
   }
 
-  // Calculate distribution strategy
-  const teacherPerSet = Math.floor(teacherCount / numberOfSets);
+  // Calculate distribution strategy - respect questionsPerSet limit
+  const maxTeacherPerSet = Math.min(questionsPerSet, Math.floor(teacherCount / numberOfSets));
   const remainder = teacherCount % numberOfSets;
 
   console.log('[Priority Distribution] Strategy:');
-  console.log('[Priority Distribution]   Base teacher per set:', teacherPerSet);
-  console.log('[Priority Distribution]   Extra for first', remainder, 'sets');
+  console.log('[Priority Distribution]   Base teacher per set:', maxTeacherPerSet);
+  console.log('[Priority Distribution]   Questions per set limit:', questionsPerSet);
 
   // Create a copy of the pool for distribution
   const availablePool = [...teacherPool];
 
   // Distribute questions
   for (let i = 0; i < numberOfSets; i++) {
-    const teacherForThisSet = teacherPerSet + (i < remainder ? 1 : 0);
+    // Never exceed questionsPerSet
+    const teacherForThisSet = Math.min(questionsPerSet, maxTeacherPerSet + (i < remainder ? 1 : 0));
     const selectedTeachers = [];
 
     // Draw teacher questions for this set

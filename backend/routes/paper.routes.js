@@ -24,7 +24,7 @@ const fs = require('fs').promises;
 router.get('/student/:examId', authenticate, async (req, res) => {
   try {
     const { examId } = req.params;
-    const studentId = req.user.userId;
+    const studentId = req.user.id;
     
     const exam = await Exam.findById(examId);
     if (!exam) {
@@ -33,7 +33,7 @@ router.get('/student/:examId', authenticate, async (req, res) => {
     
     // Find student's paper
     const paper = exam.studentPapers.find(p => 
-      p.studentId.toString() === studentId.toString()
+      p.studentId.toString() === studentId
     );
     
     if (!paper) {
@@ -78,7 +78,7 @@ router.get('/exam/:examId/student/:rollNumber',
   async (req, res) => {
     try {
       const { examId, rollNumber } = req.params;
-      const teacherId = req.user.userId;
+      const teacherId = req.user.id;
       
       const exam = await Exam.findById(examId).populate('classId').populate('createdBy');
       if (!exam) {
@@ -87,7 +87,7 @@ router.get('/exam/:examId/student/:rollNumber',
       
       // Verify teacher owns this class (safe toString check)
       const examCreatorId = exam.createdBy?._id || exam.createdBy;
-      if (!examCreatorId || examCreatorId.toString() !== teacherId.toString()) {
+      if (!examCreatorId || examCreatorId.toString() !== teacherId) {
         return res.status(403).json({ 
           success: false, 
           message: 'Unauthorized: You do not own this exam' 
@@ -142,7 +142,7 @@ router.get('/exam/:examId/set/:setId',
   async (req, res) => {
     try {
       const { examId, setId } = req.params;
-      const teacherId = req.user.userId;
+      const teacherId = req.user.id;
       
       const exam = await Exam.findById(examId).populate('classId').populate('createdBy');
       if (!exam) {
@@ -151,7 +151,7 @@ router.get('/exam/:examId/set/:setId',
       
       // Verify teacher owns this class (safe toString check)
       const examCreatorId = exam.createdBy?._id || exam.createdBy;
-      if (!examCreatorId || examCreatorId.toString() !== teacherId.toString()) {
+      if (!examCreatorId || examCreatorId.toString() !== teacherId) {
         return res.status(403).json({ 
           success: false, 
           message: 'Unauthorized: You do not own this exam' 
@@ -209,7 +209,7 @@ router.get('/exam/:examId/list',
   async (req, res) => {
     try {
       const { examId } = req.params;
-      const teacherId = req.user.userId;
+      const teacherId = req.user.id;
       
       const exam = await Exam.findById(examId).populate('classId').populate('createdBy');
       if (!exam) {
@@ -218,7 +218,7 @@ router.get('/exam/:examId/list',
       
       // Verify teacher owns this class (safe toString check)
       const examCreatorId = exam.createdBy?._id || exam.createdBy;
-      if (!examCreatorId || examCreatorId.toString() !== teacherId.toString()) {
+      if (!examCreatorId || examCreatorId.toString() !== teacherId) {
         return res.status(403).json({ 
           success: false, 
           message: 'Unauthorized: You do not own this exam' 

@@ -413,7 +413,7 @@ function AssignmentsTab({ classId, isTeacher }) {
     assignmentData.append('title', formData.title);
     assignmentData.append('description', formData.description);
     assignmentData.append('dueDate', formData.dueDate);
-    assignmentData.append('assignment', formData.file);
+    assignmentData.append('file', formData.file);
 
     try {
       setCreating(true);
@@ -453,7 +453,7 @@ function AssignmentsTab({ classId, isTeacher }) {
     }
 
     const formData = new FormData();
-    formData.append('submission', submissionFile);
+    formData.append('file', submissionFile);
 
     try {
       await assignmentAPI.submitAssignment(assignmentId, formData);
