@@ -97,9 +97,9 @@ export default function ViewPapersModal({ examId, isOpen, onClose }) {
               <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
-                    <p className="text-sm text-gray-500">Total Marks</p>
+                    <p className="text-sm text-gray-500">Marks Per Set</p>
                     <p className="text-lg font-semibold text-gray-900">
-                      {examDetails.totalMarks}
+                      {examDetails.paperConfig?.totalMarksPerSet || examDetails.totalMarks}
                     </p>
                   </div>
                   <div>
@@ -242,7 +242,7 @@ export default function ViewPapersModal({ examId, isOpen, onClose }) {
                               Set {set.setId}
                             </h4>
                             <p className="text-sm text-gray-600 mt-1">
-                              {set.questions?.length || 0} questions • {set.totalMarks} marks total
+                              {set.questions?.length || 0} questions • {set.totalMarks || examDetails.paperConfig?.totalMarksPerSet || 0} marks total
                             </p>
                           </div>
                           <div className="p-4 space-y-4 max-h-96 overflow-y-auto">

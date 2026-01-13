@@ -34,6 +34,193 @@ const QUESTION_ENGINE_MODES = {
 };
 
 /**
+ * PHASE 6.3.11 — Generate Subject-Specific Mock Questions
+ * Creates realistic mock questions based on subject and difficulty
+ */
+function generateSubjectSpecificMockQuestions(subject, difficulty, count, setIndex) {
+  const questions = [];
+  
+  // Subject-specific question templates
+  const templates = {
+    'Physics': {
+      easy: [
+        `What is Newton's First Law of Motion?`,
+        `Define the term 'velocity'.`,
+        `What is the SI unit of force?`,
+        `Explain the difference between mass and weight.`,
+        `What happens to the pressure of a gas when temperature increases?`
+      ],
+      medium: [
+        `Derive the equation for kinetic energy.`,
+        `Explain how a hydraulic lift works based on Pascal's principle.`,
+        `Calculate the gravitational force between two objects of mass 5kg and 10kg separated by 2 meters.`,
+        `Describe the working principle of a transformer.`,
+        `What is the relationship between frequency and wavelength in electromagnetic waves?`
+      ],
+      hard: [
+        `Derive Einstein's mass-energy equivalence equation (E=mc²).`,
+        `Analyze the motion of a projectile launched at an angle of 45° with air resistance.`,
+        `Explain quantum tunneling and its applications in modern technology.`,
+        `Derive the Schrödinger equation for a particle in a box.`,
+        `Discuss the photoelectric effect and its significance in quantum mechanics.`
+      ]
+    },
+    'Mathematics': {
+      easy: [
+        `What is the Pythagorean theorem?`,
+        `Solve: 2x + 5 = 15`,
+        `Find the area of a circle with radius 7 cm.`,
+        `What is the value of π (pi)?`,
+        `Calculate: 15% of 200`
+      ],
+      medium: [
+        `Differentiate f(x) = x³ + 2x² - 5x + 3`,
+        `Solve the quadratic equation: x² - 7x + 12 = 0`,
+        `Find the integral of 3x² + 2x + 1`,
+        `Prove that the sum of angles in a triangle is 180°.`,
+        `Calculate the determinant of a 3x3 matrix.`
+      ],
+      hard: [
+        `Prove the Fundamental Theorem of Calculus.`,
+        `Solve the differential equation: dy/dx + 2y = e^x`,
+        `Find the eigenvalues and eigenvectors of the given matrix.`,
+        `Prove Euler's formula: e^(iπ) + 1 = 0`,
+        `Apply Green's theorem to evaluate the line integral.`
+      ]
+    },
+    'Chemistry': {
+      easy: [
+        `What is the chemical symbol for gold?`,
+        `Define an atom.`,
+        `What is the pH value of pure water?`,
+        `Name the three states of matter.`,
+        `What is the atomic number of carbon?`
+      ],
+      medium: [
+        `Explain the concept of electronegativity.`,
+        `Balance the chemical equation: C₃H₈ + O₂ → CO₂ + H₂O`,
+        `Describe the process of electrolysis.`,
+        `What is the difference between ionic and covalent bonds?`,
+        `Explain Le Chatelier's principle with an example.`
+      ],
+      hard: [
+        `Derive the Nernst equation and explain its applications.`,
+        `Explain the molecular orbital theory for diatomic molecules.`,
+        `Discuss the mechanism of SN1 and SN2 reactions.`,
+        `Analyze the thermodynamics of the Haber process.`,
+        `Explain crystal field theory and its applications in coordination chemistry.`
+      ]
+    },
+    'Biology': {
+      easy: [
+        `What is photosynthesis?`,
+        `Name the powerhouse of the cell.`,
+        `What are the four bases in DNA?`,
+        `Define metabolism.`,
+        `What is the function of red blood cells?`
+      ],
+      medium: [
+        `Explain the process of cellular respiration.`,
+        `Describe the structure and function of DNA.`,
+        `What is natural selection?`,
+        `Explain the nitrogen cycle.`,
+        `Describe the human digestive system.`
+      ],
+      hard: [
+        `Explain the molecular mechanism of gene expression regulation.`,
+        `Discuss the process of meiosis and its significance in genetic variation.`,
+        `Analyze the immune response to viral infections.`,
+        `Explain the CRISPR-Cas9 gene editing technology.`,
+        `Discuss the role of epigenetics in evolution.`
+      ]
+    },
+    'Computer Science': {
+      easy: [
+        `What is an algorithm?`,
+        `Define a variable in programming.`,
+        `What does CPU stand for?`,
+        `What is the difference between RAM and ROM?`,
+        `Name three programming languages.`
+      ],
+      medium: [
+        `Explain the concept of object-oriented programming.`,
+        `What is the time complexity of binary search?`,
+        `Describe how a stack data structure works.`,
+        `What is the difference between HTTP and HTTPS?`,
+        `Explain polymorphism with an example.`
+      ],
+      hard: [
+        `Analyze the time and space complexity of quicksort algorithm.`,
+        `Explain the CAP theorem in distributed systems.`,
+        `Implement a red-black tree and analyze its properties.`,
+        `Discuss the Byzantine Generals Problem in distributed computing.`,
+        `Explain neural network backpropagation algorithm.`
+      ]
+    },
+    'History': {
+      easy: [
+        `When did World War II end?`,
+        `Who was the first President of the United States?`,
+        `What year did India gain independence?`,
+        `Name the ancient Egyptian writing system.`,
+        `Who discovered America?`
+      ],
+      medium: [
+        `Explain the causes of the French Revolution.`,
+        `Discuss the impact of the Industrial Revolution on society.`,
+        `What were the main provisions of the Treaty of Versailles?`,
+        `Describe the Silk Road and its significance.`,
+        `Explain the Cold War and its global impact.`
+      ],
+      hard: [
+        `Analyze the socio-economic factors that led to the fall of the Roman Empire.`,
+        `Compare and contrast the political ideologies of capitalism and communism.`,
+        `Discuss the long-term effects of colonialism in Africa.`,
+        `Analyze the role of nationalism in 20th-century conflicts.`,
+        `Evaluate the impact of the Renaissance on modern Western civilization.`
+      ]
+    }
+  };
+  
+  // Default general questions if subject not found
+  const defaultTemplates = {
+    easy: [
+      `Define the key concepts in ${subject}.`,
+      `What are the basic principles of ${subject}?`,
+      `List the main topics covered in ${subject}.`,
+      `Explain a fundamental concept in ${subject}.`,
+      `What is the importance of studying ${subject}?`
+    ],
+    medium: [
+      `Explain the relationship between major concepts in ${subject}.`,
+      `Analyze a case study in ${subject}.`,
+      `Compare and contrast two theories in ${subject}.`,
+      `Describe the practical applications of ${subject}.`,
+      `Discuss the methodology used in ${subject}.`
+    ],
+    hard: [
+      `Critically analyze advanced theories in ${subject}.`,
+      `Evaluate the current research trends in ${subject}.`,
+      `Synthesize multiple concepts to solve a complex problem in ${subject}.`,
+      `Discuss the interdisciplinary connections of ${subject}.`,
+      `Propose an innovative approach to a challenge in ${subject}.`
+    ]
+  };
+  
+  // Get appropriate template array
+  const subjectTemplates = templates[subject] || defaultTemplates;
+  const difficultyTemplates = subjectTemplates[difficulty] || subjectTemplates['medium'];
+  
+  // Generate questions
+  for (let i = 0; i < count; i++) {
+    const templateIndex = i % difficultyTemplates.length;
+    questions.push(difficultyTemplates[templateIndex]);
+  }
+  
+  return questions;
+}
+
+/**
  * TASK 1 — Build Exam AI Preparation Payload
  * 
  * Collects all necessary data from DB and returns clean JSON payload.
@@ -616,12 +803,15 @@ async function generateAIQuestionsForSet(exam, count, existingQuestions, setInde
 
   // MOCK MODE
   if (MOCK_MODE) {
-    console.log(`[AI Generation Set ${setIndex + 1}] MOCK MODE`);
+    console.log(`[AI Generation Set ${setIndex + 1}] MOCK MODE - Generating subject-specific questions`);
     const aiQuestions = [];
+    
+    // PHASE 6.3.11 - Generate subject and difficulty-specific mock questions
+    const mockQuestions = generateSubjectSpecificMockQuestions(config.subject, config.difficulty, count, setIndex);
     
     for (let i = 0; i < count; i++) {
       aiQuestions.push({
-        questionText: `Set ${setIndex + 1} - AI Question ${i + 1}: Explain the concept in detail.`,
+        questionText: mockQuestions[i],
         marks: 0, // Will be normalized in buildFinalSets
         topic: config.subject,
         difficulty: config.difficulty,
@@ -1059,9 +1249,10 @@ async function validateAndStoreSets(examId, generatedSets, studentDistribution =
 
     // VALIDATION CHECKS
 
-    // Determine expected marks per set (PHASE 6.3.9 - use per-set or fallback to global)
-    const expectedMarksPerSet = exam.totalMarksPerSet || exam.totalMarks || 100;
+    // PHASE 6.3.11 - Use paperConfig.totalMarksPerSet (no fallback to global totalMarks)
+    const expectedMarksPerSet = exam.paperConfig?.totalMarksPerSet || exam.totalMarksPerSet || exam.totalMarks || 100;
     console.log('[Validate & Store] Expected marks per set:', expectedMarksPerSet);
+    console.log('[Validate & Store] Source: paperConfig.totalMarksPerSet =', exam.paperConfig?.totalMarksPerSet);
 
     // 1. Check every set has questions
     const emptySets = generatedSets.filter(set => !set.questions || set.questions.length === 0);

@@ -1,0 +1,74 @@
+{
+  "examId": "6965fef7fff677495b2f6da7",
+  "examTitle": "ML",
+  "description": "",
+  "className": "Fake CSE Test Class",
+  "studentInfo": {
+    "id": "6965382916344a61ec940d05",
+    "name": "Fake Student 3",
+    "rollNumber": 103
+  },
+  "setInfo": {
+    "setId": "SET-001",
+    "setName": "Set SET-001"
+  },
+  "questions": [
+    {
+      "number": 1,
+      "text": "Set 1 - AI Question 4: Explain the concept in detail.",
+      "marks": 3,
+      "topic": "ML",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 2,
+      "text": "What is your AME?",
+      "marks": 3,
+      "topic": "ML",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 3,
+      "text": "Set 1 - AI Question 3: Explain the concept in detail.",
+      "marks": 3,
+      "topic": "ML",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 4,
+      "text": "What is aI?",
+      "marks": 3,
+      "topic": "ML",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 5,
+      "text": "Set 1 - AI Question 1: Explain the concept in detail.",
+      "marks": 3,
+      "topic": "ML",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 6,
+      "text": "Set 1 - AI Question 2: Explain the concept in detail.",
+      "marks": 3,
+      "topic": "ML",
+      "difficulty": "easy",
+      "options": []
+    }
+  ],
+  "examMetadata": {
+    "totalMarks": 18,
+    "duration": 30,
+    "startTime": "2026-01-13T08:14:00.000Z",
+    "endTime": "2026-01-14T08:14:00.000Z",
+    "attemptsAllowed": 1
+  },
+  "instructions": "",
+  "generatedAt": "2026-01-13T08:27:16.428Z"
+}

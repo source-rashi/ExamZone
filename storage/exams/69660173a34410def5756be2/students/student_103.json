@@ -1,0 +1,66 @@
+{
+  "examId": "69660173a34410def5756be2",
+  "examTitle": "mi",
+  "description": "",
+  "className": "Fake CSE Test Class",
+  "studentInfo": {
+    "id": "6965382916344a61ec940d05",
+    "name": "Fake Student 3",
+    "rollNumber": 103
+  },
+  "setInfo": {
+    "setId": "SET-001",
+    "setName": "Set SET-001"
+  },
+  "questions": [
+    {
+      "number": 1,
+      "text": "dgfhjhk",
+      "marks": 2,
+      "topic": "mi",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 2,
+      "text": "Define the key concepts in mathematics.",
+      "marks": 2,
+      "topic": "mathematics",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 3,
+      "text": "marfgbn",
+      "marks": 2,
+      "topic": "mi",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 4,
+      "text": "What are the basic principles of mathematics?",
+      "marks": 2,
+      "topic": "mathematics",
+      "difficulty": "easy",
+      "options": []
+    },
+    {
+      "number": 5,
+      "text": "tguhkj",
+      "marks": 2,
+      "topic": "mi",
+      "difficulty": "easy",
+      "options": []
+    }
+  ],
+  "examMetadata": {
+    "totalMarks": 10,
+    "duration": 1,
+    "startTime": "2026-01-13T08:25:00.000Z",
+    "endTime": "2026-01-13T09:25:00.000Z",
+    "attemptsAllowed": 1
+  },
+  "instructions": "",
+  "generatedAt": "2026-01-13T08:25:56.603Z"
+}
