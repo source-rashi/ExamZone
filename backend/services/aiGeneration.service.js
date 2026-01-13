@@ -1429,12 +1429,26 @@ async function generateExamSetsWithAI(examId) {
     await exam.save();
     
     console.log('[AI Pipeline] AFTER SAVE - Status:', exam.status, 'GenStatus:', exam.generationStatus);
-    console.log('[AI Pipeline] ✅ Exam moved to PREPARED status. Ready for student paper generation.');
+    
+    // PHASE 6.4 TASK 1 & 2: Generate PDF papers
+    console.log('[AI Pipeline] Step 6: Generating PDF papers...');
+    const pdfGeneration = require('./pdfGeneration.service');
+    
+    try {
+      const pdfResult = await pdfGeneration.generateAllPapersForExam(examId);
+      console.log('[AI Pipeline] ✓ PDF Generation:', pdfResult);
+    } catch (pdfError) {
+      console.error('[AI Pipeline] ⚠ PDF generation failed:', pdfError.message);
+      // Continue even if PDF generation fails - sets are still stored
+    }
+    
+    console.log('[AI Pipeline] ✅ Exam moved to PREPARED status. PDFs generated.');
 
-    // STEP 6: Return summary WITH updated exam
+    // STEP 7: Return summary WITH updated exam
+    exam = await Exam.findById(examId); // Reload to get studentPapers
     const summary = {
       success: true,
-      message: 'Question sets generated successfully',
+      message: 'Question sets and PDFs generated successfully',
       numberOfSets: storageResult.setsStored,
       totalQuestions: storageResult.totalQuestions,
       studentsDistributed: studentDistribution.length,
