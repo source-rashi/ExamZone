@@ -533,7 +533,7 @@ function AssignmentsTab({ classId, isTeacher }) {
                     <div className="mt-4 flex items-center gap-3">
                       <button
                         onClick={() => handleDownload(assignment._id, assignment.title)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
+                        className="px-4 py-2 bg-[#1f3c88] text-white rounded-lg hover:bg-[#152a5e] transition-colors text-sm font-medium flex items-center gap-2"
                       >
                         <Paperclip className="w-4 h-4" />
                         Download Assignment
