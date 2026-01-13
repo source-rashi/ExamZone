@@ -903,19 +903,28 @@ async function validateAndStoreSets(examId, generatedSets, studentDistribution =
 
     // VALIDATION CHECKS
 
+    // Determine expected marks per set (PHASE 6.3.9 - use per-set or fallback to global)
+    const expectedMarksPerSet = exam.totalMarksPerSet || exam.totalMarks || 100;
+    console.log('[Validate & Store] Expected marks per set:', expectedMarksPerSet);
+
     // 1. Check every set has questions
     const emptySets = generatedSets.filter(set => !set.questions || set.questions.length === 0);
     if (emptySets.length > 0) {
       throw new Error(`Validation failed: ${emptySets.length} set(s) have no questions`);
     }
 
-    // 2. Check total marks for each set
+    // 2. Check total marks for each set (UPDATED for per-set validation)
     const invalidMarksSets = generatedSets.filter(set => {
       const totalMarks = set.questions.reduce((sum, q) => sum + (q.marks || 0), 0);
-      return Math.abs(totalMarks - exam.totalMarks) > 5; // Allow 5 marks tolerance
+      const difference = Math.abs(totalMarks - expectedMarksPerSet);
+      if (difference > 5) {
+        console.log(`[Validate & Store] Set marks validation failed: ${totalMarks} vs expected ${expectedMarksPerSet} (diff: ${difference})`);
+        return true;
+      }
+      return false;
     });
     if (invalidMarksSets.length > 0) {
-      throw new Error(`Validation failed: ${invalidMarksSets.length} set(s) have incorrect total marks`);
+      throw new Error(`Validation failed: ${invalidMarksSets.length} set(s) have incorrect total marks (expected ${expectedMarksPerSet})`);
     }
 
     // 3. Check for empty questions
