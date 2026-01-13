@@ -133,14 +133,10 @@ async function loadTeacherQuestions(exam) {
       sourceContent
     );
 
-    // Enhance with exam-specific metadata
-    const marksPerQuestion = extractedQuestions.length > 0
-      ? Math.floor(exam.totalMarks / extractedQuestions.length)
-      : 0;
-
+    // Enhance with exam-specific metadata (marks will be calculated later)
     const enrichedQuestions = extractedQuestions.map((q, idx) => ({
       ...q,
-      marks: q.marks || marksPerQuestion,
+      marks: q.marks || null,  // Don't assign marks yet - will distribute later
       topic: q.topic || exam.title || 'General',
       difficulty: q.difficulty || 'medium',
       sourceIndex: idx
@@ -334,6 +330,24 @@ async function aiNormalizeQuestions(payload) {
       throw new Error('Hybrid Engine: No questions generated - critical failure');
     }
 
+    // CRITICAL FIX: Redistribute marks evenly across ALL questions
+    console.log('[Hybrid Engine] STAGE 5/5 — Redistributing marks across all questions...');
+    const marksPerQuestion = Math.floor(exam.totalMarks / finalQuestions.length);
+    const remainder = exam.totalMarks % finalQuestions.length;
+    
+    finalQuestions = finalQuestions.map((q, idx) => ({
+      ...q,
+      marks: marksPerQuestion + (idx < remainder ? 1 : 0)  // Distribute remainder to first N questions
+    }));
+    
+    const totalMarks = finalQuestions.reduce((sum, q) => sum + q.marks, 0);
+    console.log('[Hybrid Engine] Marks per question:', marksPerQuestion);
+    console.log('[Hybrid Engine] Questions with +1 mark:', remainder);
+    console.log('[Hybrid Engine] Total marks distributed:', totalMarks);
+    console.log('[Hybrid Engine] Target marks:', exam.totalMarks);
+    console.log('[Hybrid Engine] ✅ Stage 5 Complete: Marks redistributed');
+    console.log('[Hybrid Engine] ========================================');
+
     return finalQuestions;
 
   } catch (error) {
@@ -366,14 +380,12 @@ async function generateAIQuestions(exam, count, existingQuestions = []) {
     // MOCK MODE
     if (MOCK_MODE) {
       console.log('[AI Generation] MOCK MODE - Creating sample AI questions');
-      const totalMarks = exam.totalMarks || 100;
-      const marksPerQuestion = Math.floor(totalMarks / Math.max(count, 1));
       
       const aiQuestions = [];
       for (let i = 0; i < count; i++) {
         aiQuestions.push({
           questionText: `AI Generated Question ${i + 1}: Explain the concept in detail.`,
-          marks: marksPerQuestion,
+          marks: null,  // Marks will be distributed later in hybrid engine
           topic: ['Physics', 'Mathematics', 'Chemistry', 'Biology'][i % 4],
           difficulty: ['easy', 'medium', 'hard'][i % 3],
           source: 'ai',
@@ -425,14 +437,12 @@ async function generateAIQuestions(exam, count, existingQuestions = []) {
     if (error.code === 'ECONNREFUSED' && !MOCK_MODE) {
       console.warn('[AI Generation] ⚠️ Service unavailable, using fallback mock data');
       // Generate mock data directly instead of recursive call
-      const totalMarks = exam.totalMarks || 100;
-      const marksPerQuestion = Math.floor(totalMarks / Math.max(count, 1));
       
       const fallbackQuestions = [];
       for (let i = 0; i < count; i++) {
         fallbackQuestions.push({
           questionText: `AI Generated Question ${i + 1}: Explain the concept in detail.`,
-          marks: marksPerQuestion,
+          marks: null,  // Marks will be distributed later
           topic: ['Physics', 'Mathematics', 'Chemistry', 'Biology'][i % 4],
           difficulty: ['easy', 'medium', 'hard'][i % 3],
           source: 'ai',
