@@ -125,8 +125,7 @@ classSchema.pre('save', function(next) {
   next();
 });
 
-// Index for performance
-classSchema.index({ code: 1 });
+// Index for performance (code already has unique index, no need to duplicate)
 classSchema.index({ teacher: 1 });
 classSchema.index({ teacherId: 1 });
 classSchema.index({ students: 1 });

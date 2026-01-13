@@ -115,8 +115,11 @@ async function generateStudentPapers(examId) {
     throw new Error('No question sets found. Run "Generate Question Papers" first.');
   }
 
+  // PHASE 6.4 - Allow regeneration of student papers
   if (exam.studentPapers && exam.studentPapers.length > 0) {
-    throw new Error('Student papers already generated. Reset exam to regenerate.');
+    console.log('[Student Papers] Papers already exist. Will regenerate...');
+    // Clear existing papers to regenerate
+    exam.studentPapers = [];
   }
 
   if (!exam.createdBy) {

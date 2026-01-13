@@ -188,6 +188,29 @@ const examSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
+  // PHASE 6.4 - Master set PDFs
+  setMasterPapers: [{
+    setId: {
+      type: String,
+      required: true
+    },
+    pdfPath: {
+      type: String,
+      required: true
+    },
+    questionCount: {
+      type: Number,
+      required: true
+    },
+    totalMarks: {
+      type: Number,
+      required: true
+    },
+    generatedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   status: {
     type: String,
     enum: ['draft', 'prepared', 'generated', 'published', 'running', 'closed', 'evaluated'],

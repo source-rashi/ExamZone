@@ -15,6 +15,7 @@ const path = require('path');
 const PDFDocument = require('pdfkit');
 const Exam = require('../models/Exam');
 const Enrollment = require('../models/Enrollment');
+const examStorage = require('./examStorage.service');
 
 /**
  * Core PDF Generation Function
@@ -210,13 +211,11 @@ async function generateStudentPaper(exam, student) {
       throw new Error(`Set ${assignedSetId} has no questions`);
     }
     
-    // Create storage directory
-    const examDir = path.join(__dirname, '../../storage/exams', exam._id.toString());
-    const studentsDir = path.join(examDir, 'students');
-    await fs.mkdir(studentsDir, { recursive: true });
+    // Create storage directory using examStorage service
+    await examStorage.ensureExamDirectories(exam._id.toString());
     
-    // Generate PDF
-    const pdfPath = path.join(studentsDir, `student_${student.rollNumber}.pdf`);
+    // Generate PDF path using examStorage service
+    const pdfPath = examStorage.getStudentPdfPath(exam._id.toString(), student.rollNumber);
     
     await createPDF({
       outputPath: pdfPath,
@@ -269,13 +268,11 @@ async function generateSetMasterPaper(exam, set) {
       throw new Error(`Set ${set.setId} has no questions`);
     }
     
-    // Create storage directory
-    const examDir = path.join(__dirname, '../../storage/exams', exam._id.toString());
-    const setsDir = path.join(examDir, 'sets');
-    await fs.mkdir(setsDir, { recursive: true });
+    // Create storage directory using examStorage service
+    await examStorage.ensureExamDirectories(exam._id.toString());
     
-    // Generate PDF
-    const pdfPath = path.join(setsDir, `${set.setId}.pdf`);
+    // Generate PDF path using examStorage service
+    const pdfPath = examStorage.getSetPdfPath(exam._id.toString(), set.setId);
     
     await createPDF({
       outputPath: pdfPath,
@@ -361,7 +358,8 @@ async function generateAllPapersForExam(examId) {
           setId: set.setId,
           pdfPath,
           questionCount: set.questions.length,
-          totalMarks: set.totalMarks || exam.totalMarks
+          totalMarks: set.totalMarks || exam.totalMarks,
+          generatedAt: new Date()
         });
       } catch (error) {
         console.error(`[PDF Gen] Failed master for set ${set.setId}:`, error);
@@ -402,6 +400,7 @@ async function generateAllPapersForExam(examId) {
     
     // Update exam document
     exam.studentPapers = studentPapers;
+    exam.setMasterPapers = setMasterPapers;
     exam.generationStatus = 'generated';
     await exam.save();
     

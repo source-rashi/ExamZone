@@ -39,14 +39,12 @@ const inviteSchema = new mongoose.Schema({
   token: {
     type: String,
     required: [true, 'Token is required'],
-    unique: true,
-    index: true
+    unique: true
   },
   
   expiresAt: {
     type: Date,
-    required: [true, 'Expiration date is required'],
-    index: true
+    required: [true, 'Expiration date is required']
   },
   
   accepted: {
@@ -80,10 +78,9 @@ const inviteSchema = new mongoose.Schema({
 });
 
 /**
- * Index for efficient queries
+ * Index for efficient queries (token has unique index, no need to duplicate)
  */
 inviteSchema.index({ email: 1, classId: 1 });
-inviteSchema.index({ token: 1 });
 inviteSchema.index({ expiresAt: 1 });
 inviteSchema.index({ accepted: 1 });
 

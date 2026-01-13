@@ -19,7 +19,10 @@ const {
   getExamById,
   getStudentPapers,
   getMyPaper,
-  downloadPaper
+  downloadPaper,
+  listSetFiles,
+  downloadSetPdf,
+  listStudentFiles
 } = require('../controllers/exam.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 const { teacherOnly } = require('../middleware/role.middleware');
@@ -133,5 +136,29 @@ router.get('/:id/my-paper', authenticate, getMyPaper);
  * @access Teacher (exam creator) or Student (own paper only)
  */
 router.get('/:id/papers/:rollNumber/download', authenticate, downloadPaper);
+
+/**
+ * PHASE 6.4 — Set Master PDF Access
+ * @route GET /api/exams/:id/files/sets
+ * @desc List all set master PDFs
+ * @access Teacher only (exam creator)
+ */
+router.get('/:id/files/sets', authenticate, teacherOnly, listSetFiles);
+
+/**
+ * PHASE 6.4 — Download Set Master PDF
+ * @route GET /api/exams/:id/files/sets/:setId
+ * @desc Download a specific set master PDF
+ * @access Teacher only (exam creator)
+ */
+router.get('/:id/files/sets/:setId', authenticate, teacherOnly, downloadSetPdf);
+
+/**
+ * PHASE 6.4 — List Student Papers
+ * @route GET /api/exams/:id/files/students
+ * @desc List all student paper files
+ * @access Teacher only (exam creator)
+ */
+router.get('/:id/files/students', authenticate, teacherOnly, listStudentFiles);
 
 module.exports = router;

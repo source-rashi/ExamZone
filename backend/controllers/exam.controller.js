@@ -7,6 +7,8 @@ const examService = require('../services/exam.service');
 const aiExamService = require('../services/aiExam.service');
 const aiGenerationService = require('../services/aiGeneration.service');
 const pdfGenerationService = require('../services/pdfGeneration.service');
+const examStorage = require('../services/examStorage.service');
+const path = require('path');
 
 /**
  * Create a new exam
@@ -753,9 +755,9 @@ async function downloadPaper(req, res) {
       });
     }
 
-    // Check authorization
-    const isTeacher = exam.createdBy._id.toString() === userId;
-    const isStudent = paper.studentId.toString() === userId;
+    // Check authorization (with safe toString checks)
+    const isTeacher = exam.createdBy?._id ? exam.createdBy._id.toString() === userId : false;
+    const isStudent = paper.studentId ? paper.studentId.toString() === userId : false;
 
     if (!isTeacher && !isStudent) {
       return res.status(403).json({
@@ -772,8 +774,29 @@ async function downloadPaper(req, res) {
       });
     }
 
-    // Send file
-    res.download(paper.pdfPath, `${exam.title}_Roll_${rollNumber}.pdf`);
+    // Send file (use paperPath field)
+    const pdfPath = paper.paperPath || paper.pdfPath;
+    
+    if (!pdfPath) {
+      return res.status(404).json({
+        success: false,
+        message: 'PDF file path not found'
+      });
+    }
+
+    // Check if file exists
+    const fs = require('fs');
+    const path = require('path');
+    const fullPath = path.isAbsolute(pdfPath) ? pdfPath : path.join(__dirname, '../../', pdfPath);
+    
+    if (!fs.existsSync(fullPath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'PDF file not found on server'
+      });
+    }
+
+    res.download(fullPath, `${exam.title}_Roll_${rollNumber}.pdf`);
   } catch (error) {
     console.error('[Download Paper] Error:', error.message);
 
@@ -825,6 +848,163 @@ async function getExamDetails(req, res) {
   }
 }
 
+/**
+ * PHASE 6.4 - List All Set PDFs
+ * @route GET /api/exams/:id/files/sets
+ */
+async function listSetFiles(req, res) {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    const exam = await examService.getExamById(id, userId);
+
+    // Check if user is teacher/creator
+    if (exam.createdBy._id.toString() !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only exam creator can access set files'
+      });
+    }
+
+    // Get set files info
+    const setFiles = exam.setMasterPapers || [];
+
+    res.status(200).json({
+      success: true,
+      data: {
+        examId: exam._id,
+        examTitle: exam.title,
+        totalSets: setFiles.length,
+        sets: setFiles.map(set => ({
+          setId: set.setId,
+          questionCount: set.questionCount,
+          totalMarks: set.totalMarks,
+          generatedAt: set.generatedAt,
+          downloadUrl: `/api/exams/${id}/files/sets/${set.setId}`
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('[List Set Files] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to list set files',
+      error: error.message
+    });
+  }
+}
+
+/**
+ * PHASE 6.4 - Download Set Master PDF
+ * @route GET /api/exams/:id/files/sets/:setId
+ */
+async function downloadSetPdf(req, res) {
+  try {
+    const { id, setId } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    const exam = await examService.getExamById(id, userId);
+
+    // Check if user is teacher/creator
+    if (exam.createdBy._id.toString() !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only exam creator can download set PDFs'
+      });
+    }
+
+    // Find set PDF
+    const setPdf = exam.setMasterPapers?.find(s => s.setId === setId);
+
+    if (!setPdf) {
+      return res.status(404).json({
+        success: false,
+        message: 'Set PDF not found'
+      });
+    }
+
+    // Send file
+    res.download(setPdf.pdfPath, `${exam.title}_${setId}_Master.pdf`);
+  } catch (error) {
+    console.error('[Download Set PDF] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to download set PDF',
+      error: error.message
+    });
+  }
+}
+
+/**
+ * PHASE 6.4 - List All Student Papers
+ * @route GET /api/exams/:id/files/students
+ */
+async function listStudentFiles(req, res) {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    const exam = await examService.getExamById(id, userId);
+
+    // Check if user is teacher/creator
+    if (exam.createdBy._id.toString() !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only exam creator can access student files'
+      });
+    }
+
+    // Get student files info
+    const studentFiles = exam.studentPapers || [];
+
+    res.status(200).json({
+      success: true,
+      data: {
+        examId: exam._id,
+        examTitle: exam.title,
+        totalStudents: studentFiles.length,
+        students: studentFiles.map(paper => ({
+          rollNumber: paper.rollNumber,
+          name: paper.name,
+          setId: paper.setId,
+          generatedAt: paper.generatedAt,
+          status: paper.status,
+          downloadUrl: `/api/exams/${id}/papers/${paper.rollNumber}/download`
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('[List Student Files] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to list student files',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   createExam,
   updateExam,
@@ -840,5 +1020,8 @@ module.exports = {
   getStudentPapers,
   getMyPaper,
   downloadPaper,
-  getExamDetails
+  getExamDetails,
+  listSetFiles,
+  downloadSetPdf,
+  listStudentFiles
 };
