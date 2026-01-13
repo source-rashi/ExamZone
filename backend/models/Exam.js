@@ -64,38 +64,35 @@ const examSchema = new mongoose.Schema({
     default: 1,
     min: 1
   },
-  // PHASE 6.3.10 - Exam Configuration Binding & Marks Enforcement
+  // PHASE 6.3.11 - Teacher-Driven Exam Engine (NO DEFAULTS)
   paperConfig: {
-    questionsPerSet: {
-      type: Number,
-      required: true,
-      min: 1,
-      default: 20
-    },
-    totalMarksPerSet: {
-      type: Number,
-      required: true,
-      min: 1,
-      default: 100
-    },
-    marksStrategy: {
-      type: String,
-      enum: ['equal', 'manual'],
-      default: 'equal'
-    },
-    defaultMarksPerQuestion: {
-      type: Number,
-      default: 5
-    },
     subject: {
       type: String,
-      default: 'General',
+      required: [true, 'Subject is required'],
       trim: true
     },
     difficulty: {
       type: String,
-      enum: ['easy', 'medium', 'hard', 'mixed'],
-      default: 'mixed'
+      required: [true, 'Difficulty level is required'],
+      enum: {
+        values: ['easy', 'medium', 'hard', 'mixed'],
+        message: '{VALUE} is not a valid difficulty level'
+      }
+    },
+    questionsPerSet: {
+      type: Number,
+      required: [true, 'Questions per set is required'],
+      min: [1, 'Questions per set must be at least 1']
+    },
+    totalMarksPerSet: {
+      type: Number,
+      required: [true, 'Total marks per set is required'],
+      min: [1, 'Total marks per set must be at least 1']
+    },
+    marksMode: {
+      type: String,
+      enum: ['auto', 'manual'],
+      default: 'auto'
     },
     instructions: {
       type: String,

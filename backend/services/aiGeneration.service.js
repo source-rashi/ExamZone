@@ -101,37 +101,70 @@ async function buildExamAIPayload(examId) {
 }
 
 /**
- * PHASE 6.3.10 — Get Exam Configuration (with backward compatibility)
+ * PHASE 6.3.11 — Get Exam Configuration (STRICT - NO FALLBACKS)
  * 
- * Extracts exam configuration from paperConfig or legacy fields.
+ * Extracts exam configuration from paperConfig.
+ * THROWS ERROR if configuration is missing or incomplete.
  * 
  * @param {Object} exam - Exam document
  * @returns {Object} Configuration object
+ * @throws {Error} If paperConfig is missing or incomplete
  */
 function getExamConfig(exam) {
-  // PHASE 6.3.10: Use paperConfig if available, otherwise fallback to legacy fields
-  if (exam.paperConfig && exam.paperConfig.questionsPerSet) {
-    return {
-      questionsPerSet: exam.paperConfig.questionsPerSet,
-      totalMarksPerSet: exam.paperConfig.totalMarksPerSet,
-      marksStrategy: exam.paperConfig.marksStrategy || 'equal',
-      defaultMarksPerQuestion: exam.paperConfig.defaultMarksPerQuestion || 5,
-      subject: exam.paperConfig.subject || 'General',
-      difficulty: exam.paperConfig.difficulty || 'mixed',
-      instructions: exam.paperConfig.instructions || ''
-    };
+  console.log('[Config Validator] ========================================');
+  console.log('[Config Validator] VALIDATING EXAM CONFIGURATION');
+  console.log('[Config Validator] ========================================');
+
+  // PHASE 6.3.11: STRICT validation - NO fallbacks allowed
+  if (!exam.paperConfig) {
+    throw new Error('GENERATION BLOCKED: paperConfig is missing. Teacher must configure exam settings.');
   }
 
-  // Fallback to legacy fields
-  return {
-    questionsPerSet: exam.questionsPerSet || 20,
-    totalMarksPerSet: exam.totalMarksPerSet || exam.totalMarks || 100,
-    marksStrategy: 'equal',
-    defaultMarksPerQuestion: 5,
-    subject: exam.subject || 'General',
-    difficulty: exam.difficultyLevel || 'mixed',
-    instructions: ''
+  const config = exam.paperConfig;
+
+  // Validate required fields
+  const errors = [];
+
+  if (!config.subject || config.subject.trim() === '') {
+    errors.push('Subject is required');
+  }
+
+  if (!config.difficulty) {
+    errors.push('Difficulty level is required');
+  }
+
+  if (!config.questionsPerSet || config.questionsPerSet < 1) {
+    errors.push('Questions per set must be specified (minimum 1)');
+  }
+
+  if (!config.totalMarksPerSet || config.totalMarksPerSet < 1) {
+    errors.push('Total marks per set must be specified (minimum 1)');
+  }
+
+  if (errors.length > 0) {
+    console.log('[Config Validator] ❌ VALIDATION FAILED:');
+    errors.forEach(err => console.log(`[Config Validator]   - ${err}`));
+    throw new Error(`GENERATION BLOCKED: ${errors.join(', ')}`);
+  }
+
+  const validatedConfig = {
+    questionsPerSet: config.questionsPerSet,
+    totalMarksPerSet: config.totalMarksPerSet,
+    marksMode: config.marksMode || 'auto',
+    subject: config.subject.trim(),
+    difficulty: config.difficulty,
+    instructions: config.instructions || ''
   };
+
+  console.log('[Config Validator] ✅ Configuration valid:');
+  console.log('[Config Validator]   Subject:', validatedConfig.subject);
+  console.log('[Config Validator]   Difficulty:', validatedConfig.difficulty);
+  console.log('[Config Validator]   Questions per set:', validatedConfig.questionsPerSet);
+  console.log('[Config Validator]   Marks per set:', validatedConfig.totalMarksPerSet);
+  console.log('[Config Validator]   Marks mode:', validatedConfig.marksMode);
+  console.log('[Config Validator] ========================================');
+
+  return validatedConfig;
 }
 
 /**
@@ -285,14 +318,14 @@ function calculatePerSetRequirements(exam) {
   console.log('[Per-Set Requirements] CALCULATING PER-SET CONFIGURATION');
   console.log('[Per-Set Requirements] ========================================');
 
-  // Get configuration with backward compatibility
+  // Get configuration - will throw if invalid
   const config = getExamConfig(exam);
   const numberOfSets = exam.numberOfSets || 1;
 
   console.log('[Per-Set Requirements] Questions per set:', config.questionsPerSet);
   console.log('[Per-Set Requirements] Marks per set:', config.totalMarksPerSet);
   console.log('[Per-Set Requirements] Number of sets:', numberOfSets);
-  console.log('[Per-Set Requirements] Marks strategy:', config.marksStrategy);
+  console.log('[Per-Set Requirements] Marks mode:', config.marksMode);
   console.log('[Per-Set Requirements] Subject:', config.subject);
   console.log('[Per-Set Requirements] Difficulty:', config.difficulty);
   console.log('[Per-Set Requirements] ========================================');
@@ -300,8 +333,7 @@ function calculatePerSetRequirements(exam) {
   return {
     questionsPerSet: config.questionsPerSet,
     totalMarksPerSet: config.totalMarksPerSet,
-    marksStrategy: config.marksStrategy,
-    defaultMarksPerQuestion: config.defaultMarksPerQuestion,
+    marksMode: config.marksMode,
     subject: config.subject,
     difficulty: config.difficulty,
     instructions: config.instructions,
@@ -471,23 +503,23 @@ async function buildFinalSets(setConfigs, exam, requirements) {
       console.log(`[Final Sets Builder]   No AI questions needed`);
     }
 
-    // PHASE 6.3.10 — STEP 6: Normalize marks based on strategy
+    // PHASE 6.3.11 — STEP 6: Normalize marks based on mode (STRICT)
     const totalMarksPerSet = requirements.totalMarksPerSet;
-    const marksStrategy = requirements.marksStrategy || 'equal';
+    const marksMode = requirements.marksMode;
     const questionCount = setQuestions.length;
 
-    console.log(`[Final Sets Builder]   Applying marks strategy: ${marksStrategy}`);
+    console.log(`[Final Sets Builder]   Applying marks mode: ${marksMode}`);
 
-    if (marksStrategy === 'equal') {
-      // Equal distribution
+    if (marksMode === 'auto') {
+      // Auto distribution - divide evenly
       const marksPerQuestion = Math.floor(totalMarksPerSet / questionCount);
       const remainder = totalMarksPerSet % questionCount;
 
       setQuestions.forEach((q, idx) => {
         q.marks = marksPerQuestion + (idx < remainder ? 1 : 0);
       });
-    } else if (marksStrategy === 'manual') {
-      // Preserve teacher marks, AI fills remaining
+    } else if (marksMode === 'manual') {
+      // Manual mode - preserve teacher marks, AI fills remaining
       let usedMarks = 0;
       let aiQuestionCount = 0;
 
@@ -502,7 +534,7 @@ async function buildFinalSets(setConfigs, exam, requirements) {
 
       // Distribute remaining marks to AI questions
       const remainingMarks = totalMarksPerSet - usedMarks;
-      if (aiQuestionCount > 0) {
+      if (aiQuestionCount > 0 && remainingMarks > 0) {
         const aiMarksPerQuestion = Math.floor(remainingMarks / aiQuestionCount);
         const aiRemainder = remainingMarks % aiQuestionCount;
 
@@ -540,17 +572,18 @@ async function buildFinalSets(setConfigs, exam, requirements) {
       generatedAt: new Date()
     };
 
-    // PHASE 6.3.10 — Strict validation
+    // PHASE 6.3.11 — HARD VALIDATION: Question count MUST match exactly (NO TOLERANCE)
     if (finalSet.questionCount !== requirements.questionsPerSet) {
-      throw new Error(
-        `Set ${config.setIndex + 1} has ${finalSet.questionCount} questions, expected ${requirements.questionsPerSet}`
-      );
+      const errorMsg = `QUESTION COUNT VALIDATION FAILED: Set ${config.setIndex + 1} has ${finalSet.questionCount} questions, expected exactly ${requirements.questionsPerSet}. Teacher config MUST be respected.`;
+      console.error(`[Final Sets Builder] ❌ ${errorMsg}`);
+      throw new Error(errorMsg);
     }
 
-    if (Math.abs(finalSet.totalMarks - totalMarksPerSet) > 1) {
-      throw new Error(
-        `Set ${config.setIndex + 1} has ${finalSet.totalMarks} marks, expected ${totalMarksPerSet}`
-      );
+    // PHASE 6.3.11 — HARD VALIDATION: Total marks MUST match exactly (NO TOLERANCE)
+    if (finalSet.totalMarks !== totalMarksPerSet) {
+      const errorMsg = `MARKS VALIDATION FAILED: Set ${config.setIndex + 1} has ${finalSet.totalMarks} marks, expected exactly ${totalMarksPerSet}. Teacher config MUST be respected.`;
+      console.error(`[Final Sets Builder] ❌ ${errorMsg}`);
+      throw new Error(errorMsg);
     }
 
     finalSets.push(finalSet);
@@ -602,14 +635,26 @@ async function generateAIQuestionsForSet(exam, count, existingQuestions, setInde
     return aiQuestions;
   }
 
-  // Real AI generation with EXPLICIT PROMPT
+  // Real AI generation with EXPLICIT TEACHER-DRIVEN PROMPT
   try {
-    // PHASE 6.3.10 — Explicit AI Prompt
-    const aiPrompt = `You must generate exactly ${count} questions for this exam set.
+    // PHASE 6.3.11 — Explicit AI Prompt (NO DEFAULTS)
+    const aiPrompt = `STRICT REQUIREMENTS - DO NOT DEVIATE:
+
+You MUST generate exactly ${count} questions.
 Subject: ${config.subject}
 Difficulty Level: ${config.difficulty}
-Questions must be appropriate for ${config.difficulty} difficulty level.
-Each question should relate to ${config.subject}.`;
+
+PRIORITY RULES:
+1. Primary source: Teacher-provided questions (already included in set)
+2. Your role: Fill remaining ${count} question slots only
+3. Questions must be appropriate for ${config.difficulty} difficulty
+4. All questions must relate to ${config.subject}
+5. Do NOT generate more or fewer than ${count} questions
+
+FORBIDDEN:
+- Generating questions outside the specified subject
+- Changing difficulty level
+- Exceeding or reducing question count`;
 
     const requestData = {
       exam_title: exam.title,
@@ -623,7 +668,10 @@ Each question should relate to ${config.subject}.`;
       mode: 'generate'
     };
 
-    console.log(`[AI Generation Set ${setIndex + 1}] Sending prompt: ${aiPrompt}`);
+    console.log(`[AI Generation Set ${setIndex + 1}] Sending strict prompt...`);
+    console.log(`[AI Generation Set ${setIndex + 1}] Required: ${count} questions`);
+    console.log(`[AI Generation Set ${setIndex + 1}] Subject: ${config.subject}`);
+    console.log(`[AI Generation Set ${setIndex + 1}] Difficulty: ${config.difficulty}`);
 
     const response = await axios.post(
       `${QUESTION_GENERATOR_URL}/api/generate-questions`,
@@ -649,7 +697,14 @@ Each question should relate to ${config.subject}.`;
       correctAnswer: q.correctAnswer || ''
     }));
 
-    console.log(`[AI Generation Set ${setIndex + 1}] ✅ Generated ${generatedQuestions.length} questions`);
+    // PHASE 6.3.11 — STRICT VALIDATION: AI must return EXACTLY what was requested
+    if (generatedQuestions.length !== count) {
+      const errorMsg = `AI VALIDATION FAILED: Requested ${count} questions, received ${generatedQuestions.length}. Teacher config MUST be respected.`;
+      console.error(`[AI Generation Set ${setIndex + 1}] ❌ ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
+
+    console.log(`[AI Generation Set ${setIndex + 1}] ✅ Generated ${generatedQuestions.length} questions (validated)`);
     return generatedQuestions;
 
   } catch (error) {
