@@ -39,10 +39,104 @@ export default function ViewPapersModal({ examId, isOpen, onClose }) {
   const handleDownload = async (rollNumber) => {
     try {
       setDownloading(rollNumber);
-      // TODO: Implement download from storage
-      alert(`Download for roll ${rollNumber} - Implementation needed`);
+      
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      
+      // Download student paper
+      const url = `${API_BASE_URL}/api/papers/exam/${examId}/student/${rollNumber}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to download paper');
+      }
+      
+      // Get filename from header or generate
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = `student_${rollNumber}.pdf`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+        if (filenameMatch) filename = filenameMatch[1];
+      }
+      
+      // Create download
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(downloadUrl);
+      document.body.removeChild(a);
+      
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to download paper');
+      console.error('[Download] Error:', err);
+      alert(err.message || 'Failed to download paper');
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  const handleDownloadSet = async (setId) => {
+    try {
+      setDownloading(setId);
+      
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      
+      // Download set master paper
+      const url = `${API_BASE_URL}/api/papers/exam/${examId}/set/${setId}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to download set paper');
+      }
+      
+      // Get filename from header or generate
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = `${setId}.pdf`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+        if (filenameMatch) filename = filenameMatch[1];
+      }
+      
+      // Create download
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(downloadUrl);
+      document.body.removeChild(a);
+      
+    } catch (err) {
+      console.error('[Download Set] Error:', err);
+      alert(err.message || 'Failed to download set paper');
     } finally {
       setDownloading(null);
     }
@@ -237,13 +331,23 @@ export default function ViewPapersModal({ examId, isOpen, onClose }) {
                           key={set.setId}
                           className="border border-gray-200 rounded-lg overflow-hidden"
                         >
-                          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                            <h4 className="font-semibold text-gray-900">
-                              Set {set.setId}
-                            </h4>
-                            <p className="text-sm text-gray-600 mt-1">
-                              {set.questions?.length || 0} questions • {set.totalMarks || examDetails.paperConfig?.totalMarksPerSet || 0} marks total
-                            </p>
+                          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+                            <div>
+                              <h4 className="font-semibold text-gray-900">
+                                Set {set.setId}
+                              </h4>
+                              <p className="text-sm text-gray-600 mt-1">
+                                {set.questions?.length || 0} questions • {set.totalMarks || examDetails.paperConfig?.totalMarksPerSet || 0} marks total
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => handleDownloadSet(set.setId)}
+                              disabled={downloading === set.setId}
+                              className="flex items-center gap-2 px-4 py-2 bg-[#1f3c88] text-white rounded hover:bg-[#152a5e] transition-colors disabled:opacity-50"
+                            >
+                              <Download className="w-4 h-4" />
+                              {downloading === set.setId ? 'Downloading...' : 'Download Master PDF'}
+                            </button>
                           </div>
                           <div className="p-4 space-y-4 max-h-96 overflow-y-auto">
                             {set.questions && set.questions.length > 0 ? (
