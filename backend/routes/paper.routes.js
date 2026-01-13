@@ -9,7 +9,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth.middleware');
-const { isTeacher } = require('../middleware/role.middleware');
+const { teacherOnly } = require('../middleware/role.middleware');
 const Exam = require('../models/Exam');
 const Enrollment = require('../models/Enrollment');
 const path = require('path');
@@ -74,7 +74,7 @@ router.get('/student/:examId', authenticate, async (req, res) => {
  */
 router.get('/exam/:examId/student/:rollNumber', 
   authenticate, 
-  isTeacher, 
+  teacherOnly, 
   async (req, res) => {
     try {
       const { examId, rollNumber } = req.params;
@@ -137,7 +137,7 @@ router.get('/exam/:examId/student/:rollNumber',
  */
 router.get('/exam/:examId/set/:setId', 
   authenticate, 
-  isTeacher, 
+  teacherOnly, 
   async (req, res) => {
     try {
       const { examId, setId } = req.params;
@@ -203,7 +203,7 @@ router.get('/exam/:examId/set/:setId',
  */
 router.get('/exam/:examId/list', 
   authenticate, 
-  isTeacher, 
+  teacherOnly, 
   async (req, res) => {
     try {
       const { examId } = req.params;
