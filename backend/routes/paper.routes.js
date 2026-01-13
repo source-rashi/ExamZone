@@ -80,13 +80,14 @@ router.get('/exam/:examId/student/:rollNumber',
       const { examId, rollNumber } = req.params;
       const teacherId = req.user.userId;
       
-      const exam = await Exam.findById(examId).populate('classId');
+      const exam = await Exam.findById(examId).populate('classId').populate('createdBy');
       if (!exam) {
         return res.status(404).json({ success: false, message: 'Exam not found' });
       }
       
-      // Verify teacher owns this class
-      if (exam.createdBy.toString() !== teacherId.toString()) {
+      // Verify teacher owns this class (safe toString check)
+      const examCreatorId = exam.createdBy?._id || exam.createdBy;
+      if (!examCreatorId || examCreatorId.toString() !== teacherId.toString()) {
         return res.status(403).json({ 
           success: false, 
           message: 'Unauthorized: You do not own this exam' 
@@ -143,13 +144,14 @@ router.get('/exam/:examId/set/:setId',
       const { examId, setId } = req.params;
       const teacherId = req.user.userId;
       
-      const exam = await Exam.findById(examId).populate('classId');
+      const exam = await Exam.findById(examId).populate('classId').populate('createdBy');
       if (!exam) {
         return res.status(404).json({ success: false, message: 'Exam not found' });
       }
       
-      // Verify teacher owns this class
-      if (exam.createdBy.toString() !== teacherId.toString()) {
+      // Verify teacher owns this class (safe toString check)
+      const examCreatorId = exam.createdBy?._id || exam.createdBy;
+      if (!examCreatorId || examCreatorId.toString() !== teacherId.toString()) {
         return res.status(403).json({ 
           success: false, 
           message: 'Unauthorized: You do not own this exam' 
@@ -209,13 +211,14 @@ router.get('/exam/:examId/list',
       const { examId } = req.params;
       const teacherId = req.user.userId;
       
-      const exam = await Exam.findById(examId).populate('classId');
+      const exam = await Exam.findById(examId).populate('classId').populate('createdBy');
       if (!exam) {
         return res.status(404).json({ success: false, message: 'Exam not found' });
       }
       
-      // Verify teacher owns this class
-      if (exam.createdBy.toString() !== teacherId.toString()) {
+      // Verify teacher owns this class (safe toString check)
+      const examCreatorId = exam.createdBy?._id || exam.createdBy;
+      if (!examCreatorId || examCreatorId.toString() !== teacherId.toString()) {
         return res.status(403).json({ 
           success: false, 
           message: 'Unauthorized: You do not own this exam' 
