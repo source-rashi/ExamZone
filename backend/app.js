@@ -21,7 +21,8 @@ const inviteRoutes = require('./routes/invite.routes');
 const classroomRoutes = require('./routes/classroom.routes');
 const announcementRoutes = require('./routes/announcement.routes');
 const assignmentRoutes = require('./routes/assignment.routes');
-const paperRoutes = require('./routes/paper.routes'); // PHASE 6.4 paper download routes
+
+const studentExamPaperRoutes = require('./routes/student.exam.paper.routes');
 
 const app = express();
 
@@ -60,6 +61,9 @@ app.use('/', pdfRoutes);
 app.use('/', classRoutes);
 app.use('/', uploadRoutes);
 app.use('/', studentRoutes);
+
+// Register new student exam paper route
+app.use('/api/v2/student', studentExamPaperRoutes);
 
 // Register V2 API routes
 app.use('/api/v2/auth', authRoutes);
