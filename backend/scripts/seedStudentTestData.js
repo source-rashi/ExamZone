@@ -6,7 +6,10 @@ const mongoose = require('mongoose');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
+
 const User = require('../models/User');
+const Class = require('../models/Class');
+const Exam = require('../models/Exam');
 
 const STUDENT_EMAIL = 'rashiagrawal1801@gmail.com';
 
@@ -57,7 +60,96 @@ async function main() {
     });
     console.log(`[OK] Created classes: ${class1.name} (${class1.code}), ${class2.name} (${class2.code})`);
 
-    // Stage 2 complete
+    // 5. Generate fake exams and question banks for each class
+    const subjects = [
+      { subject: 'Machine Learning', topics: ['Regression', 'Classification', 'Clustering', 'SVM', 'Neural Networks'] },
+      { subject: 'Data Structures', topics: ['Arrays', 'Linked Lists', 'Trees', 'Graphs', 'Hash Tables'] },
+      { subject: 'Probability', topics: ['Random Variables', 'Distributions', 'Bayes Theorem', 'Markov Chains'] },
+      { subject: 'DBMS', topics: ['SQL', 'Normalization', 'Transactions', 'Indexing', 'ER Diagrams'] },
+      { subject: 'OS', topics: ['Processes', 'Threads', 'Memory', 'Scheduling', 'File Systems'] },
+    ];
+
+    function randomFrom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+    function randomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+    async function createFakeExam({ classId, teacherId, subject, status, examIndex }) {
+      const examTitle = `FAKE - ${subject} ${['Quiz','Midterm','Practice','Final','Test'][examIndex%5]}`;
+      const topics = subjects.find(s => s.subject === subject)?.topics || ['General'];
+      const numberOfSets = randomInt(3, 5);
+      const questionsPerSet = randomInt(8, 15);
+      const totalMarks = questionsPerSet * 2;
+      const sets = [];
+      for (let i = 0; i < numberOfSets; i++) {
+        const setId = `SET${i+1}`;
+        const questions = [];
+        for (let q = 0; q < questionsPerSet; q++) {
+          questions.push({
+            questionText: `Q${q+1}: [${randomFrom(topics)}] Explain concept ${randomInt(1, 100)}?`,
+            marks: 2,
+            topic: randomFrom(topics),
+            difficulty: randomFrom(['easy','medium','hard']),
+            options: [
+              `Option A${q}`,
+              `Option B${q}`,
+              `Option C${q}`,
+              `Option D${q}`
+            ],
+            correctAnswer: `Option ${['A','B','C','D'][randomInt(0,3)]}${q}`
+          });
+        }
+        sets.push({ setId, questions, totalMarks });
+      }
+      // Exam status mix
+      const statusOptions = ['published','running','closed','draft','prepared'];
+      const examStatus = status || randomFrom(statusOptions);
+      const exam = await Exam.create({
+        classId,
+        createdBy: teacherId,
+        title: examTitle,
+        description: `FAKE - ${subject} exam for test data`,
+        mode: 'online',
+        duration: randomInt(30, 120),
+        attemptsAllowed: 1,
+        setsPerStudent: 1,
+        numberOfSets,
+        totalMarks,
+        paperConfig: {
+          subject,
+          difficulty: 'mixed',
+          questionsPerSet,
+          totalMarksPerSet: totalMarks,
+          marksMode: 'auto',
+          instructions: 'Answer all questions.'
+        },
+        questionsPerSet,
+        totalMarksPerSet: totalMarks,
+        subject,
+        difficultyLevel: 'mixed',
+        questionMode: 'teacher_provided',
+        generatedSets: sets,
+        status: examStatus,
+        publishedAt: examStatus === 'published' ? new Date() : undefined,
+        closedAt: examStatus === 'closed' ? new Date() : undefined,
+      });
+      return exam;
+    }
+
+    // For each class, create at least 5 exams
+    const allClasses = [class1, class2];
+    for (const [i, cls] of allClasses.entries()) {
+      const subj = cls.subject || randomFrom(subjects).subject;
+      for (let e = 0; e < 5; e++) {
+        const exam = await createFakeExam({
+          classId: cls._id,
+          teacherId: cls.teacher,
+          subject: subj,
+          examIndex: e
+        });
+        console.log(`[OK] Created exam: ${exam.title} (${exam._id}) for class ${cls.name}`);
+      }
+    }
+
+    // Stage 3 complete
     process.exit(0);
   } catch (err) {
     console.error('[FATAL]', err);
