@@ -23,6 +23,7 @@ const announcementRoutes = require('./routes/announcement.routes');
 const assignmentRoutes = require('./routes/assignment.routes');
 
 const studentExamPaperRoutes = require('./routes/student.exam.paper.routes');
+const studentExamPdfRoutes = require('./routes/student.exam.pdf.routes');
 
 const app = express();
 
@@ -62,8 +63,9 @@ app.use('/', classRoutes);
 app.use('/', uploadRoutes);
 app.use('/', studentRoutes);
 
-// Register new student exam paper route
+// Register new student exam paper and PDF routes
 app.use('/api/v2/student', studentExamPaperRoutes);
+app.use('/api/v2/student', studentExamPdfRoutes);
 
 // Register V2 API routes
 app.use('/api/v2/auth', authRoutes);
