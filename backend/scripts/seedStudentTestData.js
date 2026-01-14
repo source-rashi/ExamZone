@@ -152,25 +152,54 @@ async function main() {
     }
 
     // 6. Generate setMap and bind student to sets with roll numbers
+    const fs = require('fs');
+    const pdfDir = path.resolve(__dirname, '../../pdfs');
+    if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir);
+
+    let paperCount = 0;
+    let examsWithPdf = 0;
     for (const exam of allExams) {
       // Assign student to a random set
       const setIds = (exam.generatedSets || []).map(s => s.setId);
       if (!setIds.length) continue;
       const assignedSet = randomFrom(setIds);
-      // Generate setMap if not present
       let setMap = setIds.map(setId => ({ setId, assignedRollNumbers: [] }));
-      // Assign roll number (random 3-digit)
       const rollNumber = randomInt(100, 999);
       setMap = setMap.map(sm => sm.setId === assignedSet ? { ...sm, assignedRollNumbers: [rollNumber] } : sm);
-      // Update exam with setMap and student assignment
       exam.setMap = setMap;
-      // Save rollNumber and setId for student in exam (for later paper gen)
       exam._studentAssignment = { studentId: student._id, rollNumber, setId: assignedSet };
+
+      // Generate student paper entry and fake PDF for at least 6 exams
+      let paperPath = '';
+      let paperPreview = null;
+      let addPdf = false;
+      if (examsWithPdf < 6 || Math.random() > 0.5) {
+        // Create a fake PDF file (just a text file with .pdf extension)
+        paperPath = path.join(pdfDir, `FAKE_${exam._id}_${rollNumber}.pdf`);
+        fs.writeFileSync(paperPath, `FAKE PDF for exam ${exam.title}, set ${assignedSet}, roll ${rollNumber}`);
+        paperPreview = (exam.generatedSets.find(s => s.setId === assignedSet) || {}).questions || [];
+        examsWithPdf++;
+        addPdf = true;
+      }
+      if (!exam.studentPapers) exam.studentPapers = [];
+      if (addPdf) {
+        exam.studentPapers.push({
+          studentId: student._id,
+          rollNumber,
+          name: student.name,
+          setId: assignedSet,
+          paperPath,
+          paperPreview,
+          generatedAt: new Date(),
+          status: 'created'
+        });
+        paperCount++;
+        console.log(`[OK] Generated student paper and PDF for exam ${exam.title}`);
+      }
       await exam.save();
-      console.log(`[OK] Bound student to set ${assignedSet} (roll ${rollNumber}) for exam ${exam.title}`);
     }
 
-    // Stage 4 complete
+    // Stage 5 complete
     process.exit(0);
   } catch (err) {
     console.error('[FATAL]', err);
