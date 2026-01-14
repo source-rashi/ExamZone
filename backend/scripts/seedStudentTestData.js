@@ -158,6 +158,8 @@ async function main() {
 
     let paperCount = 0;
     let examsWithPdf = 0;
+    let createdClassCodes = [class1.code, class2.code];
+    let allStudentPapers = [];
     for (const exam of allExams) {
       // Assign student to a random set
       const setIds = (exam.generatedSets || []).map(s => s.setId);
@@ -183,7 +185,7 @@ async function main() {
       }
       if (!exam.studentPapers) exam.studentPapers = [];
       if (addPdf) {
-        exam.studentPapers.push({
+        const paperObj = {
           studentId: student._id,
           rollNumber,
           name: student.name,
@@ -192,14 +194,27 @@ async function main() {
           paperPreview,
           generatedAt: new Date(),
           status: 'created'
-        });
+        };
+        exam.studentPapers.push(paperObj);
+        allStudentPapers.push(paperObj);
         paperCount++;
         console.log(`[OK] Generated student paper and PDF for exam ${exam.title}`);
       }
       await exam.save();
     }
 
-    // Stage 5 complete
+    // Stage 6: Verification output
+    console.log('\n-----------------------------');
+    console.log('SEED VERIFICATION OUTPUT');
+    console.log('-----------------------------');
+    console.log('Created class codes:', createdClassCodes);
+    console.log('Number of exams:', allExams.length);
+    console.log('Number of student papers:', allStudentPapers.length);
+    if (allStudentPapers.length > 0) {
+      console.log('Sample paper object:', JSON.stringify(allStudentPapers[0], null, 2));
+    }
+    console.log('-----------------------------\n');
+    // Stage 6 complete
     process.exit(0);
   } catch (err) {
     console.error('[FATAL]', err);
