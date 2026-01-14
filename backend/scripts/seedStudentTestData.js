@@ -136,6 +136,7 @@ async function main() {
 
     // For each class, create at least 5 exams
     const allClasses = [class1, class2];
+    let allExams = [];
     for (const [i, cls] of allClasses.entries()) {
       const subj = cls.subject || randomFrom(subjects).subject;
       for (let e = 0; e < 5; e++) {
@@ -145,11 +146,31 @@ async function main() {
           subject: subj,
           examIndex: e
         });
+        allExams.push(exam);
         console.log(`[OK] Created exam: ${exam.title} (${exam._id}) for class ${cls.name}`);
       }
     }
 
-    // Stage 3 complete
+    // 6. Generate setMap and bind student to sets with roll numbers
+    for (const exam of allExams) {
+      // Assign student to a random set
+      const setIds = (exam.generatedSets || []).map(s => s.setId);
+      if (!setIds.length) continue;
+      const assignedSet = randomFrom(setIds);
+      // Generate setMap if not present
+      let setMap = setIds.map(setId => ({ setId, assignedRollNumbers: [] }));
+      // Assign roll number (random 3-digit)
+      const rollNumber = randomInt(100, 999);
+      setMap = setMap.map(sm => sm.setId === assignedSet ? { ...sm, assignedRollNumbers: [rollNumber] } : sm);
+      // Update exam with setMap and student assignment
+      exam.setMap = setMap;
+      // Save rollNumber and setId for student in exam (for later paper gen)
+      exam._studentAssignment = { studentId: student._id, rollNumber, setId: assignedSet };
+      await exam.save();
+      console.log(`[OK] Bound student to set ${assignedSet} (roll ${rollNumber}) for exam ${exam.title}`);
+    }
+
+    // Stage 4 complete
     process.exit(0);
   } catch (err) {
     console.error('[FATAL]', err);
