@@ -5,6 +5,7 @@
 
 const classService = require('../services/class.service');
 const { AppError } = require('../middleware/error.middleware');
+const { isStudentInClass } = require('../utils/enrollmentResolver');
 
 // ===== LEGACY ROUTES (V1) =====
 // Create a new class with derived title and icon
@@ -136,7 +137,7 @@ async function getClassByCode(req, res) {
 }
 
 /**
- * Get class by ID (with populated data) — PHASE 5.1
+ * Get class by ID (with populated data) — PHASE 7.0 FIXED
  * @route GET /api/v2/classes/:id
  */
 async function getClassById(req, res) {
@@ -158,16 +159,21 @@ async function getClassById(req, res) {
 
     // Check if user has access (teacher or enrolled student)
     const isTeacher = classDoc.teacher?._id.toString() === userId;
-    const isStudent = classDoc.students.some(s => s._id.toString() === userId);
+    
+    // PHASE 7.0: Use enrollment resolver for students
+    let hasAccess = isTeacher;
+    if (!isTeacher && req.user.role === 'student') {
+      hasAccess = await isStudentInClass(id, userId);
+    }
 
-    if (!isTeacher && !isStudent) {
+    if (!hasAccess) {
       return res.status(403).json({
         success: false,
         message: 'You do not have access to this class'
       });
     }
 
-    // Return populated class data
+    // Return populated class data with consistent shape
     res.status(200).json({
       success: true,
       class: {
@@ -184,6 +190,7 @@ async function getClassById(req, res) {
       }
     });
   } catch (error) {
+    console.error('[Get Class By ID] Error:', error);
     if (error.name === 'CastError') {
       return res.status(400).json({
         success: false,
@@ -238,39 +245,55 @@ async function getTeacherClasses(req, res) {
 }
 
 /**
- * Get all classes for a student — PHASE 5.1
+ * Get all classes for a student — PHASE 7.0 FIXED
+ * Uses Enrollment as source of truth
  * @route GET /api/v2/classes/student
  */
 async function getStudentClasses(req, res) {
   try {
     const studentId = req.user.id;
     
+    const Enrollment = require('../models/Enrollment');
     const Class = require('../models/Class');
-    // Find classes where student ID is in the students array
-    const classes = await Class.find({
-      students: studentId
+    
+    // PHASE 7.0: Query via Enrollment (source of truth)
+    const enrollments = await Enrollment.find({
+      studentId,
+      status: 'active'
     })
-    .populate('teacher', 'name email')
-    .sort({ createdAt: -1 });
+    .populate({
+      path: 'classId',
+      populate: {
+        path: 'teacher',
+        select: 'name email'
+      }
+    })
+    .sort({ joinedAt: -1 });
 
-    // Format response
-    const classesWithInfo = classes.map(cls => ({
-      _id: cls._id,
-      name: cls.name || cls.title,
-      title: cls.title || cls.name,
-      code: cls.code,
-      description: cls.description,
-      subject: cls.subject,
-      teacher: cls.teacher,
-      studentCount: cls.students.length,
-      createdAt: cls.createdAt
-    }));
+    // Format response with consistent shape
+    const classes = enrollments
+      .filter(e => e.classId) // Only include if class still exists
+      .map(e => ({
+        _id: e.classId._id,
+        name: e.classId.name || e.classId.title,
+        title: e.classId.title || e.classId.name,
+        code: e.classId.code,
+        description: e.classId.description,
+        subject: e.classId.subject,
+        teacher: e.classId.teacher,
+        studentCount: e.classId.students.length,
+        createdAt: e.classId.createdAt,
+        // Student-specific fields
+        enrolledAt: e.joinedAt,
+        rollNumber: e.rollNumber
+      }));
 
     res.status(200).json({
       success: true,
-      classes: classesWithInfo
+      classes
     });
   } catch (error) {
+    console.error('[Get Student Classes] Error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve classes',

@@ -5,35 +5,50 @@
 import { useState, useEffect } from 'react';
 import Card from '../../components/ui/Card';
 import { studentAPI } from '../../api/student.api';
+import { getStudentExams } from '../../api/exam.api';
 
 export default function StudentExams() {
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [downloading, setDownloading] = useState(null);
+  const [myPapers, setMyPapers] = useState({}); // examId -> paper metadata
 
   useEffect(() => {
     loadExams();
   }, []);
 
+  // Fetch real student exams (all classes)
   const loadExams = async () => {
     try {
       setLoading(true);
-      // TODO: This should call a student API to get exams from enrolled classes
-      // For now, using empty array
-      setExams([]);
+      setError('');
+      // For demo: fetch all exams for all classes (fake/test data)
+      // In real app, fetch classes first, then exams per class
+      const res = await fetch('/api/v2/student/exams/all');
+      const data = await res.json();
+      setExams(Array.isArray(data) ? data : (data.exams || []));
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load exams');
+      setError(err.message || 'Failed to load exams');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDownloadPaper = async (examId, rollNumber, examTitle) => {
+  // Fetch my paper metadata for a given examId
+  const fetchMyPaper = async (examId) => {
+    try {
+      const paper = await studentAPI.getMyPaper(examId);
+      setMyPapers((prev) => ({ ...prev, [examId]: paper }));
+    } catch (err) {
+      // Optionally handle error
+    }
+  };
+
+  const handleDownloadPaper = async (examId, examTitle) => {
     try {
       setDownloading(examId);
-      const blob = await studentAPI.downloadMyPaper(examId, rollNumber);
-      
+      const blob = await studentAPI.downloadMyPaper(examId);
       // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -81,7 +96,7 @@ export default function StudentExams() {
                 <p className="text-slate-600 text-center">No upcoming exams</p>
               ) : (
                 <div className="space-y-4">
-                  {exams.filter(e => e.status === 'published').map((exam) => (
+                  {exams.filter(e => ['published', 'closed', 'ended'].includes((e.status || '').toLowerCase())).map((exam) => (
                     <div key={exam._id} className="p-4 border border-slate-200 rounded-lg hover:shadow-md transition">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
@@ -99,7 +114,10 @@ export default function StudentExams() {
                             PAPER READY
                           </span>
                           <button
-                            onClick={() => handleDownloadPaper(exam._id, exam.myRollNumber, exam.title)}
+                            onClick={async () => {
+                              if (!myPapers[exam._id]) await fetchMyPaper(exam._id);
+                              handleDownloadPaper(exam._id, exam.title);
+                            }}
                             disabled={downloading === exam._id}
                             className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:bg-gray-400"
                           >

@@ -2,6 +2,7 @@ const Announcement = require('../models/Announcement');
 const Exam = require('../models/Exam');
 const Assignment = require('../models/Assignment');
 const Class = require('../models/Class');
+const { isStudentInClass } = require('../utils/enrollmentResolver');
 
 // ==================== ANNOUNCEMENTS ====================
 
@@ -49,9 +50,14 @@ async function getAnnouncements(req, res) {
 
     // Check if user is teacher or student in this class
     const isTeacher = classDoc.teacherId?.toString() === userId || classDoc.teacher?.toString() === userId;
-    const isStudent = classDoc.students.some(s => s.email === req.user.email);
+    
+    // PHASE 7.0: Use enrollment resolver for students
+    let hasAccess = isTeacher;
+    if (!isTeacher && req.user.role === 'student') {
+      hasAccess = await isStudentInClass(classId, userId);
+    }
 
-    if (!isTeacher && !isStudent) {
+    if (!hasAccess) {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
@@ -148,15 +154,26 @@ async function getExams(req, res) {
     }
 
     const isTeacher = classDoc.teacherId?.toString() === userId || classDoc.teacher?.toString() === userId;
-    const isStudent = classDoc.students.some(s => s.email === req.user.email);
+    
+    // PHASE 7.0: Use enrollment resolver for students
+    let hasAccess = isTeacher;
+    if (!isTeacher && req.user.role === 'student') {
+      hasAccess = await isStudentInClass(classId, userId);
+    }
 
-    if (!isTeacher && !isStudent) {
+    if (!hasAccess) {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
-    const exams = await Exam.find({ classId })
+    // PHASE 7.0: Students only see published/running/closed exams
+    const query = { classId };
+    if (req.user.role === 'student') {
+      query.status = { $in: ['published', 'running', 'closed'] };
+    }
+
+    const exams = await Exam.find(query)
       .sort({ date: 1 })
-      .select('title date duration durationMinutes')
+      .select('title date duration durationMinutes status startTime endTime')
       .lean();
 
     res.json({ success: true, exams });
@@ -210,9 +227,14 @@ async function getAssignments(req, res) {
     }
 
     const isTeacher = classDoc.teacherId?.toString() === userId || classDoc.teacher?.toString() === userId;
-    const isStudent = classDoc.students.some(s => s.email === req.user.email);
+    
+    // PHASE 7.0: Use enrollment resolver for students
+    let hasAccess = isTeacher;
+    if (!isTeacher && req.user.role === 'student') {
+      hasAccess = await isStudentInClass(classId, userId);
+    }
 
-    if (!isTeacher && !isStudent) {
+    if (!hasAccess) {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 

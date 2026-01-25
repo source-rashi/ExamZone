@@ -1,70 +1,44 @@
-// Student Exam Paper API
-// GET /api/v2/student/exams/:examId/my-paper
+/**
+ * PHASE 7.0 — Student Exam Paper API (SECURE)
+ * GET /api/v2/student/exams/:examId/my-paper
+ */
 
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../../middleware/auth.middleware');
 const { studentOnly } = require('../../middleware/role.middleware');
-const Exam = require('../../models/Exam');
-const Class = require('../../models/Class');
+const { getStudentPaper } = require('../../utils/paperResolver');
+const { getStudentId } = require('../../utils/studentIdentity');
 
-// GET /api/v2/student/exams/:examId/my-paper
+/**
+ * Get student's own paper metadata
+ * GET /api/v2/student/exams/:examId/my-paper
+ */
 router.get('/exams/:examId/my-paper', authenticate, studentOnly, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const studentId = getStudentId(req);
     const { examId } = req.params;
-    // 1. Find exam
-    const exam = await Exam.findById(examId);
-    if (!exam) return res.status(404).json({ success: false, message: 'Exam not found' });
-    // 2. Find class
-    const classDoc = await Class.findById(exam.classId);
-    if (!classDoc) return res.status(404).json({ success: false, message: 'Class not found' });
-    // 3. Find student in class
-    const student = classDoc.students.find(s => s.userId && s.userId.toString() === userId);
-    if (!student) return res.status(403).json({ success: false, message: 'You are not enrolled in this class' });
-    // 4. Get rollNumber
-    const rollNumber = student.rollNumber;
-    // 5. Resolve assigned set
-    const setId = exam.setMap && rollNumber ? exam.setMap[rollNumber] : null;
-    if (!setId) return res.status(404).json({ success: false, message: 'No set assigned for this student' });
-    // 6. Fetch generated paper / PDF metadata
-    let paper = null;
-    if (exam.generatedSets && exam.generatedSets[setId]) {
-      paper = exam.generatedSets[setId];
-    }
-    // 7. Find student PDF metadata if available
-    let pdfMeta = null;
-    if (exam.studentPapers && exam.studentPapers[rollNumber]) {
-      pdfMeta = exam.studentPapers[rollNumber];
-    }
-    // 8. Build response
+    
+    // Use secure paper resolver
+    const paperData = await getStudentPaper(examId, studentId);
+    
     res.json({
       success: true,
-      exam: {
-        id: exam._id,
-        title: exam.title,
-        subject: exam.subject,
-        duration: exam.duration,
-        totalMarks: exam.totalMarks,
-        instructions: exam.instructions || '',
-        status: exam.status
-      },
-      class: {
-        id: classDoc._id,
-        name: classDoc.name || classDoc.title,
-        code: classDoc.code,
-        teacher: classDoc.teacher
-      },
-      student: {
-        userId,
-        rollNumber
-      },
-      setId,
-      questions: paper ? paper.questions : null,
-      pdf: pdfMeta ? pdfMeta.pdfUrl || pdfMeta.path : null
+      data: paperData
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to resolve student paper', error: error.message });
+    console.error('[Get My Paper] Error:', error.message);
+    
+    const status = error.message.includes('not found') ? 404 :
+                   error.message.includes('not yet available') ? 403 :
+                   error.message.includes('not enrolled') ? 403 :
+                   error.message.includes('not been generated') ? 404 :
+                   500;
+    
+    res.status(status).json({
+      success: false,
+      message: error.message
+    });
   }
 });
 

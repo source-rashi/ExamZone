@@ -1,5 +1,5 @@
 /**
- * PHASE 6.4 — TASK 3 & 4: PAPER DOWNLOAD ROUTES
+ * PHASE 7.0 — SECURE PAPER DOWNLOAD ROUTES
  * 
  * Secure access to exam PDFs:
  * - Students can only access their own paper
@@ -9,43 +9,28 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth.middleware');
-const { teacherOnly } = require('../middleware/role.middleware');
+const { teacherOnly, studentOnly } = require('../middleware/role.middleware');
+const { getStudentPaperFilePath } = require('../utils/paperResolver');
+const { getStudentId } = require('../utils/studentIdentity');
 const Exam = require('../models/Exam');
-const Enrollment = require('../models/Enrollment');
 const path = require('path');
 const fs = require('fs').promises;
 
 /**
- * TASK 3: Get student's own paper
+ * PHASE 7.0: Get student's own paper (SECURE)
  * GET /api/papers/student/:examId
  * 
  * Student can download only their assigned paper
  */
-router.get('/student/:examId', authenticate, async (req, res) => {
+router.get('/student/:examId', authenticate, studentOnly, async (req, res) => {
   try {
     const { examId } = req.params;
-    const studentId = req.user.id;
+    const studentId = getStudentId(req);
     
-    const exam = await Exam.findById(examId);
-    if (!exam) {
-      return res.status(404).json({ success: false, message: 'Exam not found' });
-    }
+    // Use secure resolver
+    const { filePath, fileName } = await getStudentPaperFilePath(examId, studentId);
     
-    // Find student's paper
-    const paper = exam.studentPapers.find(p => 
-      p.studentId.toString() === studentId
-    );
-    
-    if (!paper) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Paper not found or not yet generated' 
-      });
-    }
-    
-    // Check file exists (paperPath is already absolute)
-    const filePath = paper.paperPath;
-    
+    // Verify file exists
     try {
       await fs.access(filePath);
     } catch (error) {
@@ -57,12 +42,18 @@ router.get('/student/:examId', authenticate, async (req, res) => {
     
     // Stream PDF file
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="exam_${exam.title}_roll_${paper.rollNumber}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.sendFile(filePath);
     
   } catch (error) {
     console.error('[Paper Download] Student error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    
+    const status = error.message.includes('not found') ? 404 :
+                   error.message.includes('not yet available') ? 403 :
+                   error.message.includes('not enrolled') ? 403 :
+                   500;
+    
+    res.status(status).json({ success: false, message: error.message });
   }
 });
 

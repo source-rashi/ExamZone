@@ -1,11 +1,12 @@
 /**
- * PHASE 6.1 — Exam Service (Refactored)
+ * PHASE 7.0 — Exam Service (Refactored)
  * Simplified business logic for exam management
  */
 
 const Exam = require('../models/Exam');
 const Class = require('../models/Class');
 const Enrollment = require('../models/Enrollment');
+const { isStudentInClass } = require('../utils/enrollmentResolver');
 
 /**
  * Create a new exam (draft state)
@@ -272,26 +273,28 @@ async function getClassExams(classId, teacherId) {
 
 /**
  * Get exams for a student (only published/running exams)
- * TASK 8 - Students blocked before publish
+ * PHASE 7.0 - Enhanced with enrollment resolver
  */
 async function getStudentExams(classId, studentId) {
-  // Verify student is enrolled in class
+  // Verify class exists
   const classDoc = await Class.findById(classId);
   if (!classDoc) {
     throw new Error('Class not found');
   }
 
-  const isEnrolled = classDoc.students.some(s => s.toString() === studentId);
-  if (!isEnrolled) {
+  // PHASE 7.0: Use enrollment resolver
+  const enrolled = await isStudentInClass(classId, studentId);
+  if (!enrolled) {
     throw new Error('You are not enrolled in this class');
   }
 
-  // TASK 8 - Only show published or running exams (block draft/prepared/generated)
+  // PHASE 7.0: Only show published/running/closed exams
   const exams = await Exam.find({
     classId,
     status: { $in: ['published', 'running', 'closed'] }
   })
     .populate('createdBy', 'name')
+    .select('title description startTime endTime duration totalMarks status createdAt')
     .sort({ startTime: -1 });
 
   return exams;
@@ -538,15 +541,29 @@ async function prepareExam(examId, teacherId) {
 
 /**
  * Get exam by ID with generated sets
- * PHASE 6.3 - For teacher review panel
+ * PHASE 7.0 - Enhanced with student visibility rules
  */
-async function getExamById(examId, userId) {
+async function getExamById(examId, userId, userRole) {
   const exam = await Exam.findById(examId)
     .populate('classId', 'name subject')
     .populate('createdBy', 'name email');
 
   if (!exam) {
     throw new Error('Exam not found');
+  }
+
+  // PHASE 7.0: Students can only see published/running/closed exams
+  if (userRole === 'student') {
+    const allowedStatuses = ['published', 'running', 'closed'];
+    if (!allowedStatuses.includes(exam.status)) {
+      throw new Error('Exam is not yet available');
+    }
+    
+    // Verify student is enrolled
+    const enrolled = await isStudentInClass(exam.classId._id, userId);
+    if (!enrolled) {
+      throw new Error('You are not enrolled in this class');
+    }
   }
 
   // Return exam with generated sets

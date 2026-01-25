@@ -593,8 +593,9 @@ async function getExamById(req, res) {
   try {
     const { id } = req.params;
     const userId = req.user?.id;
+    const userRole = req.user?.role;
 
-    const exam = await examService.getExamById(id, userId);
+    const exam = await examService.getExamById(id, userId, userRole);
 
     res.status(200).json({
       success: true,
@@ -605,6 +606,13 @@ async function getExamById(req, res) {
 
     if (error.message.includes('not found')) {
       return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('not yet available') || error.message.includes('not enrolled')) {
+      return res.status(403).json({
         success: false,
         message: error.message
       });
