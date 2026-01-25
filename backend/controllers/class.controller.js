@@ -140,10 +140,22 @@ async function getClassByCode(req, res) {
  * Get class by ID (with populated data) — PHASE 7.0 FIXED
  * @route GET /api/v2/classes/:id
  */
+/**
+ * PHASE 7.2 — Get Class By ID
+ * Works for both teachers and enrolled students
+ * 
+ * @route GET /api/v2/classes/:id
+ */
 async function getClassById(req, res) {
   try {
     const { id } = req.params;
     const userId = req.user.id;
+    
+    console.log('[Get Class By ID] Request:', {
+      classId: id,
+      userId,
+      userRole: req.user.role
+    });
     
     const Class = require('../models/Class');
     const classDoc = await Class.findById(id)
@@ -151,6 +163,7 @@ async function getClassById(req, res) {
       .populate('students', 'name email role');
 
     if (!classDoc) {
+      console.log('[Get Class By ID] Class not found:', id);
       return res.status(404).json({
         success: false,
         message: 'Class not found'
@@ -164,14 +177,18 @@ async function getClassById(req, res) {
     let hasAccess = isTeacher;
     if (!isTeacher && req.user.role === 'student') {
       hasAccess = await isStudentInClass(id, userId);
+      console.log('[Get Class By ID] Student access check:', hasAccess);
     }
 
     if (!hasAccess) {
+      console.log('[Get Class By ID] Access denied for user:', userId);
       return res.status(403).json({
         success: false,
         message: 'You do not have access to this class'
       });
     }
+
+    console.log('[Get Class By ID] Success - returning class data');
 
     // Return populated class data with consistent shape
     res.status(200).json({
@@ -197,6 +214,7 @@ async function getClassById(req, res) {
         message: 'Invalid class ID format'
       });
     }
+    // PHASE 7.2: Ensure JSON error response
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve class',
@@ -249,9 +267,22 @@ async function getTeacherClasses(req, res) {
  * Uses Enrollment as source of truth
  * @route GET /api/v2/classes/student
  */
+/**
+ * PHASE 7.2 — Get Student Classes
+ * Source of truth: Enrollment → Class
+ * 
+ * @route GET /api/v2/classes/student
+ */
 async function getStudentClasses(req, res) {
   try {
     const studentId = req.user.id;
+    
+    // PHASE 7.2: Log incoming request
+    console.log('[Student Classes API] Request from:', {
+      userId: studentId,
+      userRole: req.user.role,
+      userEmail: req.user.email
+    });
     
     const Enrollment = require('../models/Enrollment');
     const Class = require('../models/Class');
@@ -269,6 +300,8 @@ async function getStudentClasses(req, res) {
       }
     })
     .sort({ joinedAt: -1 });
+
+    console.log('[Student Classes API] Found enrollments:', enrollments.length);
 
     // Format response with consistent shape
     const classes = enrollments
@@ -288,12 +321,15 @@ async function getStudentClasses(req, res) {
         rollNumber: e.rollNumber
       }));
 
+    console.log('[Student Classes API] Returning classes:', classes.length);
+
     res.status(200).json({
       success: true,
       classes
     });
   } catch (error) {
-    console.error('[Get Student Classes] Error:', error);
+    console.error('[Student Classes API] Error:', error);
+    // PHASE 7.2: Ensure JSON error response
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve classes',

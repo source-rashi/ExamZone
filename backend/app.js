@@ -24,6 +24,8 @@ const assignmentRoutes = require('./routes/assignment.routes');
 
 const studentExamPaperRoutes = require('./routes/student.exam.paper.routes');
 const studentExamPdfRoutes = require('./routes/student.exam.pdf.routes');
+const studentDashboardRoutes = require('./routes/studentDashboard.routes');
+const paperRoutes = require('./routes/paper.routes');
 
 const app = express();
 
@@ -66,6 +68,7 @@ app.use('/', studentRoutes);
 // Register new student exam paper and PDF routes
 app.use('/api/v2/student', studentExamPaperRoutes);
 app.use('/api/v2/student', studentExamPdfRoutes);
+app.use('/api/v2/student', studentDashboardRoutes);
 
 // Register V2 API routes
 app.use('/api/v2/auth', authRoutes);
@@ -156,6 +159,23 @@ app.post('/login', (req, res) => {
 
 // Error handling middleware (must be last)
 const { errorHandler, notFoundHandler } = require('./middleware/error.middleware');
+
+// PHASE 7.2: JSON-only error handler for /api routes
+app.use('/api', (err, req, res, next) => {
+  console.error('[API Error]', {
+    path: req.path,
+    method: req.method,
+    error: err.message,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
+
+  // Always return JSON for API routes
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal Server Error',
+    error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
+});
 
 // 404 handler for undefined routes
 app.use(notFoundHandler);

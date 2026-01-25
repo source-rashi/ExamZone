@@ -94,7 +94,7 @@ async function optionalAuth(req, res, next) {
           role: user.role,
           name: user.name
         };
-module.exports = { authenticate, optionalAuth };
+      }
     } catch (error) {
       // Invalid token, continue without user
     }

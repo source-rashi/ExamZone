@@ -5,10 +5,10 @@
 
 const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../../middleware/auth.middleware');
-const { studentOnly } = require('../../middleware/role.middleware');
-const { getStudentPaper } = require('../../utils/paperResolver');
-const { getStudentId } = require('../../utils/studentIdentity');
+const { authenticate } = require('../middleware/auth.middleware');
+const { studentOnly } = require('../middleware/role.middleware');
+const { getStudentPaper } = require('../utils/paperResolver');
+const { getStudentId } = require('../utils/studentIdentity');
 
 /**
  * Get student's own paper metadata

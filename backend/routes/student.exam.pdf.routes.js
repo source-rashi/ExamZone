@@ -5,10 +5,10 @@
 
 const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../../middleware/auth.middleware');
-const { studentOnly } = require('../../middleware/role.middleware');
-const { getStudentPaperFilePath } = require('../../utils/paperResolver');
-const { getStudentId } = require('../../utils/studentIdentity');
+const { authenticate } = require('../middleware/auth.middleware');
+const { studentOnly } = require('../middleware/role.middleware');
+const { getStudentPaperFilePath } = require('../utils/paperResolver');
+const { getStudentId } = require('../utils/studentIdentity');
 const fs = require('fs').promises;
 
 /**
