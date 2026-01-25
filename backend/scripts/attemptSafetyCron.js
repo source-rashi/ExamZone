@@ -9,8 +9,8 @@
  * Usage:
  * node backend/scripts/attemptSafetyCron.js
  * 
- * Or add to crontab:
- * */5 * * * * node /path/to/backend/scripts/attemptSafetyCron.js
+ * Or add to crontab (runs every 5 minutes):
+ * (crontab example) - /5 * * * * node /path/to/backend/scripts/attemptSafetyCron.js
  */
 
 const mongoose = require('mongoose');
