@@ -408,11 +408,12 @@ async function joinClassV2(req, res) {
     });
 
     // PHASE 7.0: Create enrollment (auto-assigns rollNumber, checks duplicates)
+    // Don't pass enrolledBy for self-enrollment (student joins via code)
     try {
       const enrollment = await enrollmentService.enrollStudent({
         classId: classDoc._id,
-        studentId: studentUserId,
-        enrolledBy: studentUserId // Self-enrollment
+        studentId: studentUserId
+        // enrolledBy omitted = self-enrollment, bypasses teacher check
       });
 
       console.log('[Join Class] Enrollment created:', {
