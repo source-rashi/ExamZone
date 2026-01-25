@@ -362,7 +362,8 @@ async function getStudentClasses(req, res) {
 }
 
 /**
- * Join a class (student) — PHASE 5.1
+ * Join class by code — PHASE 7.0 FIXED
+ * Uses Enrollment as source of truth
  * @route POST /api/v2/classes/join
  */
 async function joinClassV2(req, res) {
@@ -386,6 +387,7 @@ async function joinClassV2(req, res) {
     }
 
     const Class = require('../models/Class');
+    const enrollmentService = require('../services/enrollment.service');
     
     // Find class by code (case-insensitive)
     const classDoc = await Class.findOne({ 
@@ -399,33 +401,51 @@ async function joinClassV2(req, res) {
       });
     }
 
-    // Check if student already joined (using ObjectId reference)
-    const alreadyJoined = classDoc.students.some(
-      studentId => studentId.toString() === studentUserId
-    );
-
-    if (alreadyJoined) {
-      return res.status(400).json({
-        success: false,
-        message: 'You have already joined this class'
-      });
-    }
-
-    // Add student User reference to class
-    classDoc.students.push(studentUserId);
-    await classDoc.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Successfully joined class!',
-      class: {
-        _id: classDoc._id,
-        name: classDoc.name || classDoc.title,
-        title: classDoc.title || classDoc.name,
-        code: classDoc.code
-      }
+    console.log('[Join Class] Student attempting to join:', {
+      studentId: studentUserId,
+      classId: classDoc._id.toString(),
+      classCode: classDoc.code
     });
+
+    // PHASE 7.0: Create enrollment (auto-assigns rollNumber, checks duplicates)
+    try {
+      const enrollment = await enrollmentService.enrollStudent({
+        classId: classDoc._id,
+        studentId: studentUserId,
+        enrolledBy: studentUserId // Self-enrollment
+      });
+
+      console.log('[Join Class] Enrollment created:', {
+        enrollmentId: enrollment._id.toString(),
+        rollNumber: enrollment.rollNumber
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Successfully joined class!',
+        class: {
+          _id: classDoc._id,
+          name: classDoc.name || classDoc.title,
+          title: classDoc.title || classDoc.name,
+          code: classDoc.code
+        },
+        enrollment: {
+          id: enrollment._id,
+          rollNumber: enrollment.rollNumber
+        }
+      });
+    } catch (enrollmentError) {
+      // Handle duplicate enrollment
+      if (enrollmentError.message.includes('Already enrolled')) {
+        return res.status(400).json({
+          success: false,
+          message: 'You have already joined this class'
+        });
+      }
+      throw enrollmentError;
+    }
   } catch (error) {
+    console.error('[Join Class] Error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to join class',
