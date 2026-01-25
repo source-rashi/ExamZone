@@ -8,6 +8,7 @@ const Invite = require('../models/Invite');
 const Class = require('../models/Class');
 const User = require('../models/User');
 const Enrollment = require('../models/Enrollment');
+const enrollmentService = require('./enrollment.service');
 const mailService = require('./mail.service');
 const { classInviteEmail } = require('../utils/emailTemplates');
 const { ROLES } = require('../utils/roles');
@@ -159,11 +160,23 @@ async function acceptInvite(token, userId) {
     throw new Error('You are already enrolled in this class');
   }
   
-  // Create enrollment
-  const enrollment = await Enrollment.create({
+  // Create enrollment using enrollmentService (auto-assigns rollNumber)
+  console.log('[Invite Accept] Creating enrollment:', {
     classId: invite.classId,
     studentId: userId,
     enrolledBy: invite.createdBy
+  });
+  
+  const enrollment = await enrollmentService.enrollStudent({
+    classId: invite.classId,
+    studentId: userId,
+    enrolledBy: invite.createdBy
+  });
+  
+  console.log('[Invite Accept] Enrollment created:', {
+    id: enrollment._id,
+    rollNumber: enrollment.rollNumber,
+    status: enrollment.status
   });
   
   // Mark invite as accepted
