@@ -280,12 +280,30 @@ async function getStudentClasses(req, res) {
     // PHASE 7.2: Log incoming request
     console.log('[Student Classes API] Request from:', {
       userId: studentId,
+      userId_type: typeof studentId,
       userRole: req.user.role,
       userEmail: req.user.email
     });
     
     const Enrollment = require('../models/Enrollment');
     const Class = require('../models/Class');
+    
+    // DEBUG: Check what enrollments exist in DB
+    const allEnrollments = await Enrollment.find({}).select('studentId classId status rollNumber');
+    console.log('[Student Classes API] ALL enrollments in DB:', allEnrollments.length);
+    console.log('[Student Classes API] Sample enrollments:', allEnrollments.slice(0, 3).map(e => ({
+      id: e._id,
+      studentId: e.studentId?.toString(),
+      classId: e.classId?.toString(),
+      status: e.status,
+      rollNumber: e.rollNumber
+    })));
+    
+    // Check if any match this student
+    const matchingAny = allEnrollments.filter(e => 
+      e.studentId && e.studentId.toString() === studentId.toString()
+    );
+    console.log('[Student Classes API] Enrollments matching studentId:', matchingAny.length);
     
     // PHASE 7.0: Query via Enrollment (source of truth)
     const enrollments = await Enrollment.find({
@@ -301,7 +319,7 @@ async function getStudentClasses(req, res) {
     })
     .sort({ joinedAt: -1 });
 
-    console.log('[Student Classes API] Found enrollments:', enrollments.length);
+    console.log('[Student Classes API] Found enrollments after query:', enrollments.length);
 
     // Format response with consistent shape
     const classes = enrollments
