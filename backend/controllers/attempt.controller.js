@@ -7,12 +7,14 @@
  * • Access paper through attempt
  * 
  * SERVER-AUTHORITATIVE: Frontend never decides eligibility
+ * SAFETY: Enforces one active attempt, auto-closes expired
  */
 
 const { ExamAttempt, Exam } = require('../models');
 const { checkStudentExamEligibility, checkAttemptAccess } = require('../services/attemptEligibility.service');
 const { getStudentId } = require('../utils/studentIdentity');
 const { getStudentPaper, getStudentQuestions } = require('../utils/paperResolver');
+const { ensureOneActiveAttempt, checkPaperAccessAllowed } = require('../services/attemptSafety.service');
 const attemptService = require('../services/attempt.service');
 
 /**
@@ -56,7 +58,12 @@ async function startExamAttempt(req, res, next) {
     const { exam, enrollment, paper } = eligibility;
 
     // ==================================================================
-    // PREVENT DUPLICATE SIMULTANEOUS STARTS
+    // PHASE 7.1 SAFETY: Ensure one active attempt per exam
+    // ==================================================================
+    await ensureOneActiveAttempt(examId, studentId);
+
+    // ==================================================================
+    // PREVENT DUPLICATE SIMULTANEOUS STARTS (double-check)
     // ==================================================================
     const existingActive = await ExamAttempt.findOne({
       exam: examId,
@@ -65,6 +72,7 @@ async function startExamAttempt(req, res, next) {
     });
 
     if (existingActive) {
+      console.log(`[ATTEMPT] Student ${studentId} already has active attempt ${existingActive._id} for exam ${examId}`);
       return res.status(409).json({
         success: false,
         error: 'You already have an active attempt for this exam',
@@ -97,6 +105,8 @@ async function startExamAttempt(req, res, next) {
 
     await attempt.save();
 
+    console.log(`[ATTEMPT] Started attempt ${attempt._id} for student ${studentId} on exam ${examId} (attempt #${attemptNo})`);
+
     // ==================================================================
     // RETURN ATTEMPT ID + EXAM META
     // ==================================================================
@@ -120,7 +130,7 @@ async function startExamAttempt(req, res, next) {
     });
 
   } catch (error) {
-    console.error('Error starting exam attempt:', error);
+    console.error('[ATTEMPT] Error starting exam attempt:', error);
     next(error);
   }
 }
@@ -215,6 +225,7 @@ async function getAttemptPaper(req, res, next) {
     const accessCheck = await checkAttemptAccess(studentId, attemptId);
 
     if (!accessCheck.allowed) {
+      console.warn(`[ATTEMPT] Paper access denied for attempt ${attemptId}: ${accessCheck.reason}`);
       return res.status(403).json({
         success: false,
         error: accessCheck.message,
@@ -242,10 +253,28 @@ async function getAttemptPaper(req, res, next) {
 
     const now = new Date();
     if (now > expectedEndTime) {
+      console.log(`[ATTEMPT] Paper access blocked for expired attempt ${attemptId}`);
       return res.status(403).json({
         success: false,
         error: 'Attempt time has expired',
         reason: 'ATTEMPT_EXPIRED'
+      });
+    }
+
+    // ==================================================================
+    // PHASE 7.1 SAFETY: Additional paper access check
+    // ==================================================================
+    const paperAccessCheck = checkPaperAccessAllowed({
+      ...attempt,
+      exam: { duration: exam.duration }
+    });
+
+    if (!paperAccessCheck.allowed) {
+      console.warn(`[ATTEMPT] Paper access blocked for attempt ${attemptId}: ${paperAccessCheck.reason}`);
+      return res.status(403).json({
+        success: false,
+        error: paperAccessCheck.message,
+        reason: paperAccessCheck.reason
       });
     }
 
