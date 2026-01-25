@@ -30,7 +30,8 @@ export default function StudentExams() {
       
       // Use apiClient for proper auth headers
       const token = localStorage.getItem('token');
-      const res = await fetch('/api/v2/student/exams/all', {
+      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v2';
+      const res = await fetch(`${baseURL}/student/exams/all`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

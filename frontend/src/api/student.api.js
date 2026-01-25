@@ -15,7 +15,7 @@ export const studentAPI = {
    * @returns {Promise<Object>} Attempt data with attemptId, attemptNo, startedAt, expectedEndTime, exam
    */
   startExamAttempt: async (examId) => {
-    const response = await apiClient.post('/api/v2/attempts/start', { examId });
+    const response = await apiClient.post('/attempts/start', { examId });
     return response.data.success ? response.data.data : response.data;
   },
 
@@ -25,7 +25,7 @@ export const studentAPI = {
    * @returns {Promise<Object|null>} Active attempt data or null
    */
   getActiveAttempt: async (examId) => {
-    const response = await apiClient.get(`/api/v2/attempts/${examId}/active`);
+    const response = await apiClient.get(`/attempts/${examId}/active`);
     return response.data.success ? response.data.data : response.data;
   },
 
@@ -35,7 +35,7 @@ export const studentAPI = {
    * @returns {Promise<Object>} Paper with questions, attemptInfo, exam metadata
    */
   getAttemptPaper: async (attemptId) => {
-    const response = await apiClient.get(`/api/v2/attempts/${attemptId}/paper`);
+    const response = await apiClient.get(`/attempts/${attemptId}/paper`);
     return response.data.success ? response.data.data : response.data;
   },
 
@@ -49,7 +49,7 @@ export const studentAPI = {
    * @returns {Promise<Object>} Complete paper data with student, exam, and paper info
    */
   getMyPaper: async (examId) => {
-    const response = await apiClient.get(`/api/v2/student/exams/${examId}/my-paper`);
+    const response = await apiClient.get(`/student/exams/${examId}/my-paper`);
     return response.data.success ? response.data.data : response.data;
   },
 
@@ -59,7 +59,7 @@ export const studentAPI = {
    * @returns {Promise<Blob>} PDF file blob
    */
   downloadMyPaper: async (examId) => {
-    const response = await apiClient.get(`/api/v2/student/exams/${examId}/my-paper/pdf`, {
+    const response = await apiClient.get(`/student/exams/${examId}/my-paper/pdf`, {
       responseType: 'blob'
     });
     return response.data;
