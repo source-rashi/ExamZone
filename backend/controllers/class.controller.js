@@ -305,9 +305,14 @@ async function getStudentClasses(req, res) {
     );
     console.log('[Student Classes API] Enrollments matching studentId:', matchingAny.length);
     
+    // Convert studentId to ObjectId for proper MongoDB query
+    const mongoose = require('mongoose');
+    const studentObjectId = new mongoose.Types.ObjectId(studentId);
+    console.log('[Student Classes API] Querying with ObjectId:', studentObjectId);
+    
     // PHASE 7.0: Query via Enrollment (source of truth)
     const enrollments = await Enrollment.find({
-      studentId,
+      studentId: studentObjectId,
       status: 'active'
     })
     .populate({
