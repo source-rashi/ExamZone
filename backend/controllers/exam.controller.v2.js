@@ -105,6 +105,60 @@ async function getClassExams(req, res) {
 }
 
 /**
+ * Get all exams for student across all enrolled classes — PHASE 7.0
+ * @route GET /api/v2/student/exams/all
+ */
+async function getAllStudentExams(req, res) {
+  try {
+    const studentId = req.user.id;
+    
+    console.log('[Get All Student Exams] Request from:', studentId);
+    
+    const Enrollment = require('../models/Enrollment');
+    const Exam = require('../models/Exam');
+    const mongoose = require('mongoose');
+    
+    // Get all active enrollments for this student
+    const enrollments = await Enrollment.find({
+      studentId: new mongoose.Types.ObjectId(studentId),
+      status: 'active'
+    }).select('classId');
+    
+    const classIds = enrollments.map(e => e.classId);
+    console.log('[Get All Student Exams] Enrolled in classes:', classIds.length);
+    
+    if (classIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        exams: []
+      });
+    }
+    
+    // Get all exams from enrolled classes with visible status
+    const exams = await Exam.find({
+      classId: { $in: classIds },
+      status: { $in: ['published', 'running', 'closed', 'ended'] }
+    })
+    .populate('classId', 'name title code')
+    .sort({ scheduledAt: 1 });
+    
+    console.log('[Get All Student Exams] Found exams:', exams.length);
+    
+    res.status(200).json({
+      success: true,
+      exams
+    });
+  } catch (error) {
+    console.error('[Get All Student Exams] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch exams',
+      error: error.message
+    });
+  }
+}
+
+/**
  * Get student exams (Student only)
  * GET /api/exams/student/:classId
  */
@@ -184,6 +238,7 @@ module.exports = {
   publishExam,
   closeExam,
   getClassExams,
+  getAllStudentExams,
   getStudentExams,
   startAttempt,
   submitAttempt

@@ -25,11 +25,29 @@ export default function StudentExams() {
     try {
       setLoading(true);
       setError('');
-      // For demo: fetch all exams for all classes (fake/test data)
-      // In real app, fetch classes first, then exams per class
-      const res = await fetch('/api/v2/student/exams/all');
+      
+      console.log('[Exams] Loading exams from API...');
+      
+      // Use apiClient for proper auth headers
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/v2/student/exams/all', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('[Exams] Response status:', res.status);
+      
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+      
       const data = await res.json();
+      console.log('[Exams] Response data:', data);
+      
       const examList = Array.isArray(data) ? data : (data.exams || []);
+      console.log('[Exams] Exam list:', examList.length, 'exams');
       setExams(examList);
       
       // PHASE 7.1: Check for active attempts for each exam
