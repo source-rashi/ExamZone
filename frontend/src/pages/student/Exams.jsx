@@ -1,6 +1,6 @@
 /**
- * TASK 6 - Student Exam Papers View
- * Shows upcoming exams with paper download for published exams
+ * PHASE 7.1 — Student Exam Papers View
+ * Shows upcoming exams with Start/Resume Exam buttons
  */
 import { useState, useEffect } from 'react';
 import Card from '../../components/ui/Card';
@@ -13,6 +13,8 @@ export default function StudentExams() {
   const [error, setError] = useState('');
   const [downloading, setDownloading] = useState(null);
   const [myPapers, setMyPapers] = useState({}); // examId -> paper metadata
+  const [activeAttempts, setActiveAttempts] = useState({}); // examId -> attempt data
+  const [startingExam, setStartingExam] = useState(null);
 
   useEffect(() => {
     loadExams();
@@ -27,11 +29,67 @@ export default function StudentExams() {
       // In real app, fetch classes first, then exams per class
       const res = await fetch('/api/v2/student/exams/all');
       const data = await res.json();
-      setExams(Array.isArray(data) ? data : (data.exams || []));
+      const examList = Array.isArray(data) ? data : (data.exams || []);
+      setExams(examList);
+      
+      // PHASE 7.1: Check for active attempts for each exam
+      for (const exam of examList) {
+        try {
+          const attempt = await studentAPI.getActiveAttempt(exam._id);
+          if (attempt) {
+            setActiveAttempts(prev => ({ ...prev, [exam._id]: attempt }));
+          }
+        } catch (err) {
+          // No active attempt, that's fine
+        }
+      }
     } catch (err) {
       setError(err.message || 'Failed to load exams');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // PHASE 7.1: Start exam attempt
+  const handleStartExam = async (examId, examTitle) => {
+    try {
+      setStartingExam(examId);
+      console.log('[PHASE 7.1] Starting exam:', examId, examTitle);
+      
+      const attemptData = await studentAPI.startExamAttempt(examId);
+      console.log('[PHASE 7.1] Attempt started:', attemptData);
+      
+      // Store attemptId
+      setActiveAttempts(prev => ({ ...prev, [examId]: attemptData }));
+      
+      // Fetch paper through attempt
+      const paper = await studentAPI.getAttemptPaper(attemptData.attemptId);
+      console.log('[PHASE 7.1] Paper loaded:', paper);
+      
+      alert(`Exam Started!\nAttempt ID: ${attemptData.attemptId}\nQuestions: ${paper.questions?.length || 0}\n\n(UI not implemented yet - check console)`);
+      
+    } catch (err) {
+      console.error('[PHASE 7.1] Start exam error:', err);
+      alert(err.response?.data?.error || err.message || 'Failed to start exam');
+    } finally {
+      setStartingExam(null);
+    }
+  };
+
+  // PHASE 7.1: Resume exam attempt
+  const handleResumeExam = async (examId, attemptData) => {
+    try {
+      console.log('[PHASE 7.1] Resuming exam:', examId, attemptData);
+      
+      // Fetch paper through attempt
+      const paper = await studentAPI.getAttemptPaper(attemptData.attemptId);
+      console.log('[PHASE 7.1] Paper loaded:', paper);
+      
+      alert(`Exam Resumed!\nAttempt ID: ${attemptData.attemptId}\nStarted: ${new Date(attemptData.startedAt).toLocaleString()}\nQuestions: ${paper.questions?.length || 0}\n\n(UI not implemented yet - check console)`);
+      
+    } catch (err) {
+      console.error('[PHASE 7.1] Resume exam error:', err);
+      alert(err.response?.data?.error || err.message || 'Failed to resume exam');
     }
   };
 
@@ -96,37 +154,63 @@ export default function StudentExams() {
                 <p className="text-slate-600 text-center">No upcoming exams</p>
               ) : (
                 <div className="space-y-4">
-                  {exams.filter(e => ['published', 'closed', 'ended'].includes((e.status || '').toLowerCase())).map((exam) => (
-                    <div key={exam._id} className="p-4 border border-slate-200 rounded-lg hover:shadow-md transition">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-slate-900">{exam.title}</h4>
-                          {exam.description && (
-                            <p className="text-sm text-slate-600 mt-1">{exam.description}</p>
-                          )}
-                          <div className="flex gap-4 mt-2 text-sm text-slate-500">
-                            <span>Duration: {exam.duration} min</span>
-                            <span>Total Marks: {exam.totalMarks}</span>
+                  {exams.filter(e => ['published', 'running', 'closed', 'ended'].includes((e.status || '').toLowerCase())).map((exam) => {
+                    const activeAttempt = activeAttempts[exam._id];
+                    
+                    return (
+                      <div key={exam._id} className="p-4 border border-slate-200 rounded-lg hover:shadow-md transition">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-slate-900">{exam.title}</h4>
+                            {exam.description && (
+                              <p className="text-sm text-slate-600 mt-1">{exam.description}</p>
+                            )}
+                            <div className="flex gap-4 mt-2 text-sm text-slate-500">
+                              <span>Duration: {exam.duration} min</span>
+                              <span>Total Marks: {exam.totalMarks}</span>
+                              <span className="uppercase font-medium">{exam.status}</span>
+                            </div>
+                            {activeAttempt && (
+                              <div className="mt-2 text-sm text-blue-600">
+                                ⚡ Active Attempt #{activeAttempt.attemptNo} - Started {new Date(activeAttempt.startedAt).toLocaleTimeString()}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-2 items-end">
+                            {activeAttempt ? (
+                              // Resume button
+                              <button
+                                onClick={() => handleResumeExam(exam._id, activeAttempt)}
+                                className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700"
+                              >
+                                ▶ Resume Exam
+                              </button>
+                            ) : (
+                              // Start button
+                              <button
+                                onClick={() => handleStartExam(exam._id, exam.title)}
+                                disabled={startingExam === exam._id}
+                                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:bg-gray-400"
+                              >
+                                {startingExam === exam._id ? 'Starting...' : '🚀 Start Exam'}
+                              </button>
+                            )}
+                            
+                            <button
+                              onClick={async () => {
+                                if (!myPapers[exam._id]) await fetchMyPaper(exam._id);
+                                handleDownloadPaper(exam._id, exam.title);
+                              }}
+                              disabled={downloading === exam._id}
+                              className="px-4 py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded hover:bg-slate-200 disabled:bg-gray-100"
+                            >
+                              {downloading === exam._id ? 'Downloading...' : '📄 Download PDF'}
+                            </button>
                           </div>
                         </div>
-                        <div className="flex flex-col gap-2 items-end">
-                          <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
-                            PAPER READY
-                          </span>
-                          <button
-                            onClick={async () => {
-                              if (!myPapers[exam._id]) await fetchMyPaper(exam._id);
-                              handleDownloadPaper(exam._id, exam.title);
-                            }}
-                            disabled={downloading === exam._id}
-                            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:bg-gray-400"
-                          >
-                            {downloading === exam._id ? 'Downloading...' : 'Download Paper'}
-                          </button>
-                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -148,3 +232,4 @@ export default function StudentExams() {
     </div>
   );
 }
+
