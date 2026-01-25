@@ -28,11 +28,17 @@ export default function Dashboard() {
     try {
       setLoading(true);
       setError('');
+      console.log('[Dashboard] Loading classes...');
       const data = await classAPI.getStudentClasses();
-      console.log('Student dashboard - classes loaded:', data);
+      console.log('[Dashboard] Classes loaded:', {
+        success: data.success,
+        classCount: data.classes?.length || 0,
+        classes: data.classes
+      });
       setClasses(data.classes || []);
     } catch (err) {
-      console.error('Load classes error:', err);
+      console.error('[Dashboard] Load classes error:', err);
+      console.error('[Dashboard] Error response:', err.response?.data);
       setError(err.response?.data?.message || 'Failed to load classes');
     } finally {
       setLoading(false);

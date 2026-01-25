@@ -28,12 +28,17 @@ export default function StudentClasses() {
     try {
       setLoading(true);
       setError('');
+      console.log('[Classes] Loading classes...');
       const data = await classAPI.getStudentClasses();
-      console.log('Student classes loaded:', data);
-      console.log('Classes array:', data.classes);
+      console.log('[Classes] Classes loaded:', {
+        success: data.success,
+        classCount: data.classes?.length || 0,
+        classes: data.classes
+      });
       setClasses(data.classes || []);
     } catch (err) {
-      console.error('Load classes error:', err);
+      console.error('[Classes] Load classes error:', err);
+      console.error('[Classes] Error response:', err.response?.data);
       setError(err.response?.data?.message || 'Failed to load classes');
     } finally {
       setLoading(false);
