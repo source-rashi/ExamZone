@@ -47,17 +47,20 @@ export const Button: React.FC<ButtonProps> = ({
     sm: {
       fontSize: theme.typography.fontSize.sm,
       padding: `${theme.spacing[2]} ${theme.spacing[3]}`,
-      minHeight: '32px',
+      minHeight: '36px', // Increased from 32px for better touch targets
+      minWidth: '36px',
     },
     md: {
       fontSize: theme.typography.fontSize.base,
       padding: `${theme.spacing[3]} ${theme.spacing[4]}`,
-      minHeight: '40px',
+      minHeight: '44px', // Increased from 40px for better touch targets
+      minWidth: '44px',
     },
     lg: {
       fontSize: theme.typography.fontSize.lg,
       padding: `${theme.spacing[4]} ${theme.spacing[6]}`,
       minHeight: '48px',
+      minWidth: '48px',
     },
   };
 
@@ -125,25 +128,34 @@ export const Button: React.FC<ButtonProps> = ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       className={className}
+      aria-busy={loading}
+      aria-disabled={disabled || loading}
+      role="button"
+      tabIndex={disabled || loading ? -1 : 0}
       {...props}
     >
       {loading ? (
         <>
-          <span className="spinner" style={{
-            width: '16px',
-            height: '16px',
-            border: '2px solid currentColor',
-            borderTopColor: 'transparent',
-            borderRadius: '50%',
-            animation: 'spin 0.6s linear infinite',
-          }} />
+          <span 
+            className="spinner" 
+            role="status" 
+            aria-label="Loading"
+            style={{
+              width: '16px',
+              height: '16px',
+              border: '2px solid currentColor',
+              borderTopColor: 'transparent',
+              borderRadius: '50%',
+              animation: 'spin 0.6s linear infinite',
+            }} 
+          />
           <span>Loading...</span>
         </>
       ) : (
         <>
-          {icon && iconPosition === 'left' && <span>{icon}</span>}
+          {icon && iconPosition === 'left' && <span aria-hidden="true">{icon}</span>}
           {children}
-          {icon && iconPosition === 'right' && <span>{icon}</span>}
+          {icon && iconPosition === 'right' && <span aria-hidden="true">{icon}</span>}
         </>
       )}
     </button>

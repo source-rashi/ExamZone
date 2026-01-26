@@ -31,6 +31,20 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   variant = 'info',
   loading = false,
 }) => {
+  // Handle keyboard events
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !loading) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, loading, onClose]);
+
   if (!isOpen) return null;
 
   const icons = {
@@ -97,29 +111,47 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   };
 
   return (
-    <div style={backdropStyles} onClick={onClose}>
-      <div style={modalStyles} onClick={(e) => e.stopPropagation()}>
-        <div style={iconContainerStyles}>
+    <div 
+      style={backdropStyles} 
+      onClick={onClose}
+      role="presentation"
+      aria-hidden={!isOpen}
+    >
+      <div 
+        style={modalStyles} 
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+        aria-describedby="modal-description"
+      >
+        <div style={iconContainerStyles} aria-hidden="true">
           {icons[variant]}
         </div>
 
-        <h3 style={{
-          fontSize: theme.typography.fontSize['2xl'],
-          fontWeight: theme.typography.fontWeight.semibold,
-          color: theme.colors.text.primary,
-          textAlign: 'center',
-          marginBottom: theme.spacing[3],
-        }}>
+        <h3 
+          id="modal-title"
+          style={{
+            fontSize: theme.typography.fontSize['2xl'],
+            fontWeight: theme.typography.fontWeight.semibold,
+            color: theme.colors.text.primary,
+            textAlign: 'center',
+            marginBottom: theme.spacing[3],
+          }}
+        >
           {title}
         </h3>
 
-        <p style={{
-          fontSize: theme.typography.fontSize.base,
-          color: theme.colors.text.secondary,
-          textAlign: 'center',
-          lineHeight: theme.typography.lineHeight.relaxed,
-          marginBottom: theme.spacing[6],
-        }}>
+        <p 
+          id="modal-description"
+          style={{
+            fontSize: theme.typography.fontSize.base,
+            color: theme.colors.text.secondary,
+            textAlign: 'center',
+            lineHeight: theme.typography.lineHeight.relaxed,
+            marginBottom: theme.spacing[6],
+          }}
+        >
           {message}
         </p>
 
@@ -132,6 +164,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             variant="ghost"
             onClick={onClose}
             disabled={loading}
+            aria-label={cancelText}
           >
             {cancelText}
           </Button>
@@ -139,6 +172,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             variant={buttonVariants[variant]}
             onClick={handleConfirm}
             loading={loading}
+            aria-label={confirmText}
           >
             {confirmText}
           </Button>

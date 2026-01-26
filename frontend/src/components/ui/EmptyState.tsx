@@ -62,10 +62,24 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
     lineHeight: theme.typography.lineHeight.relaxed,
   };
 
+  // Responsive styles
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  if (isMobile) {
+    containerStyles.padding = `${theme.spacing[8]} ${theme.spacing[4]}`;
+    containerStyles.minHeight = '300px';
+    titleStyles.fontSize = theme.typography.fontSize.xl;
+    descriptionStyles.fontSize = theme.typography.fontSize.sm;
+  }
+
   return (
-    <div className={className} style={containerStyles}>
+    <div 
+      className={className} 
+      style={containerStyles}
+      role="status"
+      aria-label={title}
+    >
       {icon && (
-        <div style={iconContainerStyles}>
+        <div style={iconContainerStyles} aria-hidden="true">
           {icon}
         </div>
       )}
