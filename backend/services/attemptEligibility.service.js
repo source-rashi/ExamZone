@@ -78,13 +78,14 @@ async function checkStudentExamEligibility(studentId, examId) {
     // ==================================================================
     // CHECK 4: Student has a generated paper
     // ==================================================================
-    const paperResult = await getStudentPaper(examId, studentId);
-    
-    if (!paperResult.success) {
+    let paperResult;
+    try {
+      paperResult = await getStudentPaper(examId, studentId);
+    } catch (error) {
       return {
         eligible: false,
         reason: 'NO_PAPER_GENERATED',
-        message: paperResult.error || 'No exam paper has been generated for you',
+        message: error.message || 'No exam paper has been generated for you',
         exam,
         enrollment: enrollmentResult
       };
