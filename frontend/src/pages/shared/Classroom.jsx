@@ -1084,6 +1084,17 @@ function ExamsTab({ classId, isTeacher }) {
                     >
                       View Details
                     </button>
+
+                    {/* View Results button for teachers */}
+                    {isTeacher && ['published', 'running', 'closed'].includes(exam.status) && (
+                      <button 
+                        onClick={() => navigate(`/teacher/exam/${exam._id}/results`)}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center gap-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        View Results
+                      </button>
+                    )}
                     
                     {/* Download paper button - only if exam has papers generated and attempts not exhausted */}
                     {!exam.attemptsExhausted &&

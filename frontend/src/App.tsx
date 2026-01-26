@@ -26,6 +26,7 @@ import CreateExam from './pages/teacher/CreateExam';
 import TeacherClasses from './pages/teacher/Classes';
 import TeacherExams from './pages/teacher/Exams';
 import TeacherProfile from './pages/teacher/Profile';
+import ExamResults from './components/teacher/ExamResults';
 
 // Student pages
 import StudentLayout from './layouts/StudentLayout';
@@ -84,6 +85,7 @@ function App() {
               <Route path="create-class" element={<CreateClass />} />
               <Route path="class/:id" element={<ClassDetails />} />
               <Route path="class/:id/create-exam" element={<CreateExam />} />
+              <Route path="exam/:examId/results" element={<ExamResults />} />
             </Route>
 
             {/* Student routes */}
