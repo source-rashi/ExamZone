@@ -25,4 +25,7 @@ router.post('/attempts/:attemptId/score', evaluationController.submitEvaluation)
 // Request AI checking
 router.post('/attempts/:attemptId/ai-check', evaluationController.requestAIChecking);
 
+// Finalize exam (mark evaluation as complete)
+router.post('/exams/:examId/finalize', evaluationController.finalizeExam);
+
 module.exports = router;

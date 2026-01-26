@@ -226,6 +226,9 @@ async function submitEvaluation(req, res) {
 
     console.log(`[Evaluation] Evaluated attempt ${attemptId}, score: ${score}/${exam.totalMarks}`);
 
+    // Check if all attempts for this exam are now evaluated
+    await checkAndFinalizeExam(exam._id);
+
     res.status(200).json({
       success: true,
       message: 'Evaluation submitted successfully',
@@ -310,9 +313,111 @@ async function requestAIChecking(req, res) {
   }
 }
 
+/**
+ * Check if all attempts are evaluated and finalize exam
+ * Helper function (not a route handler)
+ */
+async function checkAndFinalizeExam(examId) {
+  try {
+    // Get all submitted attempts for this exam
+    const totalAttempts = await ExamAttempt.countDocuments({
+      exam: examId,
+      status: 'submitted'
+    });
+
+    // Get evaluated attempts count
+    const evaluatedAttempts = await ExamAttempt.countDocuments({
+      exam: examId,
+      status: 'submitted',
+      evaluationStatus: 'evaluated'
+    });
+
+    console.log(`[Finalization] Exam ${examId}: ${evaluatedAttempts}/${totalAttempts} attempts evaluated`);
+
+    // If all attempts are evaluated, finalize the exam
+    if (totalAttempts > 0 && evaluatedAttempts === totalAttempts) {
+      await Exam.findByIdAndUpdate(examId, {
+        $set: { 
+          evaluationComplete: true,
+          evaluationCompletedAt: new Date()
+        }
+      });
+      console.log(`[Finalization] ✅ Exam ${examId} finalized - all attempts evaluated`);
+    }
+  } catch (error) {
+    console.error('[Finalization] Error checking exam completion:', error);
+    // Don't throw - this is a background helper, shouldn't break main flow
+  }
+}
+
+/**
+ * Manually finalize exam (Teacher only)
+ * POST /api/v2/evaluation/exams/:examId/finalize
+ */
+async function finalizeExam(req, res) {
+  try {
+    const { examId } = req.params;
+    const teacherId = req.user.id;
+
+    // Verify exam exists and teacher owns it
+    const exam = await Exam.findById(examId);
+    if (!exam) {
+      return res.status(404).json({
+        success: false,
+        error: 'Exam not found'
+      });
+    }
+
+    if (exam.teacher.toString() !== teacherId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized: You can only finalize your own exams'
+      });
+    }
+
+    // Get attempt counts
+    const totalAttempts = await ExamAttempt.countDocuments({
+      exam: examId,
+      status: 'submitted'
+    });
+
+    const evaluatedAttempts = await ExamAttempt.countDocuments({
+      exam: examId,
+      status: 'submitted',
+      evaluationStatus: 'evaluated'
+    });
+
+    // Update exam
+    exam.evaluationComplete = true;
+    exam.evaluationCompletedAt = new Date();
+    await exam.save();
+
+    console.log(`[Finalization] Exam ${examId} manually finalized by teacher ${teacherId}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Exam finalized successfully',
+      data: {
+        examId: exam._id,
+        totalAttempts,
+        evaluatedAttempts,
+        evaluationComplete: exam.evaluationComplete,
+        evaluationCompletedAt: exam.evaluationCompletedAt
+      }
+    });
+  } catch (error) {
+    console.error('[Finalization] Finalize exam error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to finalize exam'
+    });
+  }
+}
+
 module.exports = {
   getExamAttempts,
   getAttemptForEvaluation,
   submitEvaluation,
-  requestAIChecking
+  requestAIChecking,
+  finalizeExam
 };

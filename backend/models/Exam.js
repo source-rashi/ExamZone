@@ -313,6 +313,15 @@ const examSchema = new mongoose.Schema({
       default: false
     }
   },
+  // PHASE 7.5.6 - Exam Finalization
+  evaluationComplete: {
+    type: Boolean,
+    default: false
+  },
+  evaluationCompletedAt: {
+    type: Date,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now

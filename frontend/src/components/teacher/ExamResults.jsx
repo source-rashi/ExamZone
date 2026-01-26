@@ -213,6 +213,29 @@ export default function ExamResults() {
     }
   };
 
+  const finalizeExam = async () => {
+    try {
+      if (!window.confirm('Finalize this exam? This will mark evaluation as complete.')) {
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API_URL}/evaluation/exams/${examId}/finalize`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        alert('✅ Exam finalized successfully!');
+        fetchAttempts(); // Refresh to show finalized status
+      }
+    } catch (error) {
+      console.error('Failed to finalize exam:', error);
+      alert(error.response?.data?.error || 'Failed to finalize exam');
+    }
+  };
+
   const getStatusBadge = (status) => {
     const badges = {
       'pending': { color: 'bg-yellow-100 text-yellow-700', icon: Clock, text: 'Pending' },
@@ -459,12 +482,29 @@ export default function ExamResults() {
         </button>
 
         <div className="bg-white rounded-lg shadow p-6">
-          <h1 className="text-2xl font-bold text-gray-900">{exam?.title}</h1>
-          <div className="mt-2 flex gap-4 text-sm text-gray-600">
-            <span>Total Marks: {exam?.totalMarks}</span>
-            <span>Duration: {exam?.duration} minutes</span>
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{exam?.title}</h1>
+              <div className="mt-2 flex gap-4 text-sm text-gray-600">
+                <span>Total Marks: {exam?.totalMarks}</span>
+                <span>Duration: {exam?.duration} minutes</span>
+              </div>
+            </div>
+            
+            {/* Finalize button */}
+            {attempts.length > 0 && 
+             attempts.filter(a => a.evaluationStatus === 'evaluated').length === attempts.length && (
+              <button
+                onClick={finalizeExam}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+              >
+                <CheckCircle size={20} />
+                Finalize Exam
+              </button>
+            )}
           </div>
-          <div className="mt-4 flex gap-6 text-sm">
+
+          <div className="flex gap-6 text-sm">
             <div>
               <span className="text-gray-600">Total Attempts:</span>
               <span className="ml-2 font-semibold">{attempts.length}</span>
