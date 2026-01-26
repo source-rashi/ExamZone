@@ -2,7 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const session = require('express-session');
+const helmet = require('helmet');
 const connectDB = require('./config/db');
+const { apiLimiter } = require('./middleware/rateLimit.middleware');
 
 // Import V1 route modules (legacy)
 const pdfRoutes = require('./routes/pdf.routes');
@@ -35,15 +37,48 @@ const app = express();
 // Connect to MongoDB
 connectDB();
 
-// CORS configuration
-app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174'],
-  credentials: true
+// ==================================================================
+// PHASE 8.8: SECURITY HEADERS
+// ==================================================================
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP for now (can be configured later)
+  crossOriginEmbedderPolicy: false // Allow embedding
 }));
 
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// ==================================================================
+// PHASE 8.8: CORS CONFIGURATION WITH ENVIRONMENT CONTROL
+// ==================================================================
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:5173', 'http://localhost:5174'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// ==================================================================
+// PHASE 8.8: RATE LIMITING FOR API ROUTES
+// ==================================================================
+app.use('/api', apiLimiter);
+
+// ==================================================================
+// MIDDLEWARE
+// ==================================================================
+// Body parser with size limits
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Static file serving
 app.use(express.static(path.join(__dirname, 'public')));

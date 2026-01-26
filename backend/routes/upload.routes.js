@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const { uploadStudentList, uploadAnswerSheet } = require('../controllers/upload.controller');
 const { validateStudentListUpload, validateAnswerSheetUpload } = require('../middleware/validate.middleware');
+const { uploadLimiter } = require('../middleware/rateLimit.middleware');
 
 // Multer storage for student list PDFs
 const storage = multer.diskStorage({
@@ -20,9 +21,11 @@ const answerStorage = multer.diskStorage({
 const answerUpload = multer({ storage: answerStorage });
 
 // POST /upload - Upload student list PDF and extract students
-router.post('/upload', upload.single('pdfFile'), validateStudentListUpload, uploadStudentList);
+// PHASE 8.8: Rate limited to prevent storage abuse
+router.post('/upload', uploadLimiter, upload.single('pdfFile'), validateStudentListUpload, uploadStudentList);
 
 // POST /upload-answer - Upload student answer sheet
-router.post('/upload-answer', answerUpload.single('answerSheet'), validateAnswerSheetUpload, uploadAnswerSheet);
+// PHASE 8.8: Rate limited to prevent storage abuse
+router.post('/upload-answer', uploadLimiter, answerUpload.single('answerSheet'), validateAnswerSheetUpload, uploadAnswerSheet);
 
 module.exports = router;
