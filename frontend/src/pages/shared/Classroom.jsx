@@ -23,7 +23,9 @@ import {
   Trash2,
   Send,
   Plus,
-  CheckCircle
+  CheckCircle,
+  Trophy,
+  Download
 } from 'lucide-react';
 
 /**
@@ -1069,9 +1071,26 @@ function ExamsTab({ classId, isTeacher }) {
 
                     {/* Published Status */}
                     {exam.status === 'published' && (
-                      <span className="px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium border border-green-200">
-                        📡 Exam Live
+                      <span className="px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium border border-green-200 flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        Exam Live
                       </span>
+                    )}
+
+                    {/* Evaluate Submissions button - TEACHER ONLY */}
+                    {['published', 'running', 'closed'].includes(exam.status) && (
+                      <button 
+                        onClick={() => navigate(`/teacher/exam/${exam._id}/results`)}
+                        className="relative px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center gap-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Evaluate Submissions
+                        {exam.pendingEvaluation > 0 && (
+                          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center animate-pulse">
+                            {exam.pendingEvaluation}
+                          </span>
+                        )}
+                      </button>
                     )}
 
                     <button 
@@ -1079,8 +1098,9 @@ function ExamsTab({ classId, isTeacher }) {
                         console.log('[Classroom] Opening ExamDetailsModal for exam:', exam._id);
                         setExamDetailsModal({ open: true, examId: exam._id });
                       }}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex items-center gap-2"
                     >
+                      <FileText className="w-4 h-4" />
                       View Details
                     </button>
                   </>
@@ -1093,26 +1113,11 @@ function ExamsTab({ classId, isTeacher }) {
                         console.log('[Classroom] Opening ExamDetailsModal for exam:', exam._id);
                         setExamDetailsModal({ open: true, examId: exam._id });
                       }}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex items-center gap-2"
                     >
+                      <FileText className="w-4 h-4" />
                       View Details
                     </button>
-
-                    {/* Evaluate/View Results button for teachers */}
-                    {isTeacher && ['published', 'running', 'closed'].includes(exam.status) && (
-                      <button 
-                        onClick={() => navigate(`/teacher/exam/${exam._id}/results`)}
-                        className="relative px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center gap-2"
-                      >
-                        <FileText className="w-4 h-4" />
-                        📝 Evaluate Submissions
-                        {exam.pendingEvaluation > 0 && (
-                          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
-                            {exam.pendingEvaluation}
-                          </span>
-                        )}
-                      </button>
-                    )}
                     
                     {/* Download paper button - only if exam has papers generated and attempts not exhausted */}
                     {!exam.attemptsExhausted &&
@@ -1138,9 +1143,9 @@ function ExamsTab({ classId, isTeacher }) {
                             alert(errorMsg);
                           }
                         }}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center gap-2"
                       >
-                        <FileText className="w-4 h-4" />
+                        <Download className="w-4 h-4" />
                         Download Paper
                       </button>
                     )}
@@ -1158,12 +1163,13 @@ function ExamsTab({ classId, isTeacher }) {
                             </div>
                           ) : (
                             <button 
-                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-2"
                               onClick={() => {
                                 navigate(`/student/exam/${exam._id}/attempt`);
                               }}
                             >
-                              🚀 {exam.studentAttemptCount > 0 ? 'Resume' : 'Start'} Exam
+                              <Clock className="w-4 h-4" />
+                              {exam.studentAttemptCount > 0 ? 'Resume' : 'Start'} Exam
                               {exam.attemptsAllowed > 1 && ` (${exam.attemptsRemaining || 0} left)`}
                             </button>
                           )}
@@ -1199,8 +1205,8 @@ function ExamsTab({ classId, isTeacher }) {
                         }}
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
                       >
-                        <FileText className="w-4 h-4" />
-                        📊 View My Result
+                        <Trophy className="w-4 h-4" />
+                        View My Result
                       </button>
                     )}
                   </>
