@@ -977,7 +977,7 @@ async function getAttemptResult(req, res) {
     }
 
     // Get questions using paperResolver
-    const { getStudentQuestions } = require('../services/paperResolver');
+    const { getStudentQuestions } = require('../utils/paperResolver');
     const questionsData = await getStudentQuestions(attempt.exam._id, studentId);
 
     res.status(200).json({

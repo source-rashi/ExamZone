@@ -7,7 +7,7 @@ const ExamAttempt = require('../models/ExamAttempt');
 const Exam = require('../models/Exam');
 const User = require('../models/User');
 const Enrollment = require('../models/Enrollment');
-const { getStudentQuestions } = require('../services/paperResolver');
+const { getStudentQuestions } = require('../utils/paperResolver');
 const { processAIChecking } = require('../services/aiChecker.service');
 const mongoose = require('mongoose');
 

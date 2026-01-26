@@ -86,7 +86,7 @@ async function processAIChecking(attemptId) {
   try {
     const ExamAttempt = require('../models/ExamAttempt');
     const Exam = require('../models/Exam');
-    const { getStudentQuestions } = require('./paperResolver');
+    const { getStudentQuestions } = require('../utils/paperResolver');
 
     // Get attempt
     const attempt = await ExamAttempt.findById(attemptId);
