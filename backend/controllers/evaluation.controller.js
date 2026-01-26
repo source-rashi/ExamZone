@@ -190,15 +190,6 @@ async function getAttemptForEvaluation(req, res) {
       fromExamTotal: exam.totalMarks
     });
 
-    // Calculate actual total marks from questions
-    const actualTotalMarks = questionsWithAnswers.reduce((sum, q) => sum + (q.marks || 0), 0);
-
-    console.log('[Evaluation] Total marks calculation:', {
-      fromQuestions: actualTotalMarks,
-      fromPaperConfig: exam.paperConfig?.totalMarksPerSet,
-      fromExamTotal: exam.totalMarks
-    });
-
     // Get roll number
     const Enrollment = require('../models/Enrollment');
     const enrollment = await Enrollment.findOne({

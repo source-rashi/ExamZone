@@ -43,7 +43,7 @@ if not GEMINI_API_KEY:
 
 try:
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-pro')
     logger.info("Gemini API initialized successfully")
 except Exception as e:
     logger.error(f"Failed to initialize Gemini API: {str(e)}")
@@ -522,7 +522,7 @@ Provide your evaluation in the following JSON format:
 """
 
         # Call Gemini AI
-        model = genai.GenerativeModel("gemini-1.5-pro")
+        model = genai.GenerativeModel("gemini-pro")
         response = model.generate_content(evaluation_prompt)
         response_text = response.text.strip()
 
