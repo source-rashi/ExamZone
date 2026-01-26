@@ -9,6 +9,7 @@ import { theme } from '../../styles/theme';
 import { EmptyState, LoadingOverlay } from '../../components/ui';
 import { ErrorDisplay } from '../../components/error';
 import { StudentExamCard } from '../../components/student';
+// @ts-expect-error - student.api is a legacy JS file without TypeScript declarations
 import { studentAPI } from '../../api/student.api';
 import { 
   GraduationCap, 

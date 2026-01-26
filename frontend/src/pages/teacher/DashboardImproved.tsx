@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+// @ts-expect-error - AuthContext is a legacy JSX file without TypeScript declarations
 import { useAuth } from '../../context/AuthContext';
 import { 
   StatsCard, 
@@ -18,6 +19,7 @@ import {
   LoadingSpinner,
   Alert
 } from '../../components/ui';
+// @ts-expect-error - class.api is a legacy JS file without TypeScript declarations
 import classAPI from '../../api/class.api';
 import { 
   BookOpen, 
