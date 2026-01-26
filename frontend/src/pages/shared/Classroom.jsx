@@ -938,8 +938,21 @@ function ExamsTab({ classId, isTeacher }) {
                   <p className="font-semibold text-gray-900">{exam.duration} min</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Attempts</p>
-                  {!isTeacher && exam.studentAttemptCount !== undefined ? (
+                  <p className="text-xs text-gray-500 mb-1">
+                    {isTeacher ? 'Submissions' : 'Attempts'}
+                  </p>
+                  {isTeacher ? (
+                    <div>
+                      <p className="font-semibold text-gray-900">
+                        {exam.totalSubmissions || 0} total
+                      </p>
+                      {exam.pendingEvaluation > 0 && (
+                        <p className="text-xs text-orange-600 font-medium">
+                          {exam.pendingEvaluation} pending ⏳
+                        </p>
+                      )}
+                    </div>
+                  ) : exam.studentAttemptCount !== undefined ? (
                     <p className={`font-semibold ${
                       exam.attemptsExhausted ? 'text-red-600' : 
                       exam.studentAttemptCount > 0 ? 'text-amber-600' : 
@@ -1085,14 +1098,19 @@ function ExamsTab({ classId, isTeacher }) {
                       View Details
                     </button>
 
-                    {/* View Results button for teachers */}
+                    {/* Evaluate/View Results button for teachers */}
                     {isTeacher && ['published', 'running', 'closed'].includes(exam.status) && (
                       <button 
                         onClick={() => navigate(`/teacher/exam/${exam._id}/results`)}
-                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center gap-2"
+                        className="relative px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center gap-2"
                       >
                         <FileText className="w-4 h-4" />
-                        View Results
+                        📝 Evaluate Submissions
+                        {exam.pendingEvaluation > 0 && (
+                          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+                            {exam.pendingEvaluation}
+                          </span>
+                        )}
                       </button>
                     )}
                     
@@ -1151,6 +1169,40 @@ function ExamsTab({ classId, isTeacher }) {
                           )}
                         </>
                       )}
+
+                    {/* View Results button for students - after exam ends or if evaluated */}
+                    {!isTeacher && exam.studentAttemptCount > 0 && (
+                      <button 
+                        onClick={async () => {
+                          try {
+                            // Fetch student's latest attempt for this exam
+                            const token = localStorage.getItem('token');
+                            const response = await fetch(
+                              `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v2'}/attempts/exam/${exam._id}/my-attempts`,
+                              { headers: { Authorization: `Bearer ${token}` } }
+                            );
+                            const data = await response.json();
+                            
+                            if (data.success && data.data.attempts.length > 0) {
+                              // Find latest evaluated attempt
+                              const evaluatedAttempt = data.data.attempts.find(a => a.evaluationStatus === 'evaluated');
+                              if (evaluatedAttempt) {
+                                navigate(`/student/attempt/${evaluatedAttempt._id}/result`);
+                              } else {
+                                alert('Your submission is under evaluation. Results will be available soon!');
+                              }
+                            }
+                          } catch (error) {
+                            console.error('Error fetching attempts:', error);
+                            alert('Unable to fetch results. Please try again.');
+                          }
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        📊 View My Result
+                      </button>
+                    )}
                   </>
                 )}
               </div>

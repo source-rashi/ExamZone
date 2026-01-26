@@ -176,8 +176,9 @@ async function getExams(req, res) {
       .select('title description status totalMarks duration startTime endTime attemptsAllowed')
       .lean();
     
-    // Add attempt information for students
+    // Add attempt information for students OR submission stats for teachers
     let examsWithAttempts = exams;
+    
     if (req.user.role === 'student') {
       const mongoose = require('mongoose');
       const ExamAttempt = require('../models/ExamAttempt');
@@ -192,6 +193,30 @@ async function getExams(req, res) {
           exam.studentAttemptCount = attemptCount;
           exam.attemptsRemaining = Math.max(0, (exam.attemptsAllowed || 1) - attemptCount);
           exam.attemptsExhausted = attemptCount >= (exam.attemptsAllowed || 1);
+          
+          return exam;
+        })
+      );
+    } else if (isTeacher) {
+      // For teachers, add submission stats
+      const ExamAttempt = require('../models/ExamAttempt');
+      
+      examsWithAttempts = await Promise.all(
+        exams.map(async (exam) => {
+          const totalSubmissions = await ExamAttempt.countDocuments({
+            exam: exam._id,
+            status: 'submitted'
+          });
+          
+          const evaluatedSubmissions = await ExamAttempt.countDocuments({
+            exam: exam._id,
+            status: 'submitted',
+            evaluationStatus: 'evaluated'
+          });
+          
+          exam.totalSubmissions = totalSubmissions;
+          exam.evaluatedSubmissions = evaluatedSubmissions;
+          exam.pendingEvaluation = totalSubmissions - evaluatedSubmissions;
           
           return exam;
         })
