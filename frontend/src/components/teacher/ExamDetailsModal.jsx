@@ -40,8 +40,9 @@ export default function ExamDetailsModal({ examId, isOpen, onClose, onUpdate }) 
       setError('');
       console.log('[ExamDetailsModal] Loading exam:', examId);
       
-      const result = await examAPI.getExamById(examId);
-      const examData = result.data;
+      const examData = await examAPI.getExamById(examId);
+      
+      console.log('[ExamDetailsModal] Loaded exam data:', examData);
       
       setExam(examData);
       setFormData({
@@ -54,8 +55,6 @@ export default function ExamDetailsModal({ examId, isOpen, onClose, onUpdate }) 
         numberOfSets: examData.numberOfSets || 1,
         attemptsAllowed: examData.attemptsAllowed || 1
       });
-      
-      console.log('[ExamDetailsModal] Loaded exam data:', examData);
     } catch (err) {
       console.error('[ExamDetailsModal] Error:', err);
       setError(err.response?.data?.message || 'Failed to load exam details');
@@ -88,15 +87,16 @@ export default function ExamDetailsModal({ examId, isOpen, onClose, onUpdate }) 
       };
       
       const result = await examAPI.updateExam(examId, updateData);
+      const examData = result.data || result;
       
-      console.log('[ExamDetailsModal] Update successful:', result);
+      console.log('[ExamDetailsModal] Update successful:', examData);
       
-      setExam(result.data);
+      setExam(examData);
       setIsEditing(false);
       
       // Notify parent component
       if (onUpdate) {
-        onUpdate(result.data);
+        onUpdate(examData);
       }
       
       alert('Exam updated successfully!');
