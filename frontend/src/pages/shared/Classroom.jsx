@@ -756,7 +756,6 @@ function ExamsTab({ classId, isTeacher }) {
       setLoading(true);
       // PHASE 7.3.5: Use classroom API for role-based filtering
       const data = await classroomAPI.getExams(classId);
-      console.log('[Classroom] Loaded exams with attempt data:', data.exams);
       setExams(data.exams || []);
     } catch (error) {
       console.error('Failed to load exams:', error);
@@ -1087,14 +1086,6 @@ function ExamsTab({ classId, isTeacher }) {
                     </button>
                     
                     {/* Download paper button - only if exam has papers generated and attempts not exhausted */}
-                    {console.log('[Classroom] Exam button check:', {
-                      examId: exam._id,
-                      examTitle: exam.title,
-                      attemptsExhausted: exam.attemptsExhausted,
-                      studentAttemptCount: exam.studentAttemptCount,
-                      attemptsAllowed: exam.attemptsAllowed,
-                      attemptsRemaining: exam.attemptsRemaining
-                    })}
                     {!exam.attemptsExhausted &&
                      ['published', 'running', 'closed'].includes(exam.status) && 
                      (exam.generationStatus === 'generated' || exam.status === 'published') && (
