@@ -16,6 +16,7 @@ const { getStudentId } = require('../utils/studentIdentity');
 const { getStudentPaper, getStudentQuestions } = require('../utils/paperResolver');
 const { ensureOneActiveAttempt, checkPaperAccessAllowed } = require('../services/attemptSafety.service');
 const attemptService = require('../services/attempt.service');
+const logger = require('../config/logger');
 
 /**
  * START EXAM ATTEMPT
@@ -132,6 +133,19 @@ async function startExamAttempt(req, res, next) {
     await attempt.save();
 
     console.log(`[ATTEMPT] Started attempt ${attempt._id} for student ${studentId} on exam ${examId} (attempt #${attemptNo})`);
+
+    // ==================================================================
+    // PHASE 8.5: STRUCTURED LOGGING - Attempt started
+    // ==================================================================
+    logger.logOperation('ATTEMPT_STARTED', {
+      attemptId: attempt._id,
+      examId,
+      studentId,
+      attemptNo,
+      examTitle: exam.title,
+      duration: exam.duration,
+      expectedEndTime
+    });
 
     // ==================================================================
     // GET QUESTIONS FOR THE STUDENT
@@ -969,6 +983,19 @@ async function submitExamAttempt(req, res) {
     await attempt.save();
 
     console.log('[Submit Exam Attempt] ✅ Submitted:', attemptId);
+
+    // ==================================================================
+    // PHASE 8.5: STRUCTURED LOGGING - Attempt submitted
+    // ==================================================================
+    logger.logOperation('ATTEMPT_SUBMITTED', {
+      attemptId: attempt._id,
+      examId: attempt.exam._id,
+      studentId,
+      status: 'submitted',
+      answersCount: attempt.answers.length,
+      violationsCount: attempt.integrityLogs.length,
+      duration: (now - attempt.startedAt) / 60000 // minutes
+    });
 
     res.status(200).json({
       success: true,

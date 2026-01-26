@@ -1,7 +1,10 @@
 /**
  * Centralized error handling middleware for Express
  * Provides consistent error responses across the application
+ * PHASE 8.5: Enhanced with winston logging and stack trace protection
  */
+
+const logger = require('../config/logger');
 
 /**
  * Custom error class for application errors
@@ -18,18 +21,22 @@ class AppError extends Error {
 /**
  * Centralized error handler middleware
  * Catches all errors and sends consistent JSON responses
+ * PHASE 8.5: Uses winston logger and removes stack traces in production
  */
 const errorHandler = (err, req, res, next) => {
   let statusCode = err.statusCode || 500;
   let message = err.message || 'Internal Server Error';
 
-  // Log error details for debugging
-  console.error('❌ Error:', {
-    message: err.message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-    statusCode: statusCode,
+  // ==================================================================
+  // PHASE 8.5: STRUCTURED ERROR LOGGING
+  // ==================================================================
+  logger.logError(err, {
+    statusCode,
     path: req.path,
-    method: req.method
+    method: req.method,
+    userId: req.user?.id,
+    body: process.env.NODE_ENV === 'development' ? req.body : undefined,
+    query: req.query
   });
 
   // Handle specific error types
@@ -84,7 +91,9 @@ const errorHandler = (err, req, res, next) => {
     success: false
   };
 
-  // Include stack trace in development mode
+  // ==================================================================
+  // PHASE 8.5: REMOVE STACK TRACES IN PRODUCTION
+  // ==================================================================
   if (process.env.NODE_ENV === 'development') {
     response.stack = err.stack;
     response.details = err;

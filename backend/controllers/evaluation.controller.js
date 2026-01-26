@@ -7,6 +7,7 @@ const ExamAttempt = require('../models/ExamAttempt');
 const Exam = require('../models/Exam');
 const User = require('../models/User');
 const Enrollment = require('../models/Enrollment');
+const logger = require('../config/logger');
 const { getStudentQuestions } = require('../utils/paperResolver');
 const { processAIChecking } = require('../services/aiChecker.service');
 const mongoose = require('mongoose');
@@ -290,6 +291,19 @@ async function submitEvaluation(req, res) {
     await attempt.save();
 
     console.log(`[Evaluation] Evaluated attempt ${attemptId}, score: ${score}/${exam.totalMarks}`);
+
+    // ==================================================================
+    // PHASE 8.5: STRUCTURED LOGGING - Evaluation submitted
+    // ==================================================================
+    logger.logOperation('EVALUATION_SUBMITTED', {
+      attemptId: attempt._id,
+      examId: exam._id,
+      studentId: attempt.student,
+      teacherId,
+      score,
+      maxMarks: exam.totalMarks,
+      percentage: ((score / exam.totalMarks) * 100).toFixed(2)
+    });
 
     // Check if all attempts for this exam are now evaluated
     await checkAndFinalizeExam(exam._id);

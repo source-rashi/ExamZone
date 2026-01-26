@@ -4,6 +4,7 @@
  */
 
 const axios = require('axios');
+const logger = require('../config/logger');
 
 /**
  * Get AI suggested score and feedback for an attempt
@@ -145,6 +146,18 @@ async function processAIChecking(attemptId) {
     await attempt.save();
 
     console.log(`[AI Checker] Saved AI suggestion for attempt ${attemptId}: ${aiResult.suggestedScore}/${actualTotalMarks}`);
+
+    // ==================================================================
+    // PHASE 8.5: STRUCTURED LOGGING - AI checking completed
+    // ==================================================================
+    logger.logOperation('AI_CHECKING_COMPLETED', {
+      attemptId,
+      examId: attempt.exam,
+      studentId: attempt.student,
+      suggestedScore: aiResult.suggestedScore,
+      maxMarks: actualTotalMarks,
+      questionsChecked: questionsWithAnswers.length
+    });
 
     return aiResult;
 

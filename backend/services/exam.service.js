@@ -6,6 +6,7 @@
 const Exam = require('../models/Exam');
 const Class = require('../models/Class');
 const Enrollment = require('../models/Enrollment');
+const logger = require('../config/logger');
 const { isStudentInClass } = require('../utils/enrollmentResolver');
 
 /**
@@ -228,6 +229,19 @@ async function publishExam(examId, teacherId) {
   exam.publishedAt = new Date();
   await exam.save();
   console.log('[Publish] AFTER SAVE - Status:', exam.status);
+
+  // ==================================================================
+  // PHASE 8.5: STRUCTURED LOGGING - Exam published
+  // ==================================================================
+  logger.logOperation('EXAM_PUBLISHED', {
+    examId: exam._id,
+    title: exam.title,
+    classId: exam.classId._id,
+    teacherId,
+    startTime: exam.startTime,
+    endTime: exam.endTime,
+    numberOfStudents: exam.studentPapers?.length || 0
+  });
 
   return exam;
 }

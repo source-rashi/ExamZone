@@ -8,6 +8,7 @@ const aiExamService = require('../services/aiExam.service');
 const aiGenerationService = require('../services/aiGeneration.service');
 const pdfGenerationService = require('../services/pdfGeneration.service');
 const examStorage = require('../services/examStorage.service');
+const logger = require('../config/logger');
 const path = require('path');
 
 /**
@@ -30,6 +31,15 @@ async function createExam(req, res) {
       title,
       createdBy,
       ...rest
+    });
+
+    // PHASE 8.5: Log exam creation
+    logger.logOperation('EXAM_CREATED', {
+      examId: exam._id,
+      title: exam.title,
+      classId: exam.classId,
+      createdBy: exam.createdBy,
+      userId: req.user?.id
     });
 
     res.status(201).json({
