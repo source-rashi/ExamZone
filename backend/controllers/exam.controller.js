@@ -702,7 +702,7 @@ async function getStudentPapers(req, res) {
 }
 
 /**
- * TASK 6 - Download Student's Own Paper
+ * PHASE 7.3.3 - Get Student's Own Paper (Secure Resolution)
  * @route GET /api/v2/exams/:id/my-paper
  */
 async function getMyPaper(req, res) {
@@ -717,24 +717,33 @@ async function getMyPaper(req, res) {
       });
     }
 
-    const paper = await pdfGenerationService.getStudentPaper(id, studentId);
-
-    // Check if exam is published
-    const exam = await examService.getExamById(id, studentId);
-    if (exam.status !== 'published') {
-      return res.status(403).json({
-        success: false,
-        message: 'Exam paper not yet available. Please wait for teacher to publish.'
-      });
-    }
+    // PHASE 7.3.3: Use secure paper resolver
+    const { getStudentPaper } = require('../utils/paperResolver');
+    const paperData = await getStudentPaper(id, studentId);
 
     res.status(200).json({
       success: true,
       data: {
-        rollNumber: paper.rollNumber,
-        setId: paper.setId,
-        pdfPath: paper.pdfPath,
-        generatedAt: paper.generatedAt
+        // Student info
+        rollNumber: paperData.student.rollNumber,
+        
+        // Exam info
+        examTitle: paperData.exam.title,
+        examDescription: paperData.exam.description,
+        duration: paperData.exam.duration,
+        totalMarks: paperData.exam.totalMarks,
+        startTime: paperData.exam.startTime,
+        endTime: paperData.exam.endTime,
+        instructions: paperData.exam.instructions,
+        
+        // Paper assignment
+        setId: paperData.paper.setId,
+        paperPreview: paperData.paper.paperPreview,
+        generatedAt: paperData.paper.generatedAt,
+        
+        // Paper availability
+        isPaperGenerated: true,
+        canDownload: ['published', 'running', 'closed'].includes(paperData.exam.status)
       }
     });
   } catch (error) {
@@ -742,6 +751,15 @@ async function getMyPaper(req, res) {
 
     if (error.message.includes('not found')) {
       return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('not yet available') || 
+        error.message.includes('not enrolled') ||
+        error.message.includes('not been generated')) {
+      return res.status(403).json({
         success: false,
         message: error.message
       });
