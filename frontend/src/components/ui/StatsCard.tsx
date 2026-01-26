@@ -17,6 +17,8 @@ export interface StatsCardProps {
     isPositive: boolean;
   };
   subtext?: string;
+  subtitle?: string;
+  variant?: string;
   loading?: boolean;
 }
 
@@ -27,6 +29,8 @@ export const StatsCard: React.FC<StatsCardProps> = ({
   iconColor = theme.colors.primary[600],
   trend,
   subtext,
+  subtitle: _subtitle,
+  variant: _variant,
   loading = false,
 }) => {
   if (loading) {

@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { theme } from '../../styles/theme';
-import { Card, Button, StatsCard, EmptyState, Loading, Badge } from '../../components/ui';
+import { Card, Button, StatsCard, EmptyState, LoadingOverlay } from '../../components/ui';
 import classAPI from '../../api/class.api';
 import { 
   BookOpen, 
@@ -17,16 +17,15 @@ import {
   Plus,
   ArrowRight,
   GraduationCap,
-  Calendar,
   Target,
 } from 'lucide-react';
 
 export default function StudentDashboardImproved() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [classes, setClasses] = useState([]);
+  const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [classCode, setClassCode] = useState('');
   const [joining, setJoining] = useState(false);
@@ -38,12 +37,10 @@ export default function StudentDashboardImproved() {
   const loadClasses = async () => {
     try {
       setLoading(true);
-      setError('');
       const data = await classAPI.getStudentClasses();
       setClasses(data.classes || []);
     } catch (err) {
-      console.error('[Dashboard] Load classes error:', err);
-      setError(err.response?.data?.message || 'Failed to load classes');
+      console.error('[Dashboard] Load classes error:', err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
@@ -82,7 +79,7 @@ export default function StudentDashboardImproved() {
   if (loading) {
     return (
       <div style={{ padding: theme.spacing[8], maxWidth: '1400px', margin: '0 auto' }}>
-        <Loading.Overlay message="Loading dashboard..." />
+        <LoadingOverlay message="Loading dashboard..." />
       </div>
     );
   }
@@ -275,15 +272,10 @@ export default function StudentDashboardImproved() {
             icon={<BookOpen size={48} />}
             title="No Classes Yet"
             description="Join your first class to get started with your academic journey"
-            action={
-              <Button
-                variant="primary"
-                onClick={() => setShowJoinModal(true)}
-                icon={<Plus size={18} />}
-              >
-                Join a Class
-              </Button>
-            }
+            action={{
+              label: 'Join a Class',
+              onClick: () => setShowJoinModal(true),
+            }}
           />
         ) : (
           <div style={{
@@ -417,7 +409,7 @@ export default function StudentDashboardImproved() {
                     width: '100%',
                     padding: theme.spacing[3],
                     fontSize: theme.typography.fontSize.base,
-                    border: `1px solid ${theme.colors.border.DEFAULT}`,
+                  border: `1px solid ${theme.colors.border.default}`,
                     borderRadius: theme.borderRadius.md,
                     outline: 'none',
                     transition: `border-color ${theme.transitions.fast}`,
@@ -426,7 +418,7 @@ export default function StudentDashboardImproved() {
                     e.target.style.borderColor = theme.colors.primary[500];
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = theme.colors.border.DEFAULT;
+                    e.target.style.borderColor = theme.colors.border.default;
                   }}
                   autoFocus
                 />

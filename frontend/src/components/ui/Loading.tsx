@@ -96,6 +96,7 @@ export interface SkeletonProps {
   height?: string;
   borderRadius?: string;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 export const Skeleton: React.FC<SkeletonProps> = ({
@@ -103,6 +104,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   height = '20px',
   borderRadius = theme.borderRadius.base,
   className = '',
+  style = {},
 }) => {
   const skeletonStyles: React.CSSProperties = {
     width,
@@ -117,6 +119,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
       ${theme.colors.neutral[200]} 100%
     )`,
     backgroundSize: '200% 100%',
+    ...style,
   };
 
   return <div className={className} style={skeletonStyles} />;

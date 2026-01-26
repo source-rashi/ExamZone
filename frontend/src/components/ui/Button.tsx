@@ -7,7 +7,7 @@ import React from 'react';
 import { theme } from '../../styles/theme';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'success' | 'danger' | 'ghost' | 'outline';
+  variant?: 'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'ghost' | 'outline';
   size?: 'sm' | 'md' | 'lg';
   fullWidth?: boolean;
   loading?: boolean;
@@ -85,6 +85,11 @@ export const Button: React.FC<ButtonProps> = ({
       color: theme.colors.text.inverse,
       boxShadow: theme.shadows.sm,
     },
+    warning: {
+      backgroundColor: theme.colors.warning[600],
+      color: theme.colors.text.inverse,
+      boxShadow: theme.shadows.sm,
+    },
     ghost: {
       backgroundColor: 'transparent',
       color: theme.colors.text.primary,
@@ -116,6 +121,11 @@ export const Button: React.FC<ButtonProps> = ({
       transform: 'translateY(-1px)',
       boxShadow: theme.shadows.md,
     },
+    warning: { 
+      filter: 'brightness(110%)',
+      transform: 'translateY(-1px)',
+      boxShadow: theme.shadows.md,
+    },
     ghost: { 
       backgroundColor: theme.colors.neutral[100],
     },
@@ -130,6 +140,7 @@ export const Button: React.FC<ButtonProps> = ({
     secondary: { transform: 'scale(0.98)' },
     success: { transform: 'scale(0.98)' },
     danger: { transform: 'scale(0.98)' },
+    warning: { transform: 'scale(0.98)' },
     ghost: { transform: 'scale(0.98)' },
     outline: { transform: 'scale(0.98)' },
   };

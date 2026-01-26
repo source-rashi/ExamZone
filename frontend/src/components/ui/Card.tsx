@@ -83,9 +83,10 @@ export const Card: React.FC<CardProps> = ({
 export interface CardHeaderProps {
   children: React.ReactNode;
   className?: string;
+  style?: React.CSSProperties;
 }
 
-export const CardHeader: React.FC<CardHeaderProps> = ({ children, className = '' }) => {
+export const CardHeader: React.FC<CardHeaderProps> = ({ children, className = '', style }) => {
   return (
     <div
       className={className}
@@ -93,6 +94,7 @@ export const CardHeader: React.FC<CardHeaderProps> = ({ children, className = ''
         marginBottom: theme.spacing[4],
         paddingBottom: theme.spacing[4],
         borderBottom: `1px solid ${theme.colors.border.light}`,
+        ...style,
       }}
     >
       {children}
@@ -124,11 +126,15 @@ export const CardTitle: React.FC<CardTitleProps> = ({ children, className = '' }
 export interface CardContentProps {
   children: React.ReactNode;
   className?: string;
+  style?: React.CSSProperties;
 }
 
-export const CardContent: React.FC<CardContentProps> = ({ children, className = '' }) => {
+export const CardContent: React.FC<CardContentProps> = ({ children, className = '', style }) => {
   return (
-    <div className={className}>
+    <div 
+      className={className}
+      style={style}
+    >
       {children}
     </div>
   );

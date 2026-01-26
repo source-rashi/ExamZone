@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { 
   StatsCard, 
@@ -16,7 +16,6 @@ import {
   EmptyState, 
   EmptyStateIcons,
   LoadingSpinner,
-  Badge,
   Alert
 } from '../../components/ui';
 import classAPI from '../../api/class.api';
@@ -26,16 +25,13 @@ import {
   Users, 
   Plus, 
   ChevronRight,
-  TrendingUp,
-  Clock,
-  CheckCircle
 } from 'lucide-react';
 import { theme } from '../../styles/theme';
 
 export default function TeacherDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [classes, setClasses] = useState([]);
+  const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -50,8 +46,8 @@ export default function TeacherDashboard() {
       const data = await classAPI.getTeacherClasses();
       setClasses(data.classes || []);
     } catch (err) {
-      console.error('Load classes error:', err);
-      setError(err.response?.data?.message || 'Failed to load classes');
+      console.error('Load classes error:', err instanceof Error ? err.message : 'Unknown error');
+      setError('Failed to load classes');
     } finally {
       setLoading(false);
     }

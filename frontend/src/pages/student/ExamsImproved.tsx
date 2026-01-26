@@ -3,10 +3,10 @@
  * With proper error and empty states
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { theme } from '../../styles/theme';
-import { EmptyState, Loading } from '../../components/ui';
+import { EmptyState, LoadingOverlay } from '../../components/ui';
 import { ErrorDisplay } from '../../components/error';
 import { StudentExamCard } from '../../components/student';
 import { studentAPI } from '../../api/student.api';
@@ -124,7 +124,7 @@ export default function StudentExamsImproved() {
   if (loading) {
     return (
       <div style={{ padding: theme.spacing[8], maxWidth: '1400px', margin: '0 auto' }}>
-        <Loading.Overlay message="Loading exams..." />
+        <LoadingOverlay message="Loading exams..." />
       </div>
     );
   }

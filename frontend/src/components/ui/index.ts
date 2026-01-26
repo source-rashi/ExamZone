@@ -19,6 +19,10 @@ export { EmptyState, EmptyStateIcons } from './EmptyState';
 export type { EmptyStateProps } from './EmptyState';
 
 export { LoadingSpinner, LoadingOverlay, Skeleton, SkeletonText, SkeletonCard } from './Loading';
+import { LoadingSpinner, LoadingOverlay as LO } from './Loading';
+const Loading = LoadingSpinner as typeof LoadingSpinner & { Overlay: typeof LO };
+Loading.Overlay = LO;
+export { Loading };
 export type { LoadingSpinnerProps, LoadingOverlayProps, SkeletonProps, SkeletonTextProps, SkeletonCardProps } from './Loading';
 
 export { ProgressSteps } from './ProgressSteps';
