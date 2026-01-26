@@ -6,7 +6,9 @@
 const ExamAttempt = require('../models/ExamAttempt');
 const Exam = require('../models/Exam');
 const User = require('../models/User');
+const Enrollment = require('../models/Enrollment');
 const { getStudentQuestions } = require('../services/paperResolver');
+const { processAIChecking } = require('../services/aiChecker.service');
 const mongoose = require('mongoose');
 
 /**
@@ -243,8 +245,74 @@ async function submitEvaluation(req, res) {
   }
 }
 
+/**
+ * Request AI checking for an attempt (Teacher only)
+ * POST /api/v2/evaluation/attempts/:attemptId/ai-check
+ */
+async function requestAIChecking(req, res) {
+  try {
+    const { attemptId } = req.params;
+    const teacherId = req.user.id;
+
+    // Get attempt
+    const attempt = await ExamAttempt.findById(attemptId);
+    if (!attempt) {
+      return res.status(404).json({
+        success: false,
+        error: 'Attempt not found'
+      });
+    }
+
+    // Verify attempt is submitted
+    if (attempt.status !== 'submitted') {
+      return res.status(400).json({
+        success: false,
+        error: 'Only submitted attempts can be AI-checked'
+      });
+    }
+
+    // Verify teacher owns exam
+    const exam = await Exam.findById(attempt.exam);
+    if (!exam) {
+      return res.status(404).json({
+        success: false,
+        error: 'Exam not found'
+      });
+    }
+
+    if (exam.teacher.toString() !== teacherId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized: You can only AI-check attempts for your own exams'
+      });
+    }
+
+    // Process AI checking
+    const aiResult = await processAIChecking(attemptId);
+
+    res.status(200).json({
+      success: true,
+      message: 'AI checking completed',
+      data: {
+        attemptId: attempt._id,
+        aiSuggestedScore: aiResult.suggestedScore,
+        aiFeedback: aiResult.feedback,
+        totalMarks: exam.totalMarks,
+        perQuestionFeedback: aiResult.perQuestionFeedback || []
+      }
+    });
+  } catch (error) {
+    console.error('[Evaluation] AI checking error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to complete AI checking'
+    });
+  }
+}
+
 module.exports = {
   getExamAttempts,
   getAttemptForEvaluation,
-  submitEvaluation
+  submitEvaluation,
+  requestAIChecking
 };

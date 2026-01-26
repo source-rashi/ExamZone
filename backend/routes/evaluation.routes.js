@@ -22,4 +22,7 @@ router.get('/attempts/:attemptId', evaluationController.getAttemptForEvaluation)
 // Submit evaluation
 router.post('/attempts/:attemptId/score', evaluationController.submitEvaluation);
 
+// Request AI checking
+router.post('/attempts/:attemptId/ai-check', evaluationController.requestAIChecking);
+
 module.exports = router;

@@ -458,6 +458,145 @@ async def check_answer_sheets(
         logger.error(f"General error in check-answer-sheets: {str(e)}")
         return JSONResponse(status_code=500, content={"error": f"An error occurred: {str(e)}", "traceback": str(e)})
 
+@app.post("/check-answers")
+async def check_answers_batch(request: Request):
+    """
+    PHASE 7.5.3 - Batch answer checking for exam evaluation
+    Accepts questions with expected answers and student answers
+    Returns suggested scores and feedback
+    """
+    try:
+        data = await request.json()
+        questions = data.get('questions', [])
+        total_marks = data.get('totalMarks', 0)
+        attempt_id = data.get('attemptId', 'unknown')
+
+        logger.info(f"Batch checking {len(questions)} answers for attempt {attempt_id}")
+
+        if not questions:
+            return JSONResponse(status_code=400, content={
+                "error": "No questions provided"
+            })
+
+        # Build evaluation prompt
+        evaluation_prompt = f"""You are an expert examiner evaluating student answers.
+
+Total Marks: {total_marks}
+
+For each question, provide:
+1. Marks awarded (based on the maximum marks for that question)
+2. Brief feedback explaining the evaluation
+
+Evaluate fairly and constructively. Award partial marks where appropriate.
+
+Questions and Answers:
+"""
+
+        question_feedback = []
+        for idx, q in enumerate(questions, 1):
+            q_text = q.get('text', '')
+            q_marks = q.get('marks', 0)
+            expected = q.get('expectedAnswer', '')
+            student = q.get('studentAnswer', '')
+
+            evaluation_prompt += f"\n\nQuestion {idx} (Max {q_marks} marks):\n{q_text}\n"
+            if expected:
+                evaluation_prompt += f"Expected Answer: {expected}\n"
+            evaluation_prompt += f"Student Answer: {student}\n"
+
+        evaluation_prompt += """
+
+Provide your evaluation in the following JSON format:
+{
+  "questionEvaluations": [
+    {
+      "questionNumber": 1,
+      "marksAwarded": <marks>,
+      "maxMarks": <max_marks>,
+      "feedback": "<feedback>"
+    },
+    ...
+  ],
+  "overallFeedback": "<general comments about the student's performance>"
+}
+"""
+
+        # Call Gemini AI
+        model = genai.GenerativeModel("gemini-1.5-pro")
+        response = model.generate_content(evaluation_prompt)
+        response_text = response.text.strip()
+
+        # Extract JSON from response
+        json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+        if json_match:
+            eval_result = json.loads(json_match.group())
+        else:
+            logger.warning("Could not parse AI response as JSON, using fallback")
+            eval_result = {
+                "questionEvaluations": [],
+                "overallFeedback": "AI evaluation completed but format was unclear"
+            }
+
+        # Calculate total score
+        total_score = 0
+        processed_feedback = []
+        
+        for idx, q in enumerate(questions):
+            q_id = q.get('id', f'q{idx+1}')
+            q_marks = q.get('marks', 0)
+            
+            # Find evaluation for this question
+            eval_data = None
+            if eval_result.get('questionEvaluations'):
+                for ev in eval_result['questionEvaluations']:
+                    if ev.get('questionNumber') == idx + 1:
+                        eval_data = ev
+                        break
+            
+            if eval_data:
+                awarded = eval_data.get('marksAwarded', 0)
+                feedback = eval_data.get('feedback', 'Evaluated')
+            else:
+                # Fallback: simple comparison
+                student = q.get('studentAnswer', '').lower()
+                expected = q.get('expectedAnswer', '').lower()
+                
+                if not student or student == '':
+                    awarded = 0
+                    feedback = "No answer provided"
+                elif expected and expected in student:
+                    awarded = q_marks
+                    feedback = "Correct answer"
+                elif expected:
+                    awarded = int(q_marks * 0.5)  # Partial credit
+                    feedback = "Partially correct"
+                else:
+                    awarded = int(q_marks * 0.7)  # No expected answer to compare
+                    feedback = "Answer provided"
+            
+            total_score += awarded
+            processed_feedback.append({
+                "questionId": q_id,
+                "suggestedMarks": awarded,
+                "maxMarks": q_marks,
+                "feedback": feedback
+            })
+
+        logger.info(f"AI evaluation complete: {total_score}/{total_marks}")
+
+        return JSONResponse(content={
+            "totalScore": total_score,
+            "maxMarks": total_marks,
+            "overallFeedback": eval_result.get('overallFeedback', 'Evaluation completed'),
+            "questionFeedback": processed_feedback
+        })
+
+    except Exception as e:
+        logger.error(f"Batch checking error: {str(e)}")
+        return JSONResponse(status_code=500, content={
+            "error": f"AI checking failed: {str(e)}"
+        })
+
 if __name__ == "__main__":
     import uvicorn
     import os
