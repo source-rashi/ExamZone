@@ -53,13 +53,53 @@ const examAttemptSchema = new mongoose.Schema({
   uploadedFile: {
     type: String // Path to uploaded answer sheet PDF
   },
+  
+  // ==================== PHASE 7.5 — EVALUATION FIELDS ====================
   score: {
     type: Number,
     min: 0
   },
+  maxMarks: {
+    type: Number,
+    min: 0
+  },
+  evaluatedAt: {
+    type: Date
+  },
+  evaluatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   feedback: {
+    type: String,
+    trim: true
+  },
+  perQuestionMarks: [{
+    questionId: String,
+    marksAwarded: {
+      type: Number,
+      min: 0
+    },
+    maxMarks: {
+      type: Number,
+      min: 0
+    },
+    feedback: String
+  }],
+  aiSuggestedScore: {
+    type: Number,
+    min: 0
+  },
+  aiFeedback: {
     type: String
   },
+  evaluationStatus: {
+    type: String,
+    enum: ['pending', 'ai-checked', 'evaluated', 're-evaluation'],
+    default: 'pending'
+  },
+  // ==================== END EVALUATION FIELDS ====================
+  
   createdAt: {
     type: Date,
     default: Date.now
