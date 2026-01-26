@@ -753,9 +753,8 @@ function ExamsTab({ classId, isTeacher }) {
   const loadExams = async () => {
     try {
       setLoading(true);
-      const data = isTeacher 
-        ? await examAPI.getClassExams(classId)
-        : await examAPI.getStudentExams(classId);
+      // PHASE 7.3.5: Use classroom API for role-based filtering
+      const data = await classroomAPI.getExams(classId);
       setExams(data.exams || []);
     } catch (error) {
       console.error('Failed to load exams:', error);
@@ -1056,14 +1055,9 @@ function ExamsTab({ classId, isTeacher }) {
                     </button>
                   </>
                 ) : (
+                  // PHASE 7.3.5: Student exam access
                   <>
-                    {exam.status === 'published' && 
-                      new Date() >= new Date(exam.startTime) && 
-                      new Date() <= new Date(exam.endTime) && (
-                        <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium">
-                          Start Exam
-                        </button>
-                      )}
+                    {/* Show exam details button */}
                     <button 
                       onClick={() => {
                         console.log('[Classroom] Opening ExamDetailsModal for exam:', exam._id);
@@ -1073,6 +1067,46 @@ function ExamsTab({ classId, isTeacher }) {
                     >
                       View Details
                     </button>
+                    
+                    {/* Download paper button for published/running/closed exams */}
+                    {['published', 'running', 'closed'].includes(exam.status) && (
+                      <button 
+                        onClick={async () => {
+                          try {
+                            const blob = await examAPI.downloadMyPaper(exam._id);
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `${exam.title}_Paper.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+                          } catch (error) {
+                            console.error('Download error:', error);
+                            alert(error.response?.data?.message || 'Failed to download paper');
+                          }
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Download Paper
+                      </button>
+                    )}
+
+                    {/* Start/Resume exam for active exams */}
+                    {exam.status === 'published' && 
+                      new Date() >= new Date(exam.startTime) && 
+                      new Date() <= new Date(exam.endTime) && (
+                        <button 
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                          onClick={() => {
+                            alert('Exam attempt functionality coming in next phase');
+                          }}
+                        >
+                          🚀 Start Exam
+                        </button>
+                      )}
                   </>
                 )}
               </div>

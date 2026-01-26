@@ -1,11 +1,11 @@
 /**
- * PHASE 7.1 — Student Exam Papers View
- * Shows upcoming exams with Start/Resume Exam buttons
+ * PHASE 7.3.5 — Student Exam Papers View
+ * Shows upcoming exams with Start/Resume Exam buttons and paper download
  */
 import { useState, useEffect } from 'react';
 import Card from '../../components/ui/Card';
 import { studentAPI } from '../../api/student.api';
-import { getStudentExams } from '../../api/exam.api';
+import examAPI from '../../api/exam.api';
 
 export default function StudentExams() {
   const [exams, setExams] = useState([]);
@@ -125,7 +125,8 @@ export default function StudentExams() {
   const handleDownloadPaper = async (examId, examTitle) => {
     try {
       setDownloading(examId);
-      const blob = await studentAPI.downloadMyPaper(examId);
+      // PHASE 7.3.5: Use proper exam API
+      const blob = await examAPI.downloadMyPaper(examId);
       // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');

@@ -94,6 +94,17 @@ export async function getMyPaper(examId) {
   return response.data.success ? response.data.data : response.data;
 }
 
+/**
+ * PHASE 7.3.5 - Download my paper PDF as a student (SECURE)
+ * Returns blob for download
+ */
+export async function downloadMyPaper(examId) {
+  const response = await apiClient.get(`/student/exams/${examId}/my-paper/pdf`, {
+    responseType: 'blob'
+  });
+  return response.data;
+}
+
 export const examAPI = {
   createExam,
   publishExam,
@@ -105,7 +116,8 @@ export const examAPI = {
   generateQuestionPapers,
   generateStudentPapers,
   getExamDetails,
-  getMyPaper
+  getMyPaper,
+  downloadMyPaper
 };
 
 export default examAPI;
