@@ -939,6 +939,113 @@ async function submitExamAttempt(req, res) {
   }
 }
 
+/**
+ * Get attempt result (Student only)
+ * GET /api/v2/attempts/:attemptId/result
+ */
+async function getAttemptResult(req, res) {
+  try {
+    const { attemptId } = req.params;
+    const studentId = req.user.id;
+
+    // Get attempt with populated data
+    const attempt = await ExamAttempt.findById(attemptId)
+      .populate('exam', 'title totalMarks duration')
+      .populate('student', 'name email');
+
+    if (!attempt) {
+      return res.status(404).json({
+        success: false,
+        error: 'Attempt not found'
+      });
+    }
+
+    // Verify student owns this attempt
+    if (attempt.student._id.toString() !== studentId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized: You can only view your own results'
+      });
+    }
+
+    // Check if evaluated
+    if (attempt.evaluationStatus !== 'evaluated') {
+      return res.status(400).json({
+        success: false,
+        error: 'Result not available yet. This attempt has not been evaluated.'
+      });
+    }
+
+    // Get questions using paperResolver
+    const { getStudentQuestions } = require('../services/paperResolver');
+    const questionsData = await getStudentQuestions(attempt.exam._id, studentId);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        exam: {
+          id: attempt.exam._id,
+          title: attempt.exam.title,
+          totalMarks: attempt.exam.totalMarks,
+          duration: attempt.exam.duration
+        },
+        attempt: {
+          _id: attempt._id,
+          status: attempt.status,
+          score: attempt.score,
+          maxMarks: attempt.maxMarks,
+          evaluationStatus: attempt.evaluationStatus,
+          feedback: attempt.feedback,
+          evaluatedAt: attempt.evaluatedAt,
+          submittedAt: attempt.submittedAt,
+          startedAt: attempt.startedAt,
+          integrityScore: attempt.integrityScore,
+          violations: attempt.violations,
+          answers: attempt.answers,
+          perQuestionMarks: attempt.perQuestionMarks || []
+        },
+        questions: questionsData.questions
+      }
+    });
+  } catch (error) {
+    console.error('[Attempt] Get result error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch result'
+    });
+  }
+}
+
+/**
+ * Get student's attempts for an exam
+ * GET /api/v2/attempts/exam/:examId/my-attempts
+ */
+async function getMyExamAttempts(req, res) {
+  try {
+    const { examId } = req.params;
+    const studentId = req.user.id;
+
+    const attempts = await ExamAttempt.find({
+      exam: examId,
+      student: studentId,
+      status: 'submitted'
+    })
+    .select('_id status score maxMarks evaluationStatus submittedAt evaluatedAt')
+    .sort({ submittedAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: { attempts }
+    });
+  } catch (error) {
+    console.error('[Attempt] Get my attempts error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch attempts'
+    });
+  }
+}
+
 module.exports = {
   // PHASE 7.1 - New Attempt Lifecycle
   startExamAttempt,
@@ -950,6 +1057,10 @@ module.exports = {
   saveAnswer,
   logViolation,
   submitExamAttempt,
+
+  // PHASE 7.5.5 - Student Result Access
+  getAttemptResult,
+  getMyExamAttempts,
   
   // Legacy routes (kept for backward compatibility)
   startAttempt,

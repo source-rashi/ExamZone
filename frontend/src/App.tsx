@@ -36,6 +36,7 @@ import StudentExams from './pages/student/Exams';
 import StudentProfile from './pages/student/Profile';
 import ExamPage from './pages/ExamPage';
 import ExamAttempt from './pages/student/ExamAttempt';
+import StudentResult from './pages/student/ExamResult';
 
 // Shared pages
 import Classroom from './pages/shared/Classroom';
@@ -115,6 +116,18 @@ function App() {
                 <ProtectedRoute>
                   <RoleRoute allowedRole="student">
                     <ExamAttempt />
+                  </RoleRoute>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Exam result route (standalone - no layout) */}
+            <Route
+              path="/student/attempt/:attemptId/result"
+              element={
+                <ProtectedRoute>
+                  <RoleRoute allowedRole="student">
+                    <StudentResult />
                   </RoleRoute>
                 </ProtectedRoute>
               }

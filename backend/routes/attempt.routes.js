@@ -16,6 +16,10 @@ const {
   saveAnswer,
   logViolation,
   submitExamAttempt,
+
+  // PHASE 7.5.5 - Student result access
+  getAttemptResult,
+  getMyExamAttempts,
   
   // Legacy
   startAttempt, 
@@ -82,6 +86,24 @@ router.post('/:attemptId/log-violation', authenticate, studentOnly, logViolation
  * @access Student only
  */
 router.post('/:attemptId/submit', authenticate, studentOnly, submitExamAttempt);
+
+// ==================================================================
+// PHASE 7.5.5 — STUDENT RESULT ACCESS
+// ==================================================================
+
+/**
+ * @route GET /api/v2/attempts/:attemptId/result
+ * @desc Get evaluated result for an attempt (PHASE 7.5.5)
+ * @access Student only
+ */
+router.get('/:attemptId/result', authenticate, studentOnly, getAttemptResult);
+
+/**
+ * @route GET /api/v2/attempts/exam/:examId/my-attempts
+ * @desc Get all submitted attempts for an exam (PHASE 7.5.5)
+ * @access Student only
+ */
+router.get('/exam/:examId/my-attempts', authenticate, studentOnly, getMyExamAttempts);
 
 // ==================================================================
 // LEGACY ROUTES (kept for backward compatibility)
