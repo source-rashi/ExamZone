@@ -3,7 +3,7 @@
  * Frontend API calls for exam attempts
  */
 
-import apiClient from './apiClient';
+import apiClient from './client';
 
 const BASE_URL = '/attempts';
 

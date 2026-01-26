@@ -1098,8 +1098,9 @@ function ExamsTab({ classId, isTeacher }) {
                       </button>
                     )}
 
-                    {/* Start/Resume exam for active exams */}
-                    {exam.status === 'published' && 
+                    {/* Start/Resume exam for active exams - STUDENTS ONLY */}
+                    {!isTeacher && 
+                      exam.status === 'published' && 
                       new Date() >= new Date(exam.startTime) && 
                       new Date() <= new Date(exam.endTime) && (
                         <button 

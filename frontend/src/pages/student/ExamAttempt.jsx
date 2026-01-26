@@ -47,7 +47,10 @@ export default function ExamAttempt() {
   const startExam = async () => {
     try {
       setLoading(true);
+      console.log('[ExamAttempt] Starting exam:', examId);
       const result = await attemptAPI.startAttempt(examId);
+      
+      console.log('[ExamAttempt] Start response:', result);
       
       if (result.success) {
         setAttemptData(result.data);
@@ -64,8 +67,10 @@ export default function ExamAttempt() {
         startTimer();
       }
     } catch (error) {
-      console.error('Failed to start exam:', error);
-      alert(error.response?.data?.message || 'Failed to start exam');
+      console.error('[ExamAttempt] Failed to start exam:', error);
+      console.error('[ExamAttempt] Error response:', error.response);
+      const errorMsg = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to start exam';
+      alert(errorMsg);
       navigate(-1);
     } finally {
       setLoading(false);
