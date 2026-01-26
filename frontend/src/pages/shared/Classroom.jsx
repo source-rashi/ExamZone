@@ -915,6 +915,11 @@ function ExamsTab({ classId, isTeacher }) {
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="text-xl font-bold text-gray-900">{exam.title}</h3>
                     {getStatusBadge(exam)}
+                    {!isTeacher && exam.attemptsExhausted && (
+                      <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded-full">
+                        Attempts Used
+                      </span>
+                    )}
                   </div>
                   {exam.description && (
                     <p className="text-gray-600 text-sm line-clamp-2">{exam.description}</p>
@@ -933,7 +938,18 @@ function ExamsTab({ classId, isTeacher }) {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Attempts</p>
-                  <p className="font-semibold text-gray-900">{exam.attemptsAllowed || 1}</p>
+                  {!isTeacher && exam.studentAttemptCount !== undefined ? (
+                    <p className={`font-semibold ${
+                      exam.attemptsExhausted ? 'text-red-600' : 
+                      exam.studentAttemptCount > 0 ? 'text-amber-600' : 
+                      'text-green-600'
+                    }`}>
+                      {exam.studentAttemptCount}/{exam.attemptsAllowed || 1}
+                      {exam.attemptsExhausted && ' ✓'}
+                    </p>
+                  ) : (
+                    <p className="font-semibold text-gray-900">{exam.attemptsAllowed || 1}</p>
+                  )}
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Mode</p>
@@ -1103,14 +1119,23 @@ function ExamsTab({ classId, isTeacher }) {
                       exam.status === 'published' && 
                       new Date() >= new Date(exam.startTime) && 
                       new Date() <= new Date(exam.endTime) && (
-                        <button 
-                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-                          onClick={() => {
-                            navigate(`/student/exam/${exam._id}/attempt`);
-                          }}
-                        >
-                          🚀 Start Exam
-                        </button>
+                        <>
+                          {exam.attemptsExhausted ? (
+                            <div className="px-4 py-2 bg-gray-100 text-gray-500 rounded-lg text-sm font-medium cursor-not-allowed">
+                              ✓ All Attempts Used ({exam.studentAttemptCount}/{exam.attemptsAllowed || 1})
+                            </div>
+                          ) : (
+                            <button 
+                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                              onClick={() => {
+                                navigate(`/student/exam/${exam._id}/attempt`);
+                              }}
+                            >
+                              🚀 {exam.studentAttemptCount > 0 ? 'Resume' : 'Start'} Exam
+                              {exam.attemptsAllowed > 1 && ` (${exam.attemptsRemaining || 0} left)`}
+                            </button>
+                          )}
+                        </>
                       )}
                   </>
                 )}

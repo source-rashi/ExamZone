@@ -144,9 +144,27 @@ async function getAllStudentExams(req, res) {
     
     console.log('[Get All Student Exams] Found exams:', exams.length);
     
+    // Get attempt counts for each exam
+    const ExamAttempt = require('../models/ExamAttempt');
+    const examsWithAttempts = await Promise.all(
+      exams.map(async (exam) => {
+        const attemptCount = await ExamAttempt.countDocuments({
+          exam: exam._id,
+          student: new mongoose.Types.ObjectId(studentId)
+        });
+        
+        const examObj = exam.toObject();
+        examObj.studentAttemptCount = attemptCount;
+        examObj.attemptsRemaining = Math.max(0, (exam.attemptsAllowed || 1) - attemptCount);
+        examObj.attemptsExhausted = attemptCount >= (exam.attemptsAllowed || 1);
+        
+        return examObj;
+      })
+    );
+    
     res.status(200).json({
       success: true,
-      exams
+      exams: examsWithAttempts
     });
   } catch (error) {
     console.error('[Get All Student Exams] Error:', error);
@@ -168,11 +186,31 @@ async function getStudentExams(req, res) {
     const studentId = req.user.id;
 
     const exams = await examService.getStudentExams(classId, studentId);
+    
+    // Add attempt information to each exam
+    const mongoose = require('mongoose');
+    const ExamAttempt = require('../models/ExamAttempt');
+    
+    const examsWithAttempts = await Promise.all(
+      exams.map(async (exam) => {
+        const attemptCount = await ExamAttempt.countDocuments({
+          exam: exam._id,
+          student: new mongoose.Types.ObjectId(studentId)
+        });
+        
+        const examObj = exam.toObject ? exam.toObject() : exam;
+        examObj.studentAttemptCount = attemptCount;
+        examObj.attemptsRemaining = Math.max(0, (exam.attemptsAllowed || 1) - attemptCount);
+        examObj.attemptsExhausted = attemptCount >= (exam.attemptsAllowed || 1);
+        
+        return examObj;
+      })
+    );
 
     res.status(200).json({
       success: true,
       message: 'Exams fetched successfully',
-      data: { exams }
+      data: { exams: examsWithAttempts }
     });
   } catch (error) {
     console.error('Get student exams error:', error);
