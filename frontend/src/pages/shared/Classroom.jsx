@@ -1068,8 +1068,9 @@ function ExamsTab({ classId, isTeacher }) {
                       View Details
                     </button>
                     
-                    {/* Download paper button for published/running/closed exams */}
-                    {['published', 'running', 'closed'].includes(exam.status) && (
+                    {/* Download paper button - only if exam has papers generated */}
+                    {['published', 'running', 'closed'].includes(exam.status) && 
+                     (exam.generationStatus === 'generated' || exam.status === 'published') && (
                       <button 
                         onClick={async () => {
                           try {
@@ -1084,7 +1085,10 @@ function ExamsTab({ classId, isTeacher }) {
                             document.body.removeChild(a);
                           } catch (error) {
                             console.error('Download error:', error);
-                            alert(error.response?.data?.message || 'Failed to download paper');
+                            const errorMsg = error.response?.data?.message || 
+                                           error.message || 
+                                           'Paper not available yet. Please contact your teacher.';
+                            alert(errorMsg);
                           }
                         }}
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
