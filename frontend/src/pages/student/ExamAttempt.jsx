@@ -29,6 +29,8 @@ export default function ExamAttempt() {
   const [saving, setSaving] = useState(false);
   const [violations, setViolations] = useState(0);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(true);
   
   // Refs
   const saveTimeoutRef = useRef(null);
@@ -43,6 +45,27 @@ export default function ExamAttempt() {
     };
   }, [examId]);
   
+  // Request fullscreen
+  const requestFullscreen = async () => {
+    try {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        await elem.requestFullscreen();
+      } else if (elem.webkitRequestFullscreen) {
+        await elem.webkitRequestFullscreen();
+      } else if (elem.msRequestFullscreen) {
+        await elem.msRequestFullscreen();
+      }
+      console.log('[ExamAttempt] Entered fullscreen mode');
+      setIsFullscreen(true);
+      setShowFullscreenPrompt(false);
+    } catch (error) {
+      console.error('[ExamAttempt] Fullscreen request failed:', error);
+      // Still allow exam to proceed if fullscreen fails
+      setShowFullscreenPrompt(false);
+    }
+  };
+  
   // Start exam
   const startExam = async () => {
     try {
@@ -54,17 +77,29 @@ export default function ExamAttempt() {
       
       if (result.success) {
         setAttemptData(result.data);
-        setTimeRemaining(result.data.remainingMinutes * 60); // Convert to seconds
+        
+        // Calculate time remaining
+        const remainingMins = result.data.remainingMinutes || 0;
+        console.log('[ExamAttempt] Setting time remaining:', remainingMins, 'minutes =', remainingMins * 60, 'seconds');
+        setTimeRemaining(remainingMins * 60); // Convert to seconds
         
         // Load previous answers
         const previousAnswers = {};
-        result.data.previousAnswers?.forEach(ans => {
-          previousAnswers[ans.questionId] = ans.answer;
-        });
+        if (result.data.previousAnswers && result.data.previousAnswers.length > 0) {
+          result.data.previousAnswers.forEach(ans => {
+            previousAnswers[ans.questionId] = ans.answer;
+          });
+          console.log('[ExamAttempt] Loaded', result.data.previousAnswers.length, 'previous answers');
+        }
         setAnswers(previousAnswers);
         
         // Start timer
         startTimer();
+        
+        // Request fullscreen after data is loaded
+        setTimeout(() => {
+          requestFullscreen();
+        }, 500);
       }
     } catch (error) {
       console.error('[ExamAttempt] Failed to start exam:', error);
@@ -154,7 +189,10 @@ export default function ExamAttempt() {
     };
     
     const handleFullscreenChange = () => {
-      if (!document.fullscreenElement && attemptData) {
+      const inFullscreen = !!document.fullscreenElement;
+      setIsFullscreen(inFullscreen);
+      
+      if (!inFullscreen && attemptData) {
         logViolation('fullscreen-exit');
       }
     };
@@ -255,6 +293,13 @@ export default function ExamAttempt() {
   
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Fullscreen warning */}
+      {!isFullscreen && attemptData && (
+        <div className="bg-red-600 text-white px-4 py-2 text-center text-sm font-medium">
+          ⚠️ Warning: You have exited fullscreen mode. This may be logged as a violation. Press F11 to re-enter fullscreen.
+        </div>
+      )}
+      
       {/* Header */}
       <div className="bg-white shadow-sm border-b sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -286,13 +331,18 @@ export default function ExamAttempt() {
               )}
               
               {/* Timer */}
-              <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-                timeRemaining < 300 ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+              <div className={`flex items-center gap-3 px-6 py-3 rounded-lg shadow-lg ${
+                timeRemaining < 300 ? 'bg-red-600 text-white animate-pulse' : 
+                timeRemaining < 600 ? 'bg-amber-500 text-white' :
+                'bg-blue-600 text-white'
               }`}>
-                <Clock className="h-5 w-5" />
-                <span className="font-mono font-bold text-lg">
-                  {formatTime(timeRemaining)}
-                </span>
+                <Clock className="h-6 w-6" />
+                <div>
+                  <div className="text-xs font-medium opacity-90">Time Remaining</div>
+                  <div className="font-mono font-bold text-2xl">
+                    {formatTime(timeRemaining)}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -447,6 +497,46 @@ export default function ExamAttempt() {
                 Yes, Submit
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Fullscreen prompt */}
+      {showFullscreenPrompt && attemptData && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-lg w-full mx-4">
+            <div className="text-center mb-6">
+              <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                <AlertTriangle className="h-8 w-8 text-blue-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                Fullscreen Mode Required
+              </h3>
+              <p className="text-gray-600">
+                For exam integrity, you must enter fullscreen mode. Your activity will be monitored throughout the exam.
+              </p>
+            </div>
+            
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+              <h4 className="font-semibold text-amber-900 mb-2">⚠️ Important Rules:</h4>
+              <ul className="text-sm text-amber-800 space-y-1 list-disc list-inside">
+                <li>Do not exit fullscreen mode</li>
+                <li>Do not switch tabs or windows</li>
+                <li>Do not leave the exam page</li>
+                <li>Violations will be logged and reported</li>
+              </ul>
+            </div>
+            
+            <button
+              onClick={requestFullscreen}
+              className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+            >
+              Enter Fullscreen & Start Exam
+            </button>
+            
+            <p className="text-xs text-gray-500 text-center mt-4">
+              If fullscreen doesn't work, press F11 on your keyboard
+            </p>
           </div>
         </div>
       )}
