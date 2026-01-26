@@ -1,6 +1,6 @@
 import apiClient from './client';
 
-const BASE_URL = '/api/v2/classroom';
+const BASE_URL = '/classroom';
 
 // ==================== ANNOUNCEMENTS ====================
 

@@ -1,0 +1,50 @@
+{
+  "examId": "6976fe05a2199fc44ea5a1bc",
+  "examTitle": "st",
+  "description": "",
+  "className": "CSE12",
+  "studentInfo": {
+    "id": "69651a3802ab13d07c6b0ff3",
+    "name": "Diana Prince",
+    "rollNumber": 104
+  },
+  "setInfo": {
+    "setId": "SET-001",
+    "setName": "Set SET-001"
+  },
+  "questions": [
+    {
+      "number": 1,
+      "text": "Derive Einstein's mass-energy equivalence equation (E=mc²).",
+      "marks": 3,
+      "topic": "Physics",
+      "difficulty": "hard",
+      "options": []
+    },
+    {
+      "number": 2,
+      "text": "law of newton",
+      "marks": 4,
+      "topic": "st",
+      "difficulty": "hard",
+      "options": []
+    },
+    {
+      "number": 3,
+      "text": "inertia",
+      "marks": 3,
+      "topic": "st",
+      "difficulty": "hard",
+      "options": []
+    }
+  ],
+  "examMetadata": {
+    "totalMarks": 10,
+    "duration": 200,
+    "startTime": "2026-01-26T05:39:00.000Z",
+    "endTime": "2026-01-27T05:39:00.000Z",
+    "attemptsAllowed": 1
+  },
+  "instructions": "",
+  "generatedAt": "2026-01-26T05:39:37.972Z"
+}

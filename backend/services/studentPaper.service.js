@@ -196,13 +196,17 @@ async function generateStudentPapers(examId) {
 
       console.log('[Student Papers] Generated paper for roll', student.rollNumber, '- Set', assignedSetId);
 
+      // CRITICAL FIX: Store PDF path instead of JSON path
+      // PDFs are generated later by pdfGeneration.service but we need to reference them
+      const pdfFilepath = filepath.replace('.json', '.pdf');
+
       // Add to array
       generatedPapers.push({
         studentId: student.userId,
         rollNumber: student.rollNumber,
         name: student.name,
         setId: assignedSetId,
-        paperPath: path.relative(STORAGE_BASE, filepath),
+        paperPath: path.relative(STORAGE_BASE, pdfFilepath),  // Use PDF path, not JSON
         paperPreview: {
           totalQuestions: paperData.questions.length,
           totalMarks: paperData.examMetadata.totalMarks,

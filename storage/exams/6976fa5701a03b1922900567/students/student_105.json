@@ -1,0 +1,34 @@
+{
+  "examId": "6976fa5701a03b1922900567",
+  "examTitle": "student",
+  "description": "",
+  "className": "CSE12",
+  "studentInfo": {
+    "id": "69651a3802ab13d07c6b0ff9",
+    "name": "Eve Wilson",
+    "rollNumber": 105
+  },
+  "setInfo": {
+    "setId": "SET-001",
+    "setName": "Set SET-001"
+  },
+  "questions": [
+    {
+      "number": 1,
+      "text": "efrgthjbc",
+      "marks": 2,
+      "topic": "student",
+      "difficulty": "medium",
+      "options": []
+    }
+  ],
+  "examMetadata": {
+    "totalMarks": 2,
+    "duration": 200,
+    "startTime": "2026-01-26T05:23:00.000Z",
+    "endTime": "2026-01-27T05:23:00.000Z",
+    "attemptsAllowed": 1
+  },
+  "instructions": "",
+  "generatedAt": "2026-01-26T05:24:18.465Z"
+}

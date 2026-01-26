@@ -11,6 +11,12 @@ const {
   getActiveAttempt,
   getAttemptPaper,
   
+  // PHASE 7.4 - Exam attempt engine
+  getAttemptById,
+  saveAnswer,
+  logViolation,
+  submitExamAttempt,
+  
   // Legacy
   startAttempt, 
   recordViolation, 
@@ -44,6 +50,38 @@ router.get('/:examId/active', authenticate, studentOnly, getActiveAttempt);
  * @access Student only
  */
 router.get('/:attemptId/paper', authenticate, studentOnly, getAttemptPaper);
+
+// ==================================================================
+// PHASE 7.4 — EXAM ATTEMPT ENGINE
+// ==================================================================
+
+/**
+ * @route GET /api/v2/attempts/:attemptId
+ * @desc Get attempt details with questions and answers (PHASE 7.4)
+ * @access Student only
+ */
+router.get('/:attemptId', authenticate, studentOnly, getAttemptById);
+
+/**
+ * @route POST /api/v2/attempts/:attemptId/answer
+ * @desc Save/update answer for a question (PHASE 7.4)
+ * @access Student only
+ */
+router.post('/:attemptId/answer', authenticate, studentOnly, saveAnswer);
+
+/**
+ * @route POST /api/v2/attempts/:attemptId/log-violation
+ * @desc Log integrity violation (PHASE 7.4)
+ * @access Student only
+ */
+router.post('/:attemptId/log-violation', authenticate, studentOnly, logViolation);
+
+/**
+ * @route POST /api/v2/attempts/:attemptId/submit
+ * @desc Submit exam attempt (PHASE 7.4)
+ * @access Student only
+ */
+router.post('/:attemptId/submit', authenticate, studentOnly, submitExamAttempt);
 
 // ==================================================================
 // LEGACY ROUTES (kept for backward compatibility)

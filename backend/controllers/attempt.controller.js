@@ -537,11 +537,331 @@ async function submitAnswerSheet(req, res) {
   }
 }
 
+/**
+ * PHASE 7.4 TASK 2: Get attempt details by attemptId
+ * GET /api/v2/attempts/:attemptId
+ */
+async function getAttemptById(req, res) {
+  try {
+    const { attemptId } = req.params;
+    const studentId = getStudentId(req);
+
+    console.log('[Get Attempt By ID] Request:', { attemptId, studentId });
+
+    // Find attempt
+    const attempt = await ExamAttempt.findById(attemptId).populate('exam');
+    
+    if (!attempt) {
+      return res.status(404).json({
+        success: false,
+        message: 'Attempt not found'
+      });
+    }
+
+    // Verify ownership
+    if (attempt.student.toString() !== studentId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    // Get questions
+    const questionsData = await getStudentQuestions(
+      attempt.exam._id.toString(),
+      studentId
+    );
+
+    // Calculate remaining time
+    const now = new Date();
+    const elapsedMinutes = Math.floor((now - attempt.startedAt) / 60000);
+    const remainingMinutes = Math.max(0, attempt.exam.duration - elapsedMinutes);
+
+    // Check if time exceeded and auto-submit
+    let status = attempt.status;
+    if (remainingMinutes === 0 && status === 'started') {
+      attempt.status = 'auto-submitted';
+      attempt.submittedAt = now;
+      await attempt.save();
+      status = 'auto-submitted';
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        attemptId: attempt._id,
+        attemptNo: attempt.attemptNo,
+        startedAt: attempt.startedAt,
+        submittedAt: attempt.submittedAt,
+        status,
+        duration: attempt.exam.duration,
+        remainingMinutes,
+        exam: {
+          id: attempt.exam._id,
+          title: attempt.exam.title,
+          description: attempt.exam.description,
+          totalMarks: attempt.exam.totalMarks,
+          instructions: attempt.exam.settings?.instructions || ''
+        },
+        paper: questionsData,
+        answers: attempt.answers || [],
+        integrityLogs: attempt.integrityLogs || []
+      }
+    });
+
+  } catch (error) {
+    console.error('[Get Attempt By ID] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve attempt',
+      error: error.message
+    });
+  }
+}
+
+/**
+ * PHASE 7.4 TASK 3: Save/update an answer
+ * POST /api/v2/attempts/:attemptId/answer
+ */
+async function saveAnswer(req, res) {
+  try {
+    const { attemptId } = req.params;
+    const { questionId, answer, questionIndex } = req.body;
+    const studentId = getStudentId(req);
+
+    // Find attempt
+    const attempt = await ExamAttempt.findById(attemptId);
+    
+    if (!attempt) {
+      return res.status(404).json({
+        success: false,
+        message: 'Attempt not found'
+      });
+    }
+
+    // Verify ownership
+    if (attempt.student.toString() !== studentId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    // Validate attempt is active
+    if (attempt.status !== 'started') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot save answer. Attempt is ${attempt.status}`
+      });
+    }
+
+    // Check timeout
+    const now = new Date();
+    const exam = await Exam.findById(attempt.exam);
+    const elapsedMinutes = Math.floor((now - attempt.startedAt) / 60000);
+    
+    if (elapsedMinutes >= exam.duration) {
+      // Auto-submit
+      attempt.status = 'auto-submitted';
+      attempt.submittedAt = now;
+      await attempt.save();
+
+      return res.status(400).json({
+        success: false,
+        message: 'Time limit exceeded. Exam auto-submitted.',
+        autoSubmitted: true
+      });
+    }
+
+    // Upsert answer
+    const answerId = questionId || `q${questionIndex}`;
+    const existingAnswerIndex = attempt.answers.findIndex(
+      a => a.questionId === answerId
+    );
+
+    const answerData = {
+      questionId: answerId,
+      answer: answer || '',
+      timestamp: now
+    };
+
+    if (existingAnswerIndex !== -1) {
+      // Update existing
+      attempt.answers[existingAnswerIndex] = answerData;
+    } else {
+      // Add new
+      attempt.answers.push(answerData);
+    }
+
+    await attempt.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Answer saved',
+      data: {
+        questionId: answerId,
+        timestamp: now
+      }
+    });
+
+  } catch (error) {
+    console.error('[Save Answer] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save answer',
+      error: error.message
+    });
+  }
+}
+
+/**
+ * PHASE 7.4 TASK 5: Log integrity violation
+ * POST /api/v2/attempts/:attemptId/log-violation
+ */
+async function logViolation(req, res) {
+  try {
+    const { attemptId } = req.params;
+    const { type, details } = req.body;
+    const studentId = getStudentId(req);
+
+    // Find attempt
+    const attempt = await ExamAttempt.findById(attemptId);
+    
+    if (!attempt) {
+      return res.status(404).json({
+        success: false,
+        message: 'Attempt not found'
+      });
+    }
+
+    // Verify ownership
+    if (attempt.student.toString() !== studentId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    // Validate type
+    const validTypes = ['tab-switch', 'window-blur', 'fullscreen-exit', 'copy', 'paste', 'right-click'];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid violation type'
+      });
+    }
+
+    // Add log
+    attempt.integrityLogs.push({
+      type,
+      timestamp: new Date(),
+      details: details || ''
+    });
+
+    await attempt.save();
+
+    // Count violations of this type
+    const count = attempt.integrityLogs.filter(log => log.type === type).length;
+
+    res.status(200).json({
+      success: true,
+      message: 'Violation logged',
+      data: {
+        type,
+        count,
+        totalViolations: attempt.integrityLogs.length
+      }
+    });
+
+  } catch (error) {
+    console.error('[Log Violation] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to log violation',
+      error: error.message
+    });
+  }
+}
+
+/**
+ * PHASE 7.4 TASK 6: Submit exam
+ * POST /api/v2/attempts/:attemptId/submit
+ */
+async function submitExamAttempt(req, res) {
+  try {
+    const { attemptId } = req.params;
+    const studentId = getStudentId(req);
+
+    console.log('[Submit Exam Attempt] Request:', { attemptId, studentId });
+
+    // Find attempt
+    const attempt = await ExamAttempt.findById(attemptId).populate('exam');
+    
+    if (!attempt) {
+      return res.status(404).json({
+        success: false,
+        message: 'Attempt not found'
+      });
+    }
+
+    // Verify ownership
+    if (attempt.student.toString() !== studentId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    // Check if already submitted
+    if (attempt.status !== 'started') {
+      return res.status(400).json({
+        success: false,
+        message: `Attempt already ${attempt.status}`,
+        submittedAt: attempt.submittedAt
+      });
+    }
+
+    // Submit
+    const now = new Date();
+    attempt.status = 'submitted';
+    attempt.submittedAt = now;
+    await attempt.save();
+
+    console.log('[Submit Exam Attempt] ✅ Submitted:', attemptId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Exam submitted successfully',
+      data: {
+        attemptId: attempt._id,
+        submittedAt: now,
+        status: 'submitted',
+        answersCount: attempt.answers.length,
+        violationsCount: attempt.integrityLogs.length
+      }
+    });
+
+  } catch (error) {
+    console.error('[Submit Exam Attempt] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to submit attempt',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   // PHASE 7.1 - New Attempt Lifecycle
   startExamAttempt,
   getActiveAttempt,
   getAttemptPaper,
+  
+  // PHASE 7.4 - Exam Attempt Engine
+  getAttemptById,
+  saveAnswer,
+  logViolation,
+  submitExamAttempt,
   
   // Legacy routes (kept for backward compatibility)
   startAttempt,
