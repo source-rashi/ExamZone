@@ -102,10 +102,21 @@ function App() {
               <Route path="classes" element={<StudentClasses />} />
               <Route path="class/:id" element={<StudentClasses />} />
               <Route path="exams" element={<StudentExams />} />
-              <Route path="exam/:examId/attempt" element={<ExamAttempt />} />
               <Route path="assignments" element={<div>Assignments (TODO)</div>} />
               <Route path="profile" element={<StudentProfile />} />
             </Route>
+
+            {/* Exam attempt route (standalone - no layout) */}
+            <Route
+              path="/student/exam/:examId/attempt"
+              element={
+                <ProtectedRoute>
+                  <RoleRoute allowedRole="student">
+                    <ExamAttempt />
+                  </RoleRoute>
+                </ProtectedRoute>
+              }
+            />
 
             {/* Exam routes (protected but role-agnostic) */}
             <Route

@@ -14,11 +14,13 @@ import {
   ChevronRight,
   Send
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import * as attemptAPI from '../../api/attempt.api';
 
 export default function ExamAttempt() {
   const { examId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   // State
   const [loading, setLoading] = useState(true);
@@ -31,10 +33,13 @@ export default function ExamAttempt() {
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(true);
+  const [examStarted, setExamStarted] = useState(false);
   
   // Refs
   const saveTimeoutRef = useRef(null);
   const timerIntervalRef = useRef(null);
+  const tabSwitchCountRef = useRef(0);
+  const fullscreenExitCountRef = useRef(0);
   
   // Start attempt on mount
   useEffect(() => {
@@ -59,10 +64,30 @@ export default function ExamAttempt() {
       console.log('[ExamAttempt] Entered fullscreen mode');
       setIsFullscreen(true);
       setShowFullscreenPrompt(false);
+      setExamStarted(true);
     } catch (error) {
       console.error('[ExamAttempt] Fullscreen request failed:', error);
       // Still allow exam to proceed if fullscreen fails
       setShowFullscreenPrompt(false);
+      setExamStarted(true);
+    }
+  };
+
+  // Re-enter fullscreen if exited
+  const reenterFullscreen = async () => {
+    try {
+      const elem = document.documentElement;
+      if (!document.fullscreenElement) {
+        if (elem.requestFullscreen) {
+          await elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) {
+          await elem.webkitRequestFullscreen();
+        } else if (elem.msRequestFullscreen) {
+          await elem.msRequestFullscreen();
+        }
+      }
+    } catch (error) {
+      console.error('[ExamAttempt] Failed to re-enter fullscreen:', error);
     }
   };
   
@@ -176,37 +201,118 @@ export default function ExamAttempt() {
   
   // Integrity monitoring
   useEffect(() => {
+    if (!examStarted || !attemptData) return;
+
     const handleVisibilityChange = () => {
-      if (document.hidden && attemptData) {
+      if (document.hidden) {
+        tabSwitchCountRef.current += 1;
         logViolation('tab-switch');
+        
+        // Warning after 3 violations
+        if (tabSwitchCountRef.current >= 3) {
+          alert('⚠️ Warning: Multiple tab switches detected. Continued violations may result in automatic submission.');
+        }
+        
+        // Auto-submit after 5 violations
+        if (tabSwitchCountRef.current >= 5) {
+          alert('❌ Exam auto-submitted due to excessive integrity violations.');
+          handleAutoSubmit();
+        }
       }
     };
     
     const handleWindowBlur = () => {
-      if (attemptData) {
-        logViolation('window-blur');
-      }
+      logViolation('window-blur');
     };
     
     const handleFullscreenChange = () => {
       const inFullscreen = !!document.fullscreenElement;
       setIsFullscreen(inFullscreen);
       
-      if (!inFullscreen && attemptData) {
+      if (!inFullscreen) {
+        fullscreenExitCountRef.current += 1;
         logViolation('fullscreen-exit');
+        
+        // Force re-enter fullscreen
+        setTimeout(() => {
+          reenterFullscreen();
+        }, 1000);
+        
+        // Warning after 2 exits
+        if (fullscreenExitCountRef.current >= 2) {
+          alert('⚠️ Warning: Exiting fullscreen is not allowed. Please stay in fullscreen mode.');
+        }
+        
+        // Auto-submit after 5 exits
+        if (fullscreenExitCountRef.current >= 5) {
+          alert('❌ Exam auto-submitted due to repeated fullscreen violations.');
+          handleAutoSubmit();
+        }
       }
+    };
+    
+    // Prevent right-click
+    const handleContextMenu = (e) => {
+      e.preventDefault();
+      return false;
+    };
+    
+    // Prevent keyboard shortcuts (F12, Ctrl+Shift+I, etc.)
+    const handleKeyDown = (e) => {
+      // Prevent F12 (DevTools)
+      if (e.key === 'F12') {
+        e.preventDefault();
+        return false;
+      }
+      
+      // Prevent Ctrl+Shift+I (DevTools)
+      if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+        e.preventDefault();
+        return false;
+      }
+      
+      // Prevent Ctrl+Shift+C (Element Inspector)
+      if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+        e.preventDefault();
+        return false;
+      }
+      
+      // Prevent Ctrl+Shift+J (Console)
+      if (e.ctrlKey && e.shiftKey && e.key === 'J') {
+        e.preventDefault();
+        return false;
+      }
+      
+      // Prevent Ctrl+U (View Source)
+      if (e.ctrlKey && e.key === 'u') {
+        e.preventDefault();
+        return false;
+      }
+    };
+    
+    // Prevent browser back/forward
+    const handleBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = 'Are you sure you want to leave? Your exam progress will be saved but leaving may be logged as a violation.';
+      return e.returnValue;
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleWindowBlur);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('beforeunload', handleBeforeUnload);
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleWindowBlur);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [attemptData]);
+  }, [examStarted, attemptData]);
   
   // Log violation
   const logViolation = async (type) => {
@@ -244,10 +350,19 @@ export default function ExamAttempt() {
   
   const confirmSubmit = async () => {
     try {
+      // Clear timers
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      
       const result = await attemptAPI.submitAttempt(attemptData.attemptId);
       if (result.success) {
-        alert('Exam submitted successfully!');
-        navigate(`/student/classes/${attemptData.exam.classId}`);
+        // Exit fullscreen
+        if (document.fullscreenElement) {
+          document.exitFullscreen();
+        }
+        
+        alert('✅ Exam submitted successfully!');
+        navigate('/student/classes');
       }
     } catch (error) {
       console.error('Failed to submit:', error);
@@ -257,11 +372,28 @@ export default function ExamAttempt() {
   
   const handleAutoSubmit = async () => {
     try {
+      // Clear timers
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      
       await attemptAPI.submitAttempt(attemptData.attemptId);
-      alert('Time is up! Exam has been auto-submitted.');
-      navigate(`/student/classes`);
+      
+      // Exit fullscreen
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      }
+      
+      alert('⏰ Time is up! Exam has been auto-submitted.');
+      navigate('/student/classes');
     } catch (error) {
       console.error('Auto-submit failed:', error);
+      
+      // Exit fullscreen even on error
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      }
+      
+      navigate('/student/classes');
     }
   };
   
@@ -292,11 +424,47 @@ export default function ExamAttempt() {
   const currentQuestionId = `q${currentQuestionIndex}`;
   
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Fullscreen warning */}
-      {!isFullscreen && attemptData && (
-        <div className="bg-red-600 text-white px-4 py-2 text-center text-sm font-medium">
-          ⚠️ Warning: You have exited fullscreen mode. This may be logged as a violation. Press F11 to re-enter fullscreen.
+    <div 
+      className="min-h-screen bg-gray-50 select-none" 
+      onCopy={(e) => e.preventDefault()} 
+      onCut={(e) => e.preventDefault()} 
+      onPaste={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+      style={{ userSelect: 'none', WebkitUserSelect: 'none', MozUserSelect: 'none', msUserSelect: 'none' }}
+    >
+      {/* Security Watermark */}
+      {examStarted && user && (
+        <div className="fixed inset-0 pointer-events-none z-40 flex items-center justify-center opacity-5">
+          <div className="text-9xl font-bold text-gray-900 transform -rotate-45 whitespace-nowrap">
+            {user.email} • {new Date().toLocaleDateString()}
+          </div>
+        </div>
+      )}
+      
+      {/* Fullscreen warning overlay - blocks interaction */}
+      {!isFullscreen && examStarted && attemptData && (
+        <div className="fixed inset-0 bg-red-600 bg-opacity-95 z-50 flex items-center justify-center">
+          <div className="text-center text-white px-8">
+            <AlertTriangle className="h-24 w-24 mx-auto mb-6 animate-pulse" />
+            <h2 className="text-3xl font-bold mb-4">⚠️ Fullscreen Mode Required</h2>
+            <p className="text-xl mb-6">
+              You have exited fullscreen mode. This violation has been logged.
+            </p>
+            <p className="text-lg mb-8">
+              Fullscreen exits: {fullscreenExitCountRef.current}/5
+              <br />
+              <span className="text-sm opacity-90">
+                (Exam will auto-submit after 5 violations)
+              </span>
+            </p>
+            <button
+              onClick={reenterFullscreen}
+              className="px-8 py-4 bg-white text-red-600 rounded-lg font-bold text-lg hover:bg-gray-100 transition-colors"
+            >
+              Re-enter Fullscreen Mode
+            </button>
+            <p className="text-sm mt-4 opacity-75">Or press F11 on your keyboard</p>
+          </div>
         </div>
       )}
       
@@ -314,13 +482,20 @@ export default function ExamAttempt() {
             </div>
             
             <div className="flex items-center gap-4">
-              {/* Violations */}
-              {violations > 0 && (
-                <div className="flex items-center gap-2 text-amber-600">
-                  <AlertTriangle className="h-5 w-5" />
-                  <span className="text-sm font-medium">{violations} warnings</span>
+              {/* Integrity status */}
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
+                violations === 0 
+                  ? 'bg-green-100 text-green-700' 
+                  : violations < 3 
+                  ? 'bg-amber-100 text-amber-700' 
+                  : 'bg-red-100 text-red-700'
+              }`}>
+                <AlertTriangle className="h-4 w-4" />
+                <div className="text-xs">
+                  <div className="font-medium">Violations</div>
+                  <div className="font-bold">{violations}</div>
                 </div>
-              )}
+              </div>
               
               {/* Save status */}
               {saving && (
@@ -433,8 +608,11 @@ export default function ExamAttempt() {
                   value={answers[currentQuestionId] || ''}
                   onChange={(e) => handleAnswerChange(currentQuestionId, e.target.value)}
                   rows={8}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent select-text"
                   placeholder="Type your answer here..."
+                  style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
+                  spellCheck="false"
+                  autoComplete="off"
                 />
               </div>
               
@@ -479,10 +657,25 @@ export default function ExamAttempt() {
             <h3 className="text-xl font-bold text-gray-900 mb-4">
               Submit Exam?
             </h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 mb-4">
               You have answered {Object.values(answers).filter(a => a && a.trim() !== '').length} out of {attemptData.paper.questions.length} questions. 
               Are you sure you want to submit? You cannot make changes after submission.
             </p>
+            
+            {/* Show violation warning if any */}
+            {violations > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-amber-900">
+                    <div className="font-semibold mb-1">Integrity Violations Detected</div>
+                    <div>Total violations: {violations}</div>
+                    <div className="text-xs mt-1 opacity-75">These will be reported to your instructor.</div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="flex gap-3">
               <button
                 onClick={() => setShowSubmitModal(false)}
