@@ -20,13 +20,18 @@ router.get('/exams/:examId/my-paper/pdf', authenticate, studentOnly, async (req,
     const studentId = getStudentId(req);
     const { examId } = req.params;
     
+    console.log('[PDF Download] Request:', { studentId, examId });
+    
     // Use secure paper resolver to get file path
     const { filePath, fileName, paperData } = await getStudentPaperFilePath(examId, studentId);
+    
+    console.log('[PDF Download] Resolved file path:', { filePath, fileName });
     
     // Verify file exists
     try {
       await fs.access(filePath);
     } catch (error) {
+      console.error('[PDF Download] File not found:', filePath);
       return res.status(404).json({
         success: false,
         message: 'Paper file not found on server'
@@ -43,7 +48,8 @@ router.get('/exams/:examId/my-paper/pdf', authenticate, studentOnly, async (req,
     // Stream PDF file
     res.download(filePath, fileName);
   } catch (error) {
-    console.error('[PDF Download] Error:', error.message);
+    console.error('[PDF Download] Error:', error);
+    console.error('[PDF Download] Error stack:', error.stack);
     
     const status = error.message.includes('not found') ? 404 :
                    error.message.includes('not yet available') ? 403 :
