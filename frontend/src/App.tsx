@@ -34,6 +34,7 @@ import StudentClasses from './pages/student/Classes';
 import StudentExams from './pages/student/Exams';
 import StudentProfile from './pages/student/Profile';
 import ExamPage from './pages/ExamPage';
+import ExamAttempt from './pages/student/ExamAttempt';
 
 // Shared pages
 import Classroom from './pages/shared/Classroom';
@@ -101,6 +102,7 @@ function App() {
               <Route path="classes" element={<StudentClasses />} />
               <Route path="class/:id" element={<StudentClasses />} />
               <Route path="exams" element={<StudentExams />} />
+              <Route path="exam/:examId/attempt" element={<ExamAttempt />} />
               <Route path="assignments" element={<div>Assignments (TODO)</div>} />
               <Route path="profile" element={<StudentProfile />} />
             </Route>
