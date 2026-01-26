@@ -28,6 +28,13 @@ const {
   submitAnswerSheet
 } = require('../controllers/attempt.controller');
 const { authenticate } = require('../middleware/auth.middleware');
+const { 
+  startAttemptValidation, 
+  saveAnswerValidation, 
+  submitAttemptValidation, 
+  logViolationValidation, 
+  handleValidationErrors 
+} = require('../middleware/validation');
 const { studentOnly } = require('../middleware/role.middleware');
 
 // ==================================================================
@@ -39,7 +46,7 @@ const { studentOnly } = require('../middleware/role.middleware');
  * @desc Start a new exam attempt (PHASE 7.1)
  * @access Student only
  */
-router.post('/start', authenticate, studentOnly, startExamAttempt);
+router.post('/start', authenticate, studentOnly, startAttemptValidation, handleValidationErrors, startExamAttempt);
 
 /**
  * @route GET /api/v2/attempts/:examId/active
@@ -71,21 +78,21 @@ router.get('/:attemptId', authenticate, studentOnly, getAttemptById);
  * @desc Save/update answer for a question (PHASE 7.4)
  * @access Student only
  */
-router.post('/:attemptId/answer', authenticate, studentOnly, saveAnswer);
+router.post('/:attemptId/answer', authenticate, studentOnly, saveAnswerValidation, handleValidationErrors, saveAnswer);
 
 /**
  * @route POST /api/v2/attempts/:attemptId/log-violation
  * @desc Log integrity violation (PHASE 7.4)
  * @access Student only
  */
-router.post('/:attemptId/log-violation', authenticate, studentOnly, logViolation);
+router.post('/:attemptId/log-violation', authenticate, studentOnly, logViolationValidation, handleValidationErrors, logViolation);
 
 /**
  * @route POST /api/v2/attempts/:attemptId/submit
  * @desc Submit exam attempt (PHASE 7.4)
  * @access Student only
  */
-router.post('/:attemptId/submit', authenticate, studentOnly, submitExamAttempt);
+router.post('/:attemptId/submit', authenticate, studentOnly, submitAttemptValidation, handleValidationErrors, submitExamAttempt);
 
 // ==================================================================
 // PHASE 7.5.5 — STUDENT RESULT ACCESS

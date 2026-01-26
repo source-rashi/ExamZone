@@ -26,13 +26,18 @@ const {
 } = require('../controllers/exam.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 const { teacherOnly } = require('../middleware/role.middleware');
+const { 
+  createExamValidation, 
+  examIdValidation, 
+  handleValidationErrors 
+} = require('../middleware/validation');
 
 /**
  * @route POST /api/v2/exams
  * @desc Create a new exam
  * @access Teacher only
  */
-router.post('/', authenticate, teacherOnly, createExam);
+router.post('/', authenticate, teacherOnly, createExamValidation, handleValidationErrors, createExam);
 
 /**
  * @route GET /api/v2/exams/:id
