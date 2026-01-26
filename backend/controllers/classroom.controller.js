@@ -155,7 +155,7 @@ async function getExams(req, res) {
 
     const isTeacher = classDoc.teacherId?.toString() === userId || classDoc.teacher?.toString() === userId;
     
-    // PHASE 7.0: Use enrollment resolver for students
+    // PHASE 7.3.1: Use enrollment resolver for students
     let hasAccess = isTeacher;
     if (!isTeacher && req.user.role === 'student') {
       hasAccess = await isStudentInClass(classId, userId);
@@ -165,15 +165,15 @@ async function getExams(req, res) {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
-    // PHASE 7.0: Students only see published/running/closed exams
+    // PHASE 7.3.1: Students only see published/running/closed exams
     const query = { classId };
     if (req.user.role === 'student') {
       query.status = { $in: ['published', 'running', 'closed'] };
     }
 
     const exams = await Exam.find(query)
-      .sort({ date: 1 })
-      .select('title date duration durationMinutes status startTime endTime')
+      .sort({ startTime: -1 })
+      .select('title description status totalMarks duration startTime endTime attemptsAllowed')
       .lean();
 
     res.json({ success: true, exams });
