@@ -142,7 +142,7 @@ async function checkStudentExamEligibility(studentId, examId) {
     }
 
     // ==================================================================
-    // CHECK 7: No active attempt already exists
+    // CHECK 7: Detect active attempt (but don't block - controller handles resume)
     // ==================================================================
     const activeAttempt = await ExamAttempt.findOne({
       exam: examId,
@@ -150,30 +150,21 @@ async function checkStudentExamEligibility(studentId, examId) {
       status: 'started'
     }).lean();
 
-    if (activeAttempt) {
-      return {
-        eligible: false,
-        reason: 'ACTIVE_ATTEMPT_EXISTS',
-        message: 'You already have an active attempt for this exam',
-        exam,
-        enrollment: enrollmentResult,
-        paper: paperResult,
-        attemptCount,
-        activeAttempt
-      };
-    }
+    // NOTE: We include activeAttempt in the response but don't fail eligibility.
+    // The controller will handle resuming the active attempt if it exists.
 
     // ==================================================================
     // ALL CHECKS PASSED
     // ==================================================================
     return {
       eligible: true,
-      reason: 'ELIGIBLE',
-      message: 'You are eligible to attempt this exam',
+      reason: activeAttempt ? 'ACTIVE_ATTEMPT_EXISTS' : 'ELIGIBLE',
+      message: activeAttempt ? 'Active attempt will be resumed' : 'You are eligible to attempt this exam',
       exam,
       enrollment: enrollmentResult,
       paper: paperResult,
-      attemptCount
+      attemptCount,
+      activeAttempt: activeAttempt || null
     };
 
   } catch (error) {
