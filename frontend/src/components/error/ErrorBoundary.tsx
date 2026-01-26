@@ -3,7 +3,8 @@
  * Catches React errors and displays user-friendly error UI
  */
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
 import { theme } from '../../styles/theme';
 import { Button, Card } from '../ui';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
@@ -115,7 +116,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               </p>
 
               {/* Error Details (Development Only) */}
-              {process.env.NODE_ENV === 'development' && this.state.error && (
+              {import.meta.env.DEV && this.state.error && (
                 <div style={{
                   padding: theme.spacing[4],
                   backgroundColor: theme.colors.danger[50],
