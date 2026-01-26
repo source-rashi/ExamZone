@@ -807,6 +807,16 @@ async function downloadPaper(req, res) {
     const isStudent = userRole === 'student';
     
     if (isStudent) {
+      // ==================================================================
+      // PHASE 8.3: SECURITY - Students cannot download papers before published
+      // ==================================================================
+      if (!['published', 'running', 'closed'].includes(exam.status)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Paper not yet available. Exam must be published first.'
+        });
+      }
+
       // PHASE 7.3.4: Students MUST own the rollNumber they're requesting
       const Enrollment = require('../models/Enrollment');
       const enrollment = await Enrollment.findOne({
@@ -827,14 +837,6 @@ async function downloadPaper(req, res) {
         return res.status(403).json({
           success: false,
           message: 'You can only download your own paper'
-        });
-      }
-
-      // Check if exam is accessible to students
-      if (!['published', 'running', 'closed'].includes(exam.status)) {
-        return res.status(403).json({
-          success: false,
-          message: 'Paper not yet available'
         });
       }
     } else if (!isTeacher) {

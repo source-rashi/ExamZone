@@ -194,9 +194,11 @@ async function publishExam(examId, teacherId) {
     throw new Error('Only the exam creator can publish it');
   }
 
-  // PHASE 6.7 - Can only publish from 'generated' status
+  // ==================================================================
+  // PHASE 8.3: STATE TRANSITION VALIDATION - Can only publish 'generated' exams
+  // ==================================================================
   if (exam.status !== 'generated') {
-    throw new Error(`Cannot publish exam with status: ${exam.status}. Exam must be in 'generated' status.`);
+    throw new Error(`Cannot publish exam with status: ${exam.status}. Exam must be in 'generated' status first.`);
   }
 
   // PHASE 6.7 - Must have student papers generated
@@ -212,6 +214,13 @@ async function publishExam(examId, teacherId) {
   // Validate required fields
   if (!exam.startTime || !exam.endTime) {
     throw new Error('Start time and end time are required to publish');
+  }
+
+  // ==================================================================
+  // PHASE 8.3: TIME VALIDATION - Ensure endTime > startTime
+  // ==================================================================
+  if (new Date(exam.endTime) <= new Date(exam.startTime)) {
+    throw new Error('Exam end time must be after start time');
   }
 
   console.log('[Publish] BEFORE SAVE - Status:', exam.status);

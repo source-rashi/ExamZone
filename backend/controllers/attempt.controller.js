@@ -909,8 +909,61 @@ async function submitExamAttempt(req, res) {
       });
     }
 
-    // Submit
+    // ==================================================================
+    // PHASE 8.3: TIME VALIDATION - Prevent submit after exam ended
+    // ==================================================================
     const now = new Date();
+    const exam = attempt.exam;
+    
+    if (exam.endTime && now > new Date(exam.endTime)) {
+      // Auto-submit since exam time expired
+      attempt.status = 'auto-submitted';
+      attempt.submittedAt = exam.endTime; // Use exam end time, not current time
+      await attempt.save();
+      
+      console.log(`[Submit Exam Attempt] ⚠️ Auto-submitted (exam ended): ${attemptId}`);
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Exam time expired. Your attempt has been auto-submitted.',
+        data: {
+          attemptId: attempt._id,
+          submittedAt: attempt.submittedAt,
+          status: 'auto-submitted',
+          answersCount: attempt.answers.length,
+          violationsCount: attempt.integrityLogs.length,
+          autoSubmitted: true
+        }
+      });
+    }
+
+    // ==================================================================
+    // PHASE 8.3: Check if attempt duration exceeded (exam-specific timeout)
+    // ==================================================================
+    const attemptDuration = (now - attempt.startedAt) / 60000; // minutes
+    if (attemptDuration > exam.duration) {
+      // Auto-submit since individual attempt duration exceeded
+      attempt.status = 'auto-submitted';
+      attempt.submittedAt = new Date(attempt.startedAt.getTime() + exam.duration * 60 * 1000);
+      await attempt.save();
+      
+      console.log(`[Submit Exam Attempt] ⚠️ Auto-submitted (duration exceeded): ${attemptId}`);
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Exam duration exceeded. Your attempt has been auto-submitted.',
+        data: {
+          attemptId: attempt._id,
+          submittedAt: attempt.submittedAt,
+          status: 'auto-submitted',
+          answersCount: attempt.answers.length,
+          violationsCount: attempt.integrityLogs.length,
+          autoSubmitted: true
+        }
+      });
+    }
+
+    // Submit normally
     attempt.status = 'submitted';
     attempt.submittedAt = now;
     await attempt.save();

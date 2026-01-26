@@ -440,15 +440,25 @@ async function finalizeExam(req, res) {
       });
     }
 
+    // ==================================================================
+    // PHASE 8.3: STATE VALIDATION - Cannot finalize before exam closed
+    // ==================================================================
+    if (!['closed', 'published', 'running'].includes(exam.status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot finalize exam with status: ${exam.status}. Exam must be published, running, or closed.`
+      });
+    }
+
     // Get attempt counts
     const totalAttempts = await ExamAttempt.countDocuments({
       exam: examId,
-      status: 'submitted'
+      status: { $in: ['submitted', 'auto-submitted'] }
     });
 
     const evaluatedAttempts = await ExamAttempt.countDocuments({
       exam: examId,
-      status: 'submitted',
+      status: { $in: ['submitted', 'auto-submitted'] },
       evaluationStatus: 'evaluated'
     });
 
