@@ -169,45 +169,53 @@ async function startExamAttempt(req, res, next) {
     
     // Handle duplicate key error (race condition)
     if (error.code === 11000) {
-      // Try to find the existing attempt
-      const existingAttempt = await ExamAttempt.findOne({
-        exam: req.body.examId,
-        student: getStudentId(req),
-        status: 'started'
-      }).populate('exam');
-      
-      if (existingAttempt) {
-        console.log('[ATTEMPT] Duplicate detected, returning existing attempt:', existingAttempt._id);
+      try {
+        console.log('[ATTEMPT] Duplicate key detected, attempting to find existing attempt...');
         
-        // Get questions
-        const questionsData = await getStudentQuestions(req.body.examId, getStudentId(req));
+        // Try to find the existing attempt
+        const existingAttempt = await ExamAttempt.findOne({
+          exam: req.body.examId,
+          student: getStudentId(req),
+          status: 'started'
+        }).populate('exam');
         
-        // Calculate remaining time
-        const elapsedMinutes = Math.floor((new Date() - existingAttempt.startedAt) / 60000);
-        const remainingMinutes = Math.max(0, existingAttempt.exam.duration - elapsedMinutes);
-        
-        return res.status(200).json({
-          success: true,
-          message: 'Resuming existing exam attempt',
-          data: {
-            attemptId: existingAttempt._id,
-            attemptNo: existingAttempt.attemptNo,
-            startedAt: existingAttempt.startedAt,
-            expectedEndTime: new Date(existingAttempt.startedAt.getTime() + existingAttempt.exam.duration * 60 * 1000),
-            remainingMinutes,
-            exam: {
-              id: existingAttempt.exam._id,
-              title: existingAttempt.exam.title,
-              description: existingAttempt.exam.description,
-              duration: existingAttempt.exam.duration,
-              totalMarks: existingAttempt.exam.totalMarks,
-              instructions: existingAttempt.exam.settings?.instructions || ''
-            },
-            paper: questionsData,
-            previousAnswers: existingAttempt.answers || [],
-            isResume: true
-          }
-        });
+        if (existingAttempt) {
+          console.log('[ATTEMPT] Found existing attempt:', existingAttempt._id);
+          
+          // Get questions
+          const questionsData = await getStudentQuestions(req.body.examId, getStudentId(req));
+          
+          // Calculate remaining time
+          const elapsedMinutes = Math.floor((new Date() - existingAttempt.startedAt) / 60000);
+          const remainingMinutes = Math.max(0, existingAttempt.exam.duration - elapsedMinutes);
+          
+          return res.status(200).json({
+            success: true,
+            message: 'Resuming existing exam attempt',
+            data: {
+              attemptId: existingAttempt._id,
+              attemptNo: existingAttempt.attemptNo,
+              startedAt: existingAttempt.startedAt,
+              expectedEndTime: new Date(existingAttempt.startedAt.getTime() + existingAttempt.exam.duration * 60 * 1000),
+              remainingMinutes,
+              exam: {
+                id: existingAttempt.exam._id,
+                title: existingAttempt.exam.title,
+                description: existingAttempt.exam.description,
+                duration: existingAttempt.exam.duration,
+                totalMarks: existingAttempt.exam.totalMarks,
+                instructions: existingAttempt.exam.settings?.instructions || ''
+              },
+              paper: questionsData,
+              previousAnswers: existingAttempt.answers || [],
+              isResume: true
+            }
+          });
+        } else {
+          console.log('[ATTEMPT] No existing active attempt found, returning error');
+        }
+      } catch (resumeError) {
+        console.error('[ATTEMPT] Error handling duplicate:', resumeError);
       }
     }
     

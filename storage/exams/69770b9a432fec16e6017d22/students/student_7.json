@@ -1,0 +1,42 @@
+{
+  "examId": "69770b9a432fec16e6017d22",
+  "examTitle": "Eng",
+  "description": "",
+  "className": "CSE12",
+  "studentInfo": {
+    "id": "69673ecfc9a9420faa5c2c70",
+    "name": "Rashi Agrawal",
+    "rollNumber": 7
+  },
+  "setInfo": {
+    "setId": "SET-001",
+    "setName": "Set SET-001"
+  },
+  "questions": [
+    {
+      "number": 1,
+      "text": "2. dsfcx",
+      "marks": 5,
+      "topic": "Eng",
+      "difficulty": "medium",
+      "options": []
+    },
+    {
+      "number": 2,
+      "text": "1. gfdcx",
+      "marks": 5,
+      "topic": "Eng",
+      "difficulty": "medium",
+      "options": []
+    }
+  ],
+  "examMetadata": {
+    "totalMarks": 10,
+    "duration": 20,
+    "startTime": "2026-01-26T06:37:00.000Z",
+    "endTime": "2026-01-27T06:37:00.000Z",
+    "attemptsAllowed": 3
+  },
+  "instructions": "",
+  "generatedAt": "2026-01-26T06:37:28.043Z"
+}
