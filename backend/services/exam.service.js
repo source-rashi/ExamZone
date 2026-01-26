@@ -319,7 +319,9 @@ async function getStudentExams(classId, studentId) {
   })
     .populate('createdBy', 'name')
     .select('title description startTime endTime duration totalMarks status createdAt')
-    .sort({ startTime: -1 });    .lean(); // PHASE 8.6: Performance optimization
+    .sort({ startTime: -1 })
+    .lean(); // PHASE 8.6: Performance optimization
+  
   return exams;
 }
 
