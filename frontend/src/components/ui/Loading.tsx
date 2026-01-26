@@ -29,10 +29,17 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
     border: `3px solid ${theme.colors.neutral[200]}`,
     borderTopColor: color,
     borderRadius: '50%',
-    animation: 'spin 0.6s linear infinite',
+    animation: 'spin 0.8s cubic-bezier(0.5, 0, 0.5, 1) infinite',
   };
 
-  return <div className={className} style={spinnerStyles} />;
+  return (
+    <div 
+      className={className} 
+      style={spinnerStyles}
+      role="status"
+      aria-label="Loading"
+    />
+  );
 };
 
 export interface LoadingOverlayProps {

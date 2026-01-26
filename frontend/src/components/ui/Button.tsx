@@ -97,12 +97,41 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const hoverStyles = {
-    primary: { filter: 'brightness(110%)' },
-    secondary: { backgroundColor: theme.colors.neutral[200] },
-    success: { filter: 'brightness(110%)' },
-    danger: { filter: 'brightness(110%)' },
-    ghost: { backgroundColor: theme.colors.neutral[100] },
-    outline: { backgroundColor: theme.colors.primary[50] },
+    primary: { 
+      filter: 'brightness(110%)',
+      transform: 'translateY(-1px)',
+      boxShadow: theme.shadows.md,
+    },
+    secondary: { 
+      backgroundColor: theme.colors.neutral[200],
+      transform: 'translateY(-1px)',
+    },
+    success: { 
+      filter: 'brightness(110%)',
+      transform: 'translateY(-1px)',
+      boxShadow: theme.shadows.md,
+    },
+    danger: { 
+      filter: 'brightness(110%)',
+      transform: 'translateY(-1px)',
+      boxShadow: theme.shadows.md,
+    },
+    ghost: { 
+      backgroundColor: theme.colors.neutral[100],
+    },
+    outline: { 
+      backgroundColor: theme.colors.primary[50],
+      borderColor: theme.colors.primary[700],
+    },
+  };
+
+  const activeStyles = {
+    primary: { transform: 'scale(0.98)' },
+    secondary: { transform: 'scale(0.98)' },
+    success: { transform: 'scale(0.98)' },
+    danger: { transform: 'scale(0.98)' },
+    ghost: { transform: 'scale(0.98)' },
+    outline: { transform: 'scale(0.98)' },
   };
 
   const combinedStyles = {
@@ -121,12 +150,26 @@ export const Button: React.FC<ButtonProps> = ({
     Object.assign(e.currentTarget.style, variantStyles[variant]);
   };
 
+  const handleMouseDown = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!disabled && !loading) {
+      Object.assign(e.currentTarget.style, activeStyles[variant]);
+    }
+  };
+
+  const handleMouseUp = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!disabled && !loading) {
+      Object.assign(e.currentTarget.style, hoverStyles[variant]);
+    }
+  };
+
   return (
     <button
       style={combinedStyles}
       disabled={disabled || loading}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
       className={className}
       aria-busy={loading}
       aria-disabled={disabled || loading}
