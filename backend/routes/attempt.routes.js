@@ -36,6 +36,10 @@ const {
   handleValidationErrors 
 } = require('../middleware/validation');
 const { studentOnly } = require('../middleware/role.middleware');
+const { 
+  verifyExamAccess, 
+  verifyAttemptOwnership 
+} = require('../middleware/ownership.middleware');
 
 // ==================================================================
 // PHASE 7.1 — NEW ATTEMPT LIFECYCLE
@@ -46,21 +50,21 @@ const { studentOnly } = require('../middleware/role.middleware');
  * @desc Start a new exam attempt (PHASE 7.1)
  * @access Student only
  */
-router.post('/start', authenticate, studentOnly, startAttemptValidation, handleValidationErrors, startExamAttempt);
+router.post('/start', authenticate, studentOnly, startAttemptValidation, handleValidationErrors, verifyExamAccess, startExamAttempt);
 
 /**
  * @route GET /api/v2/attempts/:examId/active
  * @desc Get active attempt for an exam (PHASE 7.1)
  * @access Student only
  */
-router.get('/:examId/active', authenticate, studentOnly, getActiveAttempt);
+router.get('/:examId/active', authenticate, studentOnly, verifyExamAccess, getActiveAttempt);
 
 /**
  * @route GET /api/v2/attempts/:attemptId/paper
  * @desc Get exam paper through attempt (PHASE 7.1)
  * @access Student only
  */
-router.get('/:attemptId/paper', authenticate, studentOnly, getAttemptPaper);
+router.get('/:attemptId/paper', authenticate, studentOnly, verifyAttemptOwnership, getAttemptPaper);
 
 // ==================================================================
 // PHASE 7.4 — EXAM ATTEMPT ENGINE
@@ -71,28 +75,28 @@ router.get('/:attemptId/paper', authenticate, studentOnly, getAttemptPaper);
  * @desc Get attempt details with questions and answers (PHASE 7.4)
  * @access Student only
  */
-router.get('/:attemptId', authenticate, studentOnly, getAttemptById);
+router.get('/:attemptId', authenticate, studentOnly, verifyAttemptOwnership, getAttemptById);
 
 /**
  * @route POST /api/v2/attempts/:attemptId/answer
  * @desc Save/update answer for a question (PHASE 7.4)
  * @access Student only
  */
-router.post('/:attemptId/answer', authenticate, studentOnly, saveAnswerValidation, handleValidationErrors, saveAnswer);
+router.post('/:attemptId/answer', authenticate, studentOnly, saveAnswerValidation, handleValidationErrors, verifyAttemptOwnership, saveAnswer);
 
 /**
  * @route POST /api/v2/attempts/:attemptId/log-violation
  * @desc Log integrity violation (PHASE 7.4)
  * @access Student only
  */
-router.post('/:attemptId/log-violation', authenticate, studentOnly, logViolationValidation, handleValidationErrors, logViolation);
+router.post('/:attemptId/log-violation', authenticate, studentOnly, logViolationValidation, handleValidationErrors, verifyAttemptOwnership, logViolation);
 
 /**
  * @route POST /api/v2/attempts/:attemptId/submit
  * @desc Submit exam attempt (PHASE 7.4)
  * @access Student only
  */
-router.post('/:attemptId/submit', authenticate, studentOnly, submitAttemptValidation, handleValidationErrors, submitExamAttempt);
+router.post('/:attemptId/submit', authenticate, studentOnly, submitAttemptValidation, handleValidationErrors, verifyAttemptOwnership, submitExamAttempt);
 
 // ==================================================================
 // PHASE 7.5.5 — STUDENT RESULT ACCESS

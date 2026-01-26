@@ -31,6 +31,10 @@ const {
   examIdValidation, 
   handleValidationErrors 
 } = require('../middleware/validation');
+const { 
+  verifyExamOwnership, 
+  verifyExamAccess 
+} = require('../middleware/ownership.middleware');
 
 /**
  * @route POST /api/v2/exams
@@ -51,21 +55,21 @@ router.get('/:id', authenticate, getExamById);
  * @desc Update an exam (respects locking)
  * @access Teacher only (creator only)
  */
-router.patch('/:id', authenticate, teacherOnly, updateExam);
+router.patch('/:id', authenticate, teacherOnly, verifyExamOwnership, updateExam);
 
 /**
  * @route PATCH /api/v2/exams/:examId/publish
  * @desc Publish an exam
  * @access Teacher only (creator only)
  */
-router.patch('/:examId/publish', authenticate, teacherOnly, publishExam);
+router.patch('/:examId/publish', authenticate, teacherOnly, verifyExamOwnership, publishExam);
 
 /**
  * @route POST /api/v2/exams/:id/generate-papers
  * @desc Generate AI question papers for exam (Phase 6.3)
  * @access Teacher only (exam creator only)
  */
-router.post('/:id/generate-papers', authenticate, teacherOnly, generateQuestionPapers);
+router.post('/:id/generate-papers', authenticate, teacherOnly, verifyExamOwnership, generateQuestionPapers);
 
 /**
  * PHASE 6.4 - Generate Student-Specific PDF Papers
@@ -73,7 +77,7 @@ router.post('/:id/generate-papers', authenticate, teacherOnly, generateQuestionP
  * @desc Generate PDF question papers for all students
  * @access Teacher only (exam creator only)
  */
-router.post('/:id/generate-student-papers', authenticate, teacherOnly, generateStudentPapers);
+router.post('/:id/generate-student-papers', authenticate, teacherOnly, verifyExamOwnership, generateStudentPapers);
 
 /**
  * @route POST /api/v2/exams/:id/evaluate
@@ -87,21 +91,21 @@ router.post('/:id/evaluate', authenticate, teacherOnly, triggerEvaluation);
  * @desc Generate question sets and assign students (PHASE 6.2.5)
  * @access Teacher only (exam creator only)
  */
-router.post('/:id/generate-sets', authenticate, teacherOnly, generateSets);
+router.post('/:id/generate-sets', authenticate, teacherOnly, verifyExamOwnership, generateSets);
 
 /**
  * @route POST /api/v2/exams/:id/reset-generation
  * @desc Reset exam generation (PHASE 6.2.5)
  * @access Teacher only (exam creator only)
  */
-router.post('/:id/reset-generation', authenticate, teacherOnly, resetGeneration);
+router.post('/:id/reset-generation', authenticate, teacherOnly, verifyExamOwnership, resetGeneration);
 
 /**
  * @route GET /api/v2/exams/:id/preparation-data
  * @desc Get exam preparation data with roll-to-set mapping (PHASE 6.2.5)
  * @access Teacher only
  */
-router.get('/:id/preparation-data', authenticate, teacherOnly, getPreparationData);
+router.get('/:id/preparation-data', authenticate, teacherOnly, verifyExamOwnership, getPreparationData);
 
 /**
  * PHASE 6.3 — AI EXAM SET GENERATION
@@ -109,7 +113,7 @@ router.get('/:id/preparation-data', authenticate, teacherOnly, getPreparationDat
  * @desc Generate exam question sets using AI
  * @access Teacher only (exam creator only)
  */
-router.post('/:id/generate', authenticate, teacherOnly, generateExamSetsWithAI);
+router.post('/:id/generate', authenticate, teacherOnly, verifyExamOwnership, generateExamSetsWithAI);
 
 /**
  * @route GET /api/v2/exams/:id
@@ -124,7 +128,7 @@ router.get('/:id', authenticate, getExamById);
  * @desc Get all student papers for an exam (teacher view)
  * @access Teacher only (exam creator only)
  */
-router.get('/:id/papers', authenticate, teacherOnly, getStudentPapers);
+router.get('/:id/papers', authenticate, teacherOnly, verifyExamOwnership, getStudentPapers);
 
 /**
  * TASK 6 — Student Paper Access
@@ -148,7 +152,7 @@ router.get('/:id/papers/:rollNumber/download', authenticate, downloadPaper);
  * @desc List all set master PDFs
  * @access Teacher only (exam creator)
  */
-router.get('/:id/files/sets', authenticate, teacherOnly, listSetFiles);
+router.get('/:id/files/sets', authenticate, teacherOnly, verifyExamOwnership, listSetFiles);
 
 /**
  * PHASE 6.4 — Download Set Master PDF
@@ -156,7 +160,7 @@ router.get('/:id/files/sets', authenticate, teacherOnly, listSetFiles);
  * @desc Download a specific set master PDF
  * @access Teacher only (exam creator)
  */
-router.get('/:id/files/sets/:setId', authenticate, teacherOnly, downloadSetPdf);
+router.get('/:id/files/sets/:setId', authenticate, teacherOnly, verifyExamOwnership, downloadSetPdf);
 
 /**
  * PHASE 6.4 — List Student Papers
@@ -164,6 +168,6 @@ router.get('/:id/files/sets/:setId', authenticate, teacherOnly, downloadSetPdf);
  * @desc List all student paper files
  * @access Teacher only (exam creator)
  */
-router.get('/:id/files/students', authenticate, teacherOnly, listStudentFiles);
+router.get('/:id/files/students', authenticate, teacherOnly, verifyExamOwnership, listStudentFiles);
 
 module.exports = router;

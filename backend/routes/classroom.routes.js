@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth.middleware');
 const { teacherOnly } = require('../middleware/role.middleware');
+const { 
+  verifyClassOwnership, 
+  verifyClassEnrollment 
+} = require('../middleware/ownership.middleware');
 const {
   createAnnouncement,
   getAnnouncements,
@@ -19,33 +23,33 @@ router.use(authenticate);
 // ==================== ANNOUNCEMENTS ====================
 
 // Create announcement (teacher only)
-router.post('/:id/announcements', teacherOnly, createAnnouncement);
+router.post('/:id/announcements', teacherOnly, verifyClassOwnership, createAnnouncement);
 
 // Get announcements (teacher and students)
-router.get('/:id/announcements', getAnnouncements);
+router.get('/:id/announcements', verifyClassEnrollment, getAnnouncements);
 
 // Delete announcement (teacher only)
-router.delete('/:id/announcements/:announcementId', teacherOnly, deleteAnnouncement);
+router.delete('/:id/announcements/:announcementId', teacherOnly, verifyClassOwnership, deleteAnnouncement);
 
 // ==================== EXAMS ====================
 
 // Create exam (teacher only)
-router.post('/:id/exams', teacherOnly, createExam);
+router.post('/:id/exams', teacherOnly, verifyClassOwnership, createExam);
 
 // Get exams (teacher and students)
-router.get('/:id/exams', getExams);
+router.get('/:id/exams', verifyClassEnrollment, getExams);
 
 // ==================== ASSIGNMENTS ====================
 
 // Create assignment (teacher only)
-router.post('/:id/assignments', teacherOnly, createAssignment);
+router.post('/:id/assignments', teacherOnly, verifyClassOwnership, createAssignment);
 
 // Get assignments (teacher and students)
-router.get('/:id/assignments', getAssignments);
+router.get('/:id/assignments', verifyClassEnrollment, getAssignments);
 
 // ==================== MEMBERS ====================
 
 // Get members (teacher and students)
-router.get('/:id/members', getMembers);
+router.get('/:id/members', verifyClassEnrollment, getMembers);
 
 module.exports = router;
