@@ -64,6 +64,7 @@ async function startExamAttempt(req, res, next) {
 
     // ==================================================================
     // PREVENT DUPLICATE SIMULTANEOUS STARTS (double-check)
+    // Check for ANY existing attempt (active or not) with same attemptNo
     // ==================================================================
     const existingActive = await ExamAttempt.findOne({
       exam: examId,
@@ -72,12 +73,26 @@ async function startExamAttempt(req, res, next) {
     });
 
     if (existingActive) {
-      console.log(`[ATTEMPT] Student ${studentId} already has active attempt ${existingActive._id} for exam ${examId}`);
-      return res.status(409).json({
-        success: false,
-        error: 'You already have an active attempt for this exam',
-        reason: 'ACTIVE_ATTEMPT_EXISTS',
-        attemptId: existingActive._id
+      console.log(`[ATTEMPT] Resuming existing active attempt ${existingActive._id} for exam ${examId}`);
+      
+      // Return existing attempt data so student can resume
+      return res.status(200).json({
+        success: true,
+        message: 'Resuming existing exam attempt',
+        data: {
+          attemptId: existingActive._id,
+          attemptNo: existingActive.attemptNo,
+          startedAt: existingActive.startedAt,
+          expectedEndTime: new Date(existingActive.startedAt.getTime() + exam.duration * 60 * 1000),
+          exam: {
+            id: exam._id,
+            title: exam.title,
+            description: exam.description,
+            duration: exam.duration,
+            totalMarks: exam.totalMarks
+          },
+          isResume: true
+        }
       });
     }
 
@@ -131,6 +146,39 @@ async function startExamAttempt(req, res, next) {
 
   } catch (error) {
     console.error('[ATTEMPT] Error starting exam attempt:', error);
+    
+    // Handle duplicate key error (race condition)
+    if (error.code === 11000) {
+      // Try to find the existing attempt
+      const existingAttempt = await ExamAttempt.findOne({
+        exam: req.body.examId,
+        student: getStudentId(req),
+        status: 'started'
+      }).populate('exam');
+      
+      if (existingAttempt) {
+        console.log('[ATTEMPT] Duplicate detected, returning existing attempt:', existingAttempt._id);
+        return res.status(200).json({
+          success: true,
+          message: 'Resuming existing exam attempt',
+          data: {
+            attemptId: existingAttempt._id,
+            attemptNo: existingAttempt.attemptNo,
+            startedAt: existingAttempt.startedAt,
+            expectedEndTime: new Date(existingAttempt.startedAt.getTime() + existingAttempt.exam.duration * 60 * 1000),
+            exam: {
+              id: existingAttempt.exam._id,
+              title: existingAttempt.exam.title,
+              description: existingAttempt.exam.description,
+              duration: existingAttempt.exam.duration,
+              totalMarks: existingAttempt.exam.totalMarks
+            },
+            isResume: true
+          }
+        });
+      }
+    }
+    
     next(error);
   }
 }
