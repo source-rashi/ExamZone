@@ -175,8 +175,30 @@ async function getExams(req, res) {
       .sort({ startTime: -1 })
       .select('title description status totalMarks duration startTime endTime attemptsAllowed')
       .lean();
+    
+    // Add attempt information for students
+    let examsWithAttempts = exams;
+    if (req.user.role === 'student') {
+      const mongoose = require('mongoose');
+      const ExamAttempt = require('../models/ExamAttempt');
+      
+      examsWithAttempts = await Promise.all(
+        exams.map(async (exam) => {
+          const attemptCount = await ExamAttempt.countDocuments({
+            exam: exam._id,
+            student: new mongoose.Types.ObjectId(userId)
+          });
+          
+          exam.studentAttemptCount = attemptCount;
+          exam.attemptsRemaining = Math.max(0, (exam.attemptsAllowed || 1) - attemptCount);
+          exam.attemptsExhausted = attemptCount >= (exam.attemptsAllowed || 1);
+          
+          return exam;
+        })
+      );
+    }
 
-    res.json({ success: true, exams });
+    res.json({ success: true, exams: examsWithAttempts });
   } catch (error) {
     console.error('Get exams error:', error);
     res.status(500).json({ success: false, message: 'Failed to get exams' });
