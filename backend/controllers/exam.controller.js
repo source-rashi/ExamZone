@@ -774,13 +774,14 @@ async function getMyPaper(req, res) {
 }
 
 /**
- * TASK 6 - Download Paper PDF
+ * PHASE 7.3.4 - Download Paper PDF (Secure Student Access)
  * @route GET /api/v2/exams/:id/papers/:rollNumber/download
  */
 async function downloadPaper(req, res) {
   try {
     const { id, rollNumber } = req.params;
     const userId = req.user?.id;
+    const userRole = req.user?.role;
 
     if (!userId) {
       return res.status(401).json({
@@ -789,7 +790,7 @@ async function downloadPaper(req, res) {
       });
     }
 
-    const exam = await examService.getExamById(id, userId);
+    const exam = await examService.getExamById(id, userId, userRole);
 
     // Find paper
     const paper = exam.studentPapers?.find(p => p.rollNumber === parseInt(rollNumber));
@@ -801,22 +802,45 @@ async function downloadPaper(req, res) {
       });
     }
 
-    // Check authorization (with safe toString checks)
+    // PHASE 7.3.4: Authorization check
     const isTeacher = exam.createdBy?._id ? exam.createdBy._id.toString() === userId : false;
-    const isStudent = paper.studentId ? paper.studentId.toString() === userId : false;
+    const isStudent = userRole === 'student';
+    
+    if (isStudent) {
+      // PHASE 7.3.4: Students MUST own the rollNumber they're requesting
+      const Enrollment = require('../models/Enrollment');
+      const enrollment = await Enrollment.findOne({
+        classId: exam.classId._id,
+        studentId: userId,
+        status: 'active'
+      });
 
-    if (!isTeacher && !isStudent) {
+      if (!enrollment) {
+        return res.status(403).json({
+          success: false,
+          message: 'You are not enrolled in this class'
+        });
+      }
+
+      // PHASE 7.3.4: Verify rollNumber matches enrollment
+      if (enrollment.rollNumber !== parseInt(rollNumber)) {
+        return res.status(403).json({
+          success: false,
+          message: 'You can only download your own paper'
+        });
+      }
+
+      // Check if exam is accessible to students
+      if (!['published', 'running', 'closed'].includes(exam.status)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Paper not yet available'
+        });
+      }
+    } else if (!isTeacher) {
       return res.status(403).json({
         success: false,
         message: 'You are not authorized to download this paper'
-      });
-    }
-
-    // For students, check if exam is published
-    if (isStudent && exam.status !== 'published') {
-      return res.status(403).json({
-        success: false,
-        message: 'Paper not yet available'
       });
     }
 
