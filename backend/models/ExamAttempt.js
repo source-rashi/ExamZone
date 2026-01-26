@@ -112,6 +112,11 @@ const examAttemptSchema = new mongoose.Schema({
 examAttemptSchema.index({ exam: 1, student: 1 });
 examAttemptSchema.index({ student: 1, status: 1 });
 
+// PHASE 8.6: Additional indexes for evaluation queries
+examAttemptSchema.index({ exam: 1, status: 1 });
+examAttemptSchema.index({ exam: 1, evaluationStatus: 1 });
+examAttemptSchema.index({ evaluatedBy: 1 });
+
 // Ensure unique attempt numbers per student per exam
 examAttemptSchema.index({ exam: 1, student: 1, attemptNo: 1 }, { unique: true });
 

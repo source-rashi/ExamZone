@@ -289,7 +289,8 @@ async function getClassExams(classId, teacherId) {
 
   const exams = await Exam.find({ classId })
     .populate('createdBy', 'name email')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean(); // PHASE 8.6: Performance optimization
 
   return exams;
 }
@@ -318,8 +319,7 @@ async function getStudentExams(classId, studentId) {
   })
     .populate('createdBy', 'name')
     .select('title description startTime endTime duration totalMarks status createdAt')
-    .sort({ startTime: -1 });
-
+    .sort({ startTime: -1 });    .lean(); // PHASE 8.6: Performance optimization
   return exams;
 }
 
@@ -328,7 +328,8 @@ async function getStudentExams(classId, studentId) {
  * Creates empty sets and randomly assigns students to sets
  */
 async function generateQuestionSets(examId, teacherId) {
-  const exam = await Exam.findById(examId).populate('classId');
+  const exam = await Exam.findById(examId)
+    .populate('classId', '_id name'); // PHASE 8.6: Select only needed fields
 
   if (!exam) {
     throw new Error('Exam not found');
@@ -348,7 +349,10 @@ async function generateQuestionSets(examId, teacherId) {
   const enrollments = await Enrollment.find({ 
     classId: exam.classId._id,
     status: 'active'
-  }).sort({ rollNumber: 1 });
+  })
+  .select('rollNumber studentId') // PHASE 8.6: Select only needed fields
+  .sort({ rollNumber: 1 })
+  .lean(); // PHASE 8.6: Performance optimization
 
   if (enrollments.length === 0) {
     throw new Error('No students enrolled in this class');
@@ -466,7 +470,8 @@ async function getExamPreparationData(examId) {
     classId: exam.classId._id,
     status: 'active'
   })
-    .populate('studentId', 'name email')
+    .populate('studentId', 'name email') // PHASE 8.6: Select only needed fields
+    .select('rollNumber studentId') // PHASE 8.6: Select only needed enrollment fields
     .sort({ rollNumber: 1 })
     .lean();
 

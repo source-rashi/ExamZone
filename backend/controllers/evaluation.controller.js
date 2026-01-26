@@ -21,6 +21,13 @@ async function getExamAttempts(req, res) {
     const { examId } = req.params;
     const teacherId = req.user.id;
 
+    // ==================================================================
+    // PHASE 8.6: PAGINATION - Extract query parameters
+    // ==================================================================
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
     // Verify exam exists and teacher owns it
     const exam = await Exam.findById(examId).lean();
     if (!exam) {
@@ -44,14 +51,24 @@ async function getExamAttempts(req, res) {
       totalMarksPerSet: exam.paperConfig?.totalMarksPerSet
     });
 
-    // Get all submitted attempts
+    // ==================================================================
+    // PHASE 8.6: COUNT TOTAL FOR PAGINATION
+    // ==================================================================
+    const totalAttempts = await ExamAttempt.countDocuments({
+      exam: examId,
+      status: { $in: ['submitted', 'auto-submitted'] }
+    });
+
+    // Get submitted attempts with pagination
     const attempts = await ExamAttempt.find({
       exam: examId,
       status: { $in: ['submitted', 'auto-submitted'] }
     })
     .populate('student', 'name email rollNumber')
     .sort({ submittedAt: -1 })
-    .lean();
+    .skip(skip)
+    .limit(limit)
+    .lean(); // PHASE 8.6: Performance optimization
 
     // Get enrollment data for roll numbers
     const Enrollment = require('../models/Enrollment');
@@ -83,6 +100,11 @@ async function getExamAttempts(req, res) {
 
     console.log('[Evaluation] Using totalMarks:', actualTotalMarks);
 
+    // ==================================================================
+    // PHASE 8.6: PAGINATION METADATA
+    // ==================================================================
+    const totalPages = Math.ceil(totalAttempts / limit);
+
     res.status(200).json({
       success: true,
       data: {
@@ -93,9 +115,16 @@ async function getExamAttempts(req, res) {
           duration: exam.duration
         },
         attempts: attemptsWithRolls,
-        totalAttempts: attemptsWithRolls.length,
+        totalAttempts,
         evaluated: attemptsWithRolls.filter(a => a.evaluationStatus === 'evaluated').length,
-        pending: attemptsWithRolls.filter(a => a.evaluationStatus === 'pending').length
+        pending: attemptsWithRolls.filter(a => a.evaluationStatus === 'pending').length,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          limit,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
       }
     });
   } catch (error) {
