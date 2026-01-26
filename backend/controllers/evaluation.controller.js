@@ -21,7 +21,7 @@ async function getExamAttempts(req, res) {
     const teacherId = req.user.id;
 
     // Verify exam exists and teacher owns it
-    const exam = await Exam.findById(examId);
+    const exam = await Exam.findById(examId).lean();
     if (!exam) {
       return res.status(404).json({
         success: false,
@@ -35,6 +35,13 @@ async function getExamAttempts(req, res) {
         error: 'Not authorized to evaluate this exam'
       });
     }
+
+    console.log('[Evaluation] Exam totalMarks check:', {
+      examId,
+      totalMarks: exam.totalMarks,
+      paperConfig: exam.paperConfig,
+      totalMarksPerSet: exam.paperConfig?.totalMarksPerSet
+    });
 
     // Get all submitted attempts
     const attempts = await ExamAttempt.find({
@@ -61,13 +68,27 @@ async function getExamAttempts(req, res) {
       })
     );
 
+    console.log('[Evaluation] Exam data:', {
+      totalMarks: exam.totalMarks,
+      paperConfigTotalMarks: exam.paperConfig?.totalMarksPerSet,
+      hasPaperConfig: !!exam.paperConfig
+    });
+
+    // Try to get actual total from generatedSets if available
+    let actualTotalMarks = exam.paperConfig?.totalMarksPerSet || exam.totalMarks;
+    if (exam.generatedSets && exam.generatedSets.length > 0) {
+      actualTotalMarks = exam.generatedSets[0].totalMarks || actualTotalMarks;
+    }
+
+    console.log('[Evaluation] Using totalMarks:', actualTotalMarks);
+
     res.status(200).json({
       success: true,
       data: {
         exam: {
           id: exam._id,
           title: exam.title,
-          totalMarks: exam.totalMarks,
+          totalMarks: actualTotalMarks,
           duration: exam.duration
         },
         attempts: attemptsWithRolls,
@@ -123,7 +144,60 @@ async function getAttemptForEvaluation(req, res) {
     }
 
     // Get student's questions
-    const questions = await getStudentQuestions(exam._id, attempt.student._id);
+    const questionsData = await getStudentQuestions(exam._id, attempt.student._id);
+
+    // Merge student answers with questions
+    const questionsWithAnswers = questionsData.questions.map((q, index) => {
+      // Find the student's answer for this question
+      // Frontend uses q0, q1, q2... (0-indexed)
+      // Backend uses 1, 2, 3... (1-indexed)
+      const studentAnswer = attempt.answers?.find(a => {
+        return a.questionId === `q${index}` || // Match q0, q1, q2...
+               a.questionId === q.number.toString() || // Match 1, 2, 3...
+               a.questionId === `q${q.number}` || // Match q1, q2, q3...
+               parseInt(a.questionId) === q.number; // Match numeric
+      });
+
+      console.log(`[Evaluation] Question ${q.number}:`, {
+        questionNumber: q.number,
+        index,
+        studentAnswer: studentAnswer ? {
+          questionId: studentAnswer.questionId,
+          answerLength: studentAnswer.answer?.length,
+          timestamp: studentAnswer.timestamp
+        } : null
+      });
+
+      return {
+        id: q.number.toString(),
+        number: q.number,
+        text: q.text,
+        marks: q.marks,
+        topic: q.topic,
+        difficulty: q.difficulty,
+        options: q.options || [],
+        studentAnswer: studentAnswer?.answer || '',
+        answeredAt: studentAnswer?.timestamp || null
+      };
+    });
+
+    // Calculate actual total marks from questions
+    const actualTotalMarks = questionsWithAnswers.reduce((sum, q) => sum + (q.marks || 0), 0);
+
+    console.log('[Evaluation] Total marks calculation:', {
+      fromQuestions: actualTotalMarks,
+      fromPaperConfig: exam.paperConfig?.totalMarksPerSet,
+      fromExamTotal: exam.totalMarks
+    });
+
+    // Calculate actual total marks from questions
+    const actualTotalMarks = questionsWithAnswers.reduce((sum, q) => sum + (q.marks || 0), 0);
+
+    console.log('[Evaluation] Total marks calculation:', {
+      fromQuestions: actualTotalMarks,
+      fromPaperConfig: exam.paperConfig?.totalMarksPerSet,
+      fromExamTotal: exam.totalMarks
+    });
 
     // Get roll number
     const Enrollment = require('../models/Enrollment');
@@ -144,11 +218,11 @@ async function getAttemptForEvaluation(req, res) {
           rollNumber: enrollment?.rollNumber || 'N/A',
           integrityScore
         },
-        questions: questions.questions,
+        questions: questionsWithAnswers,
         exam: {
           id: exam._id,
           title: exam.title,
-          totalMarks: exam.totalMarks,
+          totalMarks: actualTotalMarks || exam.paperConfig?.totalMarksPerSet || exam.totalMarks,
           duration: exam.duration
         }
       }
@@ -283,7 +357,7 @@ async function requestAIChecking(req, res) {
       });
     }
 
-    if (exam.teacher.toString() !== teacherId) {
+    if (exam.createdBy.toString() !== teacherId) {
       return res.status(403).json({
         success: false,
         error: 'Unauthorized: You can only AI-check attempts for your own exams'
@@ -368,7 +442,7 @@ async function finalizeExam(req, res) {
       });
     }
 
-    if (exam.teacher.toString() !== teacherId) {
+    if (exam.createdBy.toString() !== teacherId) {
       return res.status(403).json({
         success: false,
         error: 'Unauthorized: You can only finalize your own exams'

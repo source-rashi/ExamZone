@@ -277,7 +277,9 @@ export default function ExamResults() {
 
   // Detailed evaluation view
   if (selectedAttempt && attemptDetails) {
-    const { attempt, student, questions, rollNumber } = attemptDetails;
+    const { attempt, questions } = attemptDetails;
+    const student = attempt.student;
+    const rollNumber = attempt.rollNumber;
     
     return (
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -332,7 +334,6 @@ export default function ExamResults() {
         {/* Questions and Answers */}
         <div className="space-y-6">
           {questions.map((question, idx) => {
-            const studentAnswer = attempt.answers.find(a => a.questionId === question.id);
             const qScore = questionScores[question.id] || { marks: 0, feedback: '' };
 
             return (
@@ -354,11 +355,11 @@ export default function ExamResults() {
                 <div className="mb-4 p-4 bg-gray-50 rounded-lg">
                   <p className="text-xs font-medium text-gray-600 mb-2">Student's Answer:</p>
                   <p className="text-gray-900 whitespace-pre-wrap">
-                    {studentAnswer?.answer || <em className="text-gray-400">No answer provided</em>}
+                    {question.studentAnswer || <em className="text-gray-400">No answer provided</em>}
                   </p>
-                  {studentAnswer?.answeredAt && (
+                  {question.answeredAt && (
                     <p className="text-xs text-gray-400 mt-2">
-                      Answered at: {new Date(studentAnswer.answeredAt).toLocaleTimeString()}
+                      Answered at: {new Date(question.answeredAt).toLocaleTimeString()}
                     </p>
                   )}
                 </div>

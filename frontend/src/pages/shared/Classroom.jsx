@@ -1078,20 +1078,29 @@ function ExamsTab({ classId, isTeacher }) {
                     )}
 
                     {/* Evaluate Submissions button - TEACHER ONLY */}
-                    {['published', 'running', 'closed'].includes(exam.status) && (
-                      <button 
-                        onClick={() => navigate(`/teacher/exam/${exam._id}/results`)}
-                        className="relative px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center gap-2"
-                      >
-                        <FileText className="w-4 h-4" />
-                        Evaluate Submissions
-                        {exam.pendingEvaluation > 0 && (
-                          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center animate-pulse">
-                            {exam.pendingEvaluation}
-                          </span>
-                        )}
-                      </button>
-                    )}
+                    {(() => {
+                      console.log('[Classroom] Evaluate button check:', {
+                        examId: exam._id,
+                        status: exam.status,
+                        totalSubmissions: exam.totalSubmissions,
+                        pendingEvaluation: exam.pendingEvaluation,
+                        shouldShow: ['published', 'running', 'closed'].includes(exam.status)
+                      });
+                      return ['published', 'running', 'closed'].includes(exam.status) && (
+                        <button 
+                          onClick={() => navigate(`/teacher/exam/${exam._id}/results`)}
+                          className="relative px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center gap-2"
+                        >
+                          <FileText className="w-4 h-4" />
+                          Evaluate Submissions
+                          {exam.pendingEvaluation > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center animate-pulse">
+                              {exam.pendingEvaluation}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })()}
 
                     <button 
                       onClick={() => {

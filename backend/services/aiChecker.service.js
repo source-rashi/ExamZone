@@ -17,29 +17,23 @@ async function getAISuggestion(attempt, questions, totalMarks) {
     console.log('[AI Checker] Processing attempt:', attempt._id);
 
     // Check if AI service is configured
-    const aiServiceUrl = process.env.AI_ANSWER_CHECKER_URL;
-    if (!aiServiceUrl) {
-      console.log('[AI Checker] AI service not configured, skipping');
-      return {
-        suggestedScore: null,
-        feedback: 'AI checking not available',
-        perQuestionFeedback: []
-      };
-    }
+    const aiServiceUrl = process.env.AI_ANSWER_CHECKER_URL || 'http://localhost:8002';
+    console.log('[AI Checker] Using AI service URL:', aiServiceUrl);
 
-    // Prepare data for AI service
-    const answersMap = {};
-    attempt.answers.forEach(ans => {
-      answersMap[ans.questionId] = ans.answer;
-    });
-
+    // Questions already have studentAnswer merged in
     const questionsForAI = questions.map(q => ({
       id: q.id,
       text: q.text,
       marks: q.marks,
-      expectedAnswer: q.expectedAnswer || q.answer || '',
-      studentAnswer: answersMap[q.id] || ''
+      expectedAnswer: q.expectedAnswer || '',
+      studentAnswer: q.studentAnswer || ''
     }));
+
+    console.log('[AI Checker] Sending to AI:', {
+      questionsCount: questionsForAI.length,
+      totalMarks,
+      aiServiceUrl
+    });
 
     // Call AI service
     const response = await axios.post(
@@ -57,7 +51,10 @@ async function getAISuggestion(attempt, questions, totalMarks) {
       }
     );
 
-    console.log('[AI Checker] AI response received');
+    console.log('[AI Checker] AI response received:', {
+      totalScore: response.data.totalScore,
+      feedbackCount: response.data.questionFeedback?.length
+    });
 
     return {
       suggestedScore: response.data.totalScore || 0,
@@ -67,6 +64,9 @@ async function getAISuggestion(attempt, questions, totalMarks) {
 
   } catch (error) {
     console.error('[AI Checker] Error:', error.message);
+    if (error.code === 'ECONNREFUSED') {
+      console.error('[AI Checker] Cannot connect to AI service. Make sure it\'s running on', process.env.AI_ANSWER_CHECKER_URL || 'http://localhost:5002');
+    }
     
     // Return graceful fallback
     return {
@@ -95,7 +95,7 @@ async function processAIChecking(attemptId) {
     }
 
     // Get exam
-    const exam = await Exam.findById(attempt.exam);
+    const exam = await Exam.findById(attempt.exam).lean();
     if (!exam) {
       throw new Error('Exam not found');
     }
@@ -103,8 +103,29 @@ async function processAIChecking(attemptId) {
     // Get questions
     const questionsData = await getStudentQuestions(exam._id, attempt.student);
     
-    // Get AI suggestion
-    const aiResult = await getAISuggestion(attempt, questionsData.questions, exam.totalMarks);
+    // Merge student answers with questions (same logic as evaluation)
+    const questionsWithAnswers = questionsData.questions.map((q, index) => {
+      const studentAnswer = attempt.answers?.find(a => {
+        return a.questionId === `q${index}` || 
+               a.questionId === q.number.toString() ||
+               a.questionId === `q${q.number}` ||
+               parseInt(a.questionId) === q.number;
+      });
+
+      return {
+        id: q.number.toString(),
+        text: q.text,
+        marks: q.marks,
+        expectedAnswer: q.expectedAnswer || q.answer || '',
+        studentAnswer: studentAnswer?.answer || ''
+      };
+    });
+
+    // Calculate actual total marks from questions
+    const actualTotalMarks = questionsWithAnswers.reduce((sum, q) => sum + (q.marks || 0), 0);
+    
+    // Get AI suggestion with merged questions
+    const aiResult = await getAISuggestion(attempt, questionsWithAnswers, actualTotalMarks);
 
     // Save AI suggestion to attempt
     attempt.aiSuggestedScore = aiResult.suggestedScore;
@@ -123,7 +144,7 @@ async function processAIChecking(attemptId) {
 
     await attempt.save();
 
-    console.log(`[AI Checker] Saved AI suggestion for attempt ${attemptId}: ${aiResult.suggestedScore}/${exam.totalMarks}`);
+    console.log(`[AI Checker] Saved AI suggestion for attempt ${attemptId}: ${aiResult.suggestedScore}/${actualTotalMarks}`);
 
     return aiResult;
 

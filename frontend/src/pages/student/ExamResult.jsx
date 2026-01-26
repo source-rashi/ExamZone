@@ -121,8 +121,10 @@ export default function StudentResult() {
   }
 
   const { exam, attempt, questions } = result;
-  const percentage = ((attempt.score / attempt.maxMarks) * 100).toFixed(1);
-  const grade = getGrade(attempt.score, attempt.maxMarks);
+  // Use exam.totalMarks as the max score for percentage and grade calculation
+  const maxMarks = exam.totalMarks || attempt.maxMarks || 100;
+  const percentage = ((attempt.score / maxMarks) * 100).toFixed(1);
+  const grade = getGrade(attempt.score, maxMarks);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -150,16 +152,16 @@ export default function StudentResult() {
             {/* Score */}
             <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg">
               <p className="text-sm text-gray-600 mb-2">Your Score</p>
-              <p className={`text-4xl font-bold ${getScoreColor(attempt.score, attempt.maxMarks)}`}>
+              <p className={`text-4xl font-bold ${getScoreColor(attempt.score, maxMarks)}`}>
                 {attempt.score}
               </p>
-              <p className="text-gray-600 mt-1">out of {attempt.maxMarks}</p>
+              <p className="text-gray-600 mt-1">out of {maxMarks}</p>
             </div>
 
             {/* Percentage */}
             <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg">
               <p className="text-sm text-gray-600 mb-2">Percentage</p>
-              <p className={`text-4xl font-bold ${getScoreColor(attempt.score, attempt.maxMarks)}`}>
+              <p className={`text-4xl font-bold ${getScoreColor(attempt.score, maxMarks)}`}>
                 {percentage}%
               </p>
               <p className="text-gray-600 mt-1">Grade: {grade}</p>
@@ -217,11 +219,16 @@ export default function StudentResult() {
 
           <div className="space-y-4">
             {questions.map((question, idx) => {
+              // Match questionId formats: q0, q1, q2... or 1, 2, 3...
               const questionMarks = attempt.perQuestionMarks?.find(
-                q => q.questionId === question.id
+                q => q.questionId === question.id || 
+                     q.questionId === question.number?.toString() ||
+                     q.questionId === `q${idx}`
               );
-              const studentAnswer = attempt.answers.find(
-                a => a.questionId === question.id
+              const studentAnswer = attempt.answers?.find(
+                a => a.questionId === `q${idx}` || // q0, q1, q2...
+                     a.questionId === question.id ||
+                     a.questionId === question.number?.toString()
               );
 
               return (
@@ -255,7 +262,7 @@ export default function StudentResult() {
                   <div className="mb-3 p-3 bg-gray-50 rounded-lg">
                     <p className="text-xs font-medium text-gray-600 mb-2">Your Answer:</p>
                     <p className="text-gray-900 whitespace-pre-wrap">
-                      {studentAnswer?.answer || <em className="text-gray-400">No answer provided</em>}
+                      {question.studentAnswer || studentAnswer?.answer || <em className="text-gray-400">No answer provided</em>}
                     </p>
                   </div>
 

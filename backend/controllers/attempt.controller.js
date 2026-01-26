@@ -950,7 +950,7 @@ async function getAttemptResult(req, res) {
 
     // Get attempt with populated data
     const attempt = await ExamAttempt.findById(attemptId)
-      .populate('exam', 'title totalMarks duration')
+      .populate('exam', 'title totalMarks duration paperConfig')
       .populate('student', 'name email');
 
     if (!attempt) {
@@ -980,13 +980,35 @@ async function getAttemptResult(req, res) {
     const { getStudentQuestions } = require('../utils/paperResolver');
     const questionsData = await getStudentQuestions(attempt.exam._id, studentId);
 
+    // Merge student answers with questions
+    const questionsWithAnswers = questionsData.questions.map((q, index) => {
+      const studentAnswer = attempt.answers?.find(a => {
+        return a.questionId === `q${index}` || // q0, q1, q2...
+               a.questionId === q.number.toString() ||
+               a.questionId === `q${q.number}` ||
+               parseInt(a.questionId) === q.number;
+      });
+
+      return {
+        id: q.number.toString(),
+        number: q.number,
+        text: q.text,
+        marks: q.marks,
+        topic: q.topic,
+        difficulty: q.difficulty,
+        options: q.options || [],
+        studentAnswer: studentAnswer?.answer || '',
+        answeredAt: studentAnswer?.timestamp || null
+      };
+    });
+
     res.status(200).json({
       success: true,
       data: {
         exam: {
           id: attempt.exam._id,
           title: attempt.exam.title,
-          totalMarks: attempt.exam.totalMarks,
+          totalMarks: attempt.exam.paperConfig?.totalMarksPerSet || attempt.exam.totalMarks,
           duration: attempt.exam.duration
         },
         attempt: {
@@ -1004,7 +1026,7 @@ async function getAttemptResult(req, res) {
           answers: attempt.answers,
           perQuestionMarks: attempt.perQuestionMarks || []
         },
-        questions: questionsData.questions
+        questions: questionsWithAnswers
       }
     });
   } catch (error) {
