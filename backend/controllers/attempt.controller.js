@@ -75,6 +75,13 @@ async function startExamAttempt(req, res, next) {
     if (existingActive) {
       console.log(`[ATTEMPT] Resuming existing active attempt ${existingActive._id} for exam ${examId}`);
       
+      // Get questions
+      const questionsData = await getStudentQuestions(examId, studentId);
+      
+      // Calculate remaining time
+      const elapsedMinutes = Math.floor((new Date() - existingActive.startedAt) / 60000);
+      const remainingMinutes = Math.max(0, exam.duration - elapsedMinutes);
+      
       // Return existing attempt data so student can resume
       return res.status(200).json({
         success: true,
@@ -84,13 +91,17 @@ async function startExamAttempt(req, res, next) {
           attemptNo: existingActive.attemptNo,
           startedAt: existingActive.startedAt,
           expectedEndTime: new Date(existingActive.startedAt.getTime() + exam.duration * 60 * 1000),
+          remainingMinutes,
           exam: {
             id: exam._id,
             title: exam.title,
             description: exam.description,
             duration: exam.duration,
-            totalMarks: exam.totalMarks
+            totalMarks: exam.totalMarks,
+            instructions: exam.settings?.instructions || ''
           },
+          paper: questionsData,
+          previousAnswers: existingActive.answers || [],
           isResume: true
         }
       });
@@ -123,7 +134,12 @@ async function startExamAttempt(req, res, next) {
     console.log(`[ATTEMPT] Started attempt ${attempt._id} for student ${studentId} on exam ${examId} (attempt #${attemptNo})`);
 
     // ==================================================================
-    // RETURN ATTEMPT ID + EXAM META
+    // GET QUESTIONS FOR THE STUDENT
+    // ==================================================================
+    const questionsData = await getStudentQuestions(examId, studentId);
+
+    // ==================================================================
+    // RETURN ATTEMPT ID + EXAM META + QUESTIONS
     // ==================================================================
     res.status(201).json({
       success: true,
@@ -133,14 +149,18 @@ async function startExamAttempt(req, res, next) {
         attemptNo: attempt.attemptNo,
         startedAt: attempt.startedAt,
         expectedEndTime,
+        remainingMinutes: exam.duration,
         exam: {
           id: exam._id,
           title: exam.title,
           description: exam.description,
           duration: exam.duration,
           totalMarks: exam.totalMarks,
-          status: exam.status
-        }
+          status: exam.status,
+          instructions: exam.settings?.instructions || ''
+        },
+        paper: questionsData,
+        previousAnswers: []
       }
     });
 
@@ -158,6 +178,14 @@ async function startExamAttempt(req, res, next) {
       
       if (existingAttempt) {
         console.log('[ATTEMPT] Duplicate detected, returning existing attempt:', existingAttempt._id);
+        
+        // Get questions
+        const questionsData = await getStudentQuestions(req.body.examId, getStudentId(req));
+        
+        // Calculate remaining time
+        const elapsedMinutes = Math.floor((new Date() - existingAttempt.startedAt) / 60000);
+        const remainingMinutes = Math.max(0, existingAttempt.exam.duration - elapsedMinutes);
+        
         return res.status(200).json({
           success: true,
           message: 'Resuming existing exam attempt',
@@ -166,13 +194,17 @@ async function startExamAttempt(req, res, next) {
             attemptNo: existingAttempt.attemptNo,
             startedAt: existingAttempt.startedAt,
             expectedEndTime: new Date(existingAttempt.startedAt.getTime() + existingAttempt.exam.duration * 60 * 1000),
+            remainingMinutes,
             exam: {
               id: existingAttempt.exam._id,
               title: existingAttempt.exam.title,
               description: existingAttempt.exam.description,
               duration: existingAttempt.exam.duration,
-              totalMarks: existingAttempt.exam.totalMarks
+              totalMarks: existingAttempt.exam.totalMarks,
+              instructions: existingAttempt.exam.settings?.instructions || ''
             },
+            paper: questionsData,
+            previousAnswers: existingAttempt.answers || [],
             isResume: true
           }
         });
