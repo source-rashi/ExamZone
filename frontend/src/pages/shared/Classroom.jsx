@@ -22,7 +22,8 @@ import {
   Paperclip,
   Trash2,
   Send,
-  Plus
+  Plus,
+  CheckCircle
 } from 'lucide-react';
 
 /**
@@ -1084,8 +1085,9 @@ function ExamsTab({ classId, isTeacher }) {
                       View Details
                     </button>
                     
-                    {/* Download paper button - only if exam has papers generated */}
-                    {['published', 'running', 'closed'].includes(exam.status) && 
+                    {/* Download paper button - only if exam has papers generated and attempts not exhausted */}
+                    {!exam.attemptsExhausted &&
+                     ['published', 'running', 'closed'].includes(exam.status) && 
                      (exam.generationStatus === 'generated' || exam.status === 'published') && (
                       <button 
                         onClick={async () => {
@@ -1121,8 +1123,9 @@ function ExamsTab({ classId, isTeacher }) {
                       new Date() <= new Date(exam.endTime) && (
                         <>
                           {exam.attemptsExhausted ? (
-                            <div className="px-4 py-2 bg-gray-100 text-gray-500 rounded-lg text-sm font-medium cursor-not-allowed">
-                              ✓ All Attempts Used ({exam.studentAttemptCount}/{exam.attemptsAllowed || 1})
+                            <div className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-medium cursor-default flex items-center gap-2">
+                              <CheckCircle className="w-4 h-4" />
+                              Attempted
                             </div>
                           ) : (
                             <button 
