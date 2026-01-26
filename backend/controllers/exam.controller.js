@@ -588,6 +588,7 @@ async function generateExamSetsWithAI(req, res) {
 /**
  * Get exam by ID
  * @route GET /api/v2/exams/:id
+ * PHASE 7.3.2: Student-safe exam detail API
  */
 async function getExamById(req, res) {
   try {
@@ -597,9 +598,28 @@ async function getExamById(req, res) {
 
     const exam = await examService.getExamById(id, userId, userRole);
 
+    // PHASE 7.3.2: Filter sensitive fields for students
+    let responseData = exam;
+    if (userRole === 'student') {
+      // Student only sees essential exam information
+      responseData = {
+        _id: exam._id,
+        title: exam.title,
+        description: exam.description,
+        status: exam.status,
+        startTime: exam.startTime,
+        endTime: exam.endTime,
+        duration: exam.duration,
+        totalMarks: exam.totalMarks,
+        attemptsAllowed: exam.attemptsAllowed,
+        classId: exam.classId, // populated with name and subject
+        mode: exam.mode
+      };
+    }
+
     res.status(200).json({
       success: true,
-      data: exam
+      data: responseData
     });
   } catch (error) {
     console.error('[Get Exam] Error:', error.message);
