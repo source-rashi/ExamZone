@@ -14,24 +14,28 @@ const {
   examIdValidation, 
   handleValidationErrors 
 } = require('../middleware/validation');
+const { 
+  verifyExamOwnership, 
+  verifyAttemptEvaluationAccess 
+} = require('../middleware/ownership.middleware');
 
 // All routes require authentication and teacher role
 router.use(authenticate);
 router.use(teacherOnly);
 
 // Get all attempts for an exam
-router.get('/exams/:examId/attempts', examIdValidation, handleValidationErrors, evaluationController.getExamAttempts);
+router.get('/exams/:examId/attempts', examIdValidation, handleValidationErrors, verifyExamOwnership, evaluationController.getExamAttempts);
 
 // Get attempt details for evaluation
-router.get('/attempts/:attemptId', attemptIdValidation, handleValidationErrors, evaluationController.getAttemptForEvaluation);
+router.get('/attempts/:attemptId', attemptIdValidation, handleValidationErrors, verifyAttemptEvaluationAccess, evaluationController.getAttemptForEvaluation);
 
 // Submit evaluation
-router.post('/attempts/:attemptId/score', submitEvaluationValidation, handleValidationErrors, evaluationController.submitEvaluation);
+router.post('/attempts/:attemptId/score', submitEvaluationValidation, handleValidationErrors, verifyAttemptEvaluationAccess, evaluationController.submitEvaluation);
 
 // Request AI checking
-router.post('/attempts/:attemptId/ai-check', attemptIdValidation, handleValidationErrors, evaluationController.requestAIChecking);
+router.post('/attempts/:attemptId/ai-check', attemptIdValidation, handleValidationErrors, verifyAttemptEvaluationAccess, evaluationController.requestAIChecking);
 
 // Finalize exam (mark evaluation as complete)
-router.post('/exams/:examId/finalize', examIdValidation, handleValidationErrors, evaluationController.finalizeExam);
+router.post('/exams/:examId/finalize', examIdValidation, handleValidationErrors, verifyExamOwnership, evaluationController.finalizeExam);
 
 module.exports = router;

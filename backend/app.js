@@ -28,6 +28,7 @@ const studentExamPdfRoutes = require('./routes/student.exam.pdf.routes');
 const studentDashboardRoutes = require('./routes/studentDashboard.routes');
 const studentExamRoutes = require('./routes/student.exam.routes');
 const paperRoutes = require('./routes/paper.routes');
+const healthRoutes = require('./routes/health.routes');
 
 const app = express();
 
@@ -86,6 +87,7 @@ app.use('/api/v2', announcementRoutes); // Announcement routes
 app.use('/api/v2', assignmentRoutes); // Assignment routes
 app.use('/api/papers', paperRoutes); // PHASE 6.4 paper download routes
 app.use('/api/v2/evaluation', evaluationRoutes); // PHASE 7.5 evaluation routes
+app.use('/api/health', healthRoutes); // PHASE 8.7 health check routes
 
 // Static page routes
 
