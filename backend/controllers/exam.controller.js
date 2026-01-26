@@ -846,7 +846,10 @@ async function downloadPaper(req, res) {
       });
     }
 
-    // Send file (use paperPath field)
+    // ==================================================================
+    // PHASE 8.4: SECURE FILE ACCESS - Validate path, size, MIME type
+    // ==================================================================
+    const fileSecurityUtil = require('../utils/fileSecurityUtil');
     const pdfPath = paper.paperPath || paper.pdfPath;
     
     if (!pdfPath) {
@@ -856,19 +859,26 @@ async function downloadPaper(req, res) {
       });
     }
 
-    // Check if file exists
-    const fs = require('fs');
-    const path = require('path');
-    const fullPath = path.isAbsolute(pdfPath) ? pdfPath : path.join(__dirname, '../../', pdfPath);
-    
-    if (!fs.existsSync(fullPath)) {
-      return res.status(404).json({
+    // Secure file access validation
+    const fileValidation = fileSecurityUtil.secureFileAccess(pdfPath, {
+      checkExists: true,
+      allowedMimeTypes: ['application/pdf'],
+      maxSize: fileSecurityUtil.MAX_FILE_SIZE
+    });
+
+    if (!fileValidation.valid) {
+      console.error('[Download Paper] Security validation failed:', fileValidation.errors);
+      return res.status(400).json({
         success: false,
-        message: 'PDF file not found on server'
+        message: 'File security validation failed',
+        errors: fileValidation.errors
       });
     }
 
-    res.download(fullPath, `${exam.title}_Roll_${rollNumber}.pdf`);
+    // Use validated safe path
+    const safePath = fileValidation.safePath;
+
+    res.download(safePath, `${exam.title}_Roll_${rollNumber}.pdf`);
   } catch (error) {
     console.error('[Download Paper] Error:', error.message);
 
@@ -1010,8 +1020,27 @@ async function downloadSetPdf(req, res) {
       });
     }
 
-    // Send file
-    res.download(setPdf.pdfPath, `${exam.title}_${setId}_Master.pdf`);
+    // ==================================================================
+    // PHASE 8.4: SECURE FILE ACCESS - Validate path, size, MIME type
+    // ==================================================================
+    const fileSecurityUtil = require('../utils/fileSecurityUtil');
+    const fileValidation = fileSecurityUtil.secureFileAccess(setPdf.pdfPath, {
+      checkExists: true,
+      allowedMimeTypes: ['application/pdf'],
+      maxSize: fileSecurityUtil.MAX_FILE_SIZE
+    });
+
+    if (!fileValidation.valid) {
+      console.error('[Download Set PDF] Security validation failed:', fileValidation.errors);
+      return res.status(400).json({
+        success: false,
+        message: 'File security validation failed',
+        errors: fileValidation.errors
+      });
+    }
+
+    // Send file using validated safe path
+    res.download(fileValidation.safePath, `${exam.title}_${setId}_Master.pdf`);
   } catch (error) {
     console.error('[Download Set PDF] Error:', error.message);
     res.status(500).json({

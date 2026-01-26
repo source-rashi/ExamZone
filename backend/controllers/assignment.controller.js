@@ -185,16 +185,27 @@ async function downloadAssignment(req, res) {
       });
     }
 
-    // Check if file exists
-    if (!fs.existsSync(assignment.attachmentPath)) {
-      return res.status(404).json({
+    // ==================================================================
+    // PHASE 8.4: SECURE FILE ACCESS - Validate path, size, MIME type
+    // ==================================================================
+    const fileSecurityUtil = require('../utils/fileSecurityUtil');
+    const fileValidation = fileSecurityUtil.secureFileAccess(assignment.attachmentPath, {
+      checkExists: true,
+      allowedMimeTypes: ['application/pdf'],
+      maxSize: fileSecurityUtil.MAX_FILE_SIZE
+    });
+
+    if (!fileValidation.valid) {
+      console.error('[Download Assignment] Security validation failed:', fileValidation.errors);
+      return res.status(400).json({
         success: false,
-        message: 'Assignment file not found'
+        message: 'File security validation failed',
+        errors: fileValidation.errors
       });
     }
 
-    // Send file
-    res.download(assignment.attachmentPath, `${assignment.title}.pdf`);
+    // Send file using validated safe path
+    res.download(fileValidation.safePath, `${assignment.title}.pdf`);
   } catch (error) {
     console.error('Download assignment error:', error);
     res.status(500).json({
@@ -372,17 +383,28 @@ async function downloadSubmission(req, res) {
       });
     }
 
-    // Check if file exists
-    if (!fs.existsSync(submission.filePath)) {
-      return res.status(404).json({
+    // ==================================================================
+    // PHASE 8.4: SECURE FILE ACCESS - Validate path, size, MIME type
+    // ==================================================================
+    const fileSecurityUtil = require('../utils/fileSecurityUtil');
+    const fileValidation = fileSecurityUtil.secureFileAccess(submission.filePath, {
+      checkExists: true,
+      allowedMimeTypes: ['application/pdf'],
+      maxSize: fileSecurityUtil.MAX_FILE_SIZE
+    });
+
+    if (!fileValidation.valid) {
+      console.error('[Download Submission] Security validation failed:', fileValidation.errors);
+      return res.status(400).json({
         success: false,
-        message: 'Submission file not found'
+        message: 'File security validation failed',
+        errors: fileValidation.errors
       });
     }
 
-    // Send file with student name
+    // Send file with student name using validated safe path
     const studentName = submission.student.name.replace(/\s+/g, '_');
-    res.download(submission.filePath, `${studentName}_${assignment.title}.pdf`);
+    res.download(fileValidation.safePath, `${studentName}_${assignment.title}.pdf`);
   } catch (error) {
     console.error('Download submission error:', error);
     res.status(500).json({
