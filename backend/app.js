@@ -21,6 +21,7 @@ const inviteRoutes = require('./routes/invite.routes');
 const classroomRoutes = require('./routes/classroom.routes');
 const announcementRoutes = require('./routes/announcement.routes');
 const assignmentRoutes = require('./routes/assignment.routes');
+const evaluationRoutes = require('./routes/evaluation.routes');
 
 const studentExamPaperRoutes = require('./routes/student.exam.paper.routes');
 const studentExamPdfRoutes = require('./routes/student.exam.pdf.routes');
@@ -84,6 +85,7 @@ app.use('/api/v2/classroom', classroomRoutes);
 app.use('/api/v2', announcementRoutes); // Announcement routes
 app.use('/api/v2', assignmentRoutes); // Assignment routes
 app.use('/api/papers', paperRoutes); // PHASE 6.4 paper download routes
+app.use('/api/v2/evaluation', evaluationRoutes); // PHASE 7.5 evaluation routes
 
 // Static page routes
 
