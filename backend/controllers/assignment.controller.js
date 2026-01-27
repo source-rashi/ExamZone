@@ -415,11 +415,82 @@ async function downloadSubmission(req, res) {
   }
 }
 
+/**
+ * Grade student submission (Teacher only)
+ * PUT /api/submissions/:submissionId/grade
+ */
+async function gradeSubmission(req, res) {
+  try {
+    const { submissionId } = req.params;
+    const { grade, feedback, totalMarks } = req.body;
+    const userId = req.user.id;
+
+    // Find assignment containing this submission
+    const assignment = await Assignment.findOne({
+      'submissions._id': submissionId
+    });
+
+    if (!assignment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Submission not found'
+      });
+    }
+
+    // Verify user is the teacher
+    if (assignment.teacher.toString() !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the teacher can grade submissions'
+      });
+    }
+
+    // Validate grade
+    if (grade !== undefined && totalMarks !== undefined) {
+      if (grade < 0 || grade > totalMarks) {
+        return res.status(400).json({
+          success: false,
+          message: `Grade must be between 0 and ${totalMarks}`
+        });
+      }
+    }
+
+    // Update the submission
+    const submission = assignment.submissions.id(submissionId);
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        message: 'Submission not found'
+      });
+    }
+
+    submission.grade = grade;
+    submission.feedback = feedback || '';
+    submission.status = 'graded';
+
+    await assignment.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Submission graded successfully',
+      data: { submission }
+    });
+  } catch (error) {
+    console.error('Grade submission error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to grade submission',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   createAssignment,
   getAssignments,
   downloadAssignment,
   submitAssignment,
   getSubmissions,
-  downloadSubmission
+  downloadSubmission,
+  gradeSubmission
 };

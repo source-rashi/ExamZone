@@ -11,7 +11,8 @@ const {
   downloadAssignment,
   submitAssignment,
   getSubmissions,
-  downloadSubmission
+  downloadSubmission,
+  gradeSubmission
 } = require('../controllers/assignment.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 const { uploadAssignment, uploadSubmission } = require('../config/upload.config');
@@ -57,5 +58,12 @@ router.get('/assignments/:id/submissions', authenticate, getSubmissions);
  * @access Authenticated (assignment teacher)
  */
 router.get('/submissions/:submissionId/download', authenticate, downloadSubmission);
+
+/**
+ * @route PUT /api/submissions/:submissionId/grade
+ * @desc Grade student submission (teacher only)
+ * @access Authenticated (assignment teacher)
+ */
+router.put('/submissions/:submissionId/grade', authenticate, gradeSubmission);
 
 module.exports = router;
