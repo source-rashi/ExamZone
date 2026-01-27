@@ -187,7 +187,7 @@ export default function StudentExams() {
                             )}
                             <div className="flex gap-4 mt-2 text-sm text-slate-500">
                               <span>Duration: {exam.duration} min</span>
-                              <span>Total Marks: {exam.totalMarks}</span>
+                              <span>Marks Per Set: {exam.paperConfig?.totalMarksPerSet || exam.totalMarks}</span>
                               <span className="uppercase font-medium">{exam.status}</span>
                             </div>
                             {activeAttempt && (
