@@ -1140,7 +1140,7 @@ function ExamsTab({ classId, isTeacher }) {
                               examId: exam._id, 
                               title: exam.title 
                             })}
-                            className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium flex items-center gap-2"
+                            className="px-4 py-2 bg-[#2d5aa0] text-white rounded-lg hover:bg-[#1f3c88] transition-colors text-sm font-medium flex items-center gap-2"
                           >
                             <GraduationCap className="w-4 h-4" />
                             View Marks
