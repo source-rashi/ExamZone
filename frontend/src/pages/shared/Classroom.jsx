@@ -1091,7 +1091,7 @@ function ExamsTab({ classId, isTeacher }) {
                       return ['published', 'running', 'closed'].includes(exam.status) && (
                         <button 
                           onClick={() => navigate(`/teacher/exam/${exam._id}/results`)}
-                          className="relative px-4 py-2 bg-[#1f3c88] text-white rounded-lg hover:bg-[#152a5e] transition-colors text-sm font-medium flex items-center gap-2"
+                          className="relative px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium flex items-center gap-2"
                         >
                           <FileText className="w-4 h-4" />
                           Evaluate Submissions
