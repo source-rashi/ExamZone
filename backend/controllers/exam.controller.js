@@ -623,7 +623,9 @@ async function getExamById(req, res) {
         totalMarks: exam.totalMarks,
         attemptsAllowed: exam.attemptsAllowed,
         classId: exam.classId, // populated with name and subject
-        mode: exam.mode
+        mode: exam.mode,
+        paperConfig: exam.paperConfig, // Include for marks display
+        numberOfSets: exam.numberOfSets // Include for marks display
       };
     }
 
