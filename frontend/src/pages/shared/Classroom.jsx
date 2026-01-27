@@ -932,8 +932,10 @@ function ExamsTab({ classId, isTeacher }) {
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Total Marks</p>
-                  <p className="font-semibold text-gray-900">{exam.totalMarks}</p>
+                  <p className="text-xs text-gray-500 mb-1">Marks Per Set</p>
+                  <p className="font-semibold text-gray-900">
+                    {exam.paperConfig?.totalMarksPerSet || exam.totalMarks}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Duration</p>
@@ -1089,7 +1091,7 @@ function ExamsTab({ classId, isTeacher }) {
                       return ['published', 'running', 'closed'].includes(exam.status) && (
                         <button 
                           onClick={() => navigate(`/teacher/exam/${exam._id}/results`)}
-                          className="relative px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center gap-2"
+                          className="relative px-4 py-2 bg-[#1f3c88] text-white rounded-lg hover:bg-[#152a5e] transition-colors text-sm font-medium flex items-center gap-2"
                         >
                           <FileText className="w-4 h-4" />
                           Evaluate Submissions

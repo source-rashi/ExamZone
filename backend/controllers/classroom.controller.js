@@ -173,7 +173,7 @@ async function getExams(req, res) {
 
     const exams = await Exam.find(query)
       .sort({ startTime: -1 })
-      .select('title description status totalMarks duration startTime endTime attemptsAllowed')
+      .select('title description status totalMarks duration startTime endTime attemptsAllowed paperConfig numberOfSets')
       .lean();
     
     // Add attempt information for students OR submission stats for teachers

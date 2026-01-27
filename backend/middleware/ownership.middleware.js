@@ -79,16 +79,35 @@ async function verifyExamOwnership(req, res, next) {
 }
 
 /**
- * Verify student belongs to class
+ * Verify user has access to class (either teacher owns it or student is enrolled)
  */
 async function verifyClassEnrollment(req, res, next) {
   try {
     const classId = req.params.classId || req.params.id;
-    const studentId = req.user.id;
+    const userId = req.user.id;
 
+    // Check if user is the teacher who owns the class
+    const classDoc = await Class.findById(classId);
+    
+    if (!classDoc) {
+      return res.status(404).json({
+        success: false,
+        error: 'Class not found'
+      });
+    }
+
+    const isTeacher = classDoc.teacher?.toString() === userId || classDoc.teacherId?.toString() === userId;
+    
+    if (isTeacher) {
+      req.classDoc = classDoc;
+      req.isTeacher = true;
+      return next();
+    }
+
+    // Check if user is a student enrolled in the class
     const enrollment = await Enrollment.findOne({
       classId,
-      studentId,
+      studentId: userId,
       status: 'active'
     });
 
@@ -100,6 +119,8 @@ async function verifyClassEnrollment(req, res, next) {
     }
 
     req.enrollment = enrollment;
+    req.classDoc = classDoc;
+    req.isTeacher = false;
     next();
   } catch (error) {
     console.error('[Ownership] Enrollment verification error:', error);

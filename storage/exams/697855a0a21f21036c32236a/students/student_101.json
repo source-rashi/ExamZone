@@ -1,0 +1,58 @@
+{
+  "examId": "697855a0a21f21036c32236a",
+  "examTitle": "Final check",
+  "description": "This is the final check.",
+  "className": "CSE12",
+  "studentInfo": {
+    "id": "69651a3802ab13d07c6b0fde",
+    "name": "Alice Johnson",
+    "rollNumber": 101
+  },
+  "setInfo": {
+    "setId": "SET-001",
+    "setName": "Set SET-001"
+  },
+  "questions": [
+    {
+      "number": 1,
+      "text": "Synthesize multiple concepts to solve a complex problem in Software Engineering.",
+      "marks": 5,
+      "topic": "Software Engineering",
+      "difficulty": "hard",
+      "options": []
+    },
+    {
+      "number": 2,
+      "text": "Evaluate the current research trends in Software Engineering.",
+      "marks": 5,
+      "topic": "Software Engineering",
+      "difficulty": "hard",
+      "options": []
+    },
+    {
+      "number": 3,
+      "text": "Critically analyze advanced theories in Software Engineering.",
+      "marks": 5,
+      "topic": "Software Engineering",
+      "difficulty": "hard",
+      "options": []
+    },
+    {
+      "number": 4,
+      "text": "I want the question to be for btech 3rd years",
+      "marks": 5,
+      "topic": "Final check",
+      "difficulty": "hard",
+      "options": []
+    }
+  ],
+  "examMetadata": {
+    "totalMarks": 20,
+    "duration": 20,
+    "startTime": "2026-01-27T06:05:00.000Z",
+    "endTime": "2026-01-28T06:05:00.000Z",
+    "attemptsAllowed": 2
+  },
+  "instructions": "",
+  "generatedAt": "2026-01-27T06:13:57.644Z"
+}

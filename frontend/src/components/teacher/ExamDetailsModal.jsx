@@ -233,7 +233,7 @@ export default function ExamDetailsModal({ examId, isOpen, onClose, onUpdate }) 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Total Marks
+                      Marks Per Set
                     </label>
                     {isEditing ? (
                       <input
@@ -245,7 +245,7 @@ export default function ExamDetailsModal({ examId, isOpen, onClose, onUpdate }) 
                       />
                     ) : (
                       <p className="px-3 py-2 bg-gray-50 rounded-lg text-gray-900 font-semibold">
-                        {exam.totalMarks}
+                        {exam.paperConfig?.totalMarksPerSet || exam.totalMarks}
                       </p>
                     )}
                   </div>
