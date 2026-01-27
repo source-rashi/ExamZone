@@ -47,3 +47,9 @@ export const downloadSubmission = async (submissionId) => {
   });
   return response.data;
 };
+
+// Grade submission (teacher only)
+export const gradeSubmission = async (submissionId, gradeData) => {
+  const response = await apiClient.put(`/submissions/${submissionId}/grade`, gradeData);
+  return response.data;
+};

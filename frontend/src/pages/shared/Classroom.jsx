@@ -8,6 +8,8 @@ import * as assignmentAPI from '../../api/assignment.api';
 import examAPI from '../../api/exam.api';
 import ViewPapersModal from '../../components/teacher/ViewPapersModal';
 import ExamDetailsModal from '../../components/teacher/ExamDetailsModal';
+import AssignmentSubmissionsModal from '../../components/teacher/AssignmentSubmissionsModal';
+import ExamResultsModal from '../../components/teacher/ExamResultsModal';
 import { 
   BookOpen, 
   Users, 
@@ -371,6 +373,11 @@ function AssignmentsTab({ classId, isTeacher }) {
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [submissionsModal, setSubmissionsModal] = useState({ 
+    open: false, 
+    assignmentId: null, 
+    title: '' 
+  });
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -541,6 +548,20 @@ function AssignmentsTab({ classId, isTeacher }) {
                         <Paperclip className="w-4 h-4" />
                         Download Assignment
                       </button>
+                      
+                      {isTeacher && (
+                        <button
+                          onClick={() => setSubmissionsModal({ 
+                            open: true, 
+                            assignmentId: assignment._id, 
+                            title: assignment.title 
+                          })}
+                          className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium flex items-center gap-2"
+                        >
+                          <Users className="w-4 h-4" />
+                          View Submissions
+                        </button>
+                      )}
                       
                       {!isTeacher && (
                         <>
@@ -736,6 +757,16 @@ function AssignmentsTab({ classId, isTeacher }) {
           </div>
         </div>
       )}
+
+      {/* Assignment Submissions Modal */}
+      {submissionsModal.open && (
+        <AssignmentSubmissionsModal
+          isOpen={submissionsModal.open}
+          assignmentId={submissionsModal.assignmentId}
+          assignmentTitle={submissionsModal.title}
+          onClose={() => setSubmissionsModal({ open: false, assignmentId: null, title: '' })}
+        />
+      )}
     </div>
   );
 }
@@ -748,6 +779,7 @@ function ExamsTab({ classId, isTeacher }) {
   const [generatingPapers, setGeneratingPapers] = useState({}); // Track generation per exam
   const [viewPapersModal, setViewPapersModal] = useState({ open: false, examId: null });
   const [examDetailsModal, setExamDetailsModal] = useState({ open: false, examId: null });
+  const [examResultsModal, setExamResultsModal] = useState({ open: false, examId: null, title: '' });
 
   useEffect(() => {
     loadExams();
@@ -1089,18 +1121,31 @@ function ExamsTab({ classId, isTeacher }) {
                         shouldShow: ['published', 'running', 'closed'].includes(exam.status)
                       });
                       return ['published', 'running', 'closed'].includes(exam.status) && (
-                        <button 
-                          onClick={() => navigate(`/teacher/exam/${exam._id}/results`)}
-                          className="relative px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium flex items-center gap-2"
-                        >
-                          <FileText className="w-4 h-4" />
-                          Evaluate Submissions
-                          {exam.pendingEvaluation > 0 && (
-                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center animate-pulse">
-                              {exam.pendingEvaluation}
-                            </span>
-                          )}
-                        </button>
+                        <>
+                          <button 
+                            onClick={() => navigate(`/teacher/exam/${exam._id}/results`)}
+                            className="relative px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium flex items-center gap-2"
+                          >
+                            <FileText className="w-4 h-4" />
+                            Evaluate Submissions
+                            {exam.pendingEvaluation > 0 && (
+                              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center animate-pulse">
+                                {exam.pendingEvaluation}
+                              </span>
+                            )}
+                          </button>
+                          <button 
+                            onClick={() => setExamResultsModal({ 
+                              open: true, 
+                              examId: exam._id, 
+                              title: exam.title 
+                            })}
+                            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center gap-2"
+                          >
+                            <GraduationCap className="w-4 h-4" />
+                            View Marks
+                          </button>
+                        </>
                       );
                     })()}
 
@@ -1259,6 +1304,16 @@ function ExamsTab({ classId, isTeacher }) {
               prev.map(e => e._id === updatedExam._id ? updatedExam : e)
             );
           }}
+        />
+      )}
+
+      {/* Exam Results Modal */}
+      {examResultsModal.open && (
+        <ExamResultsModal
+          isOpen={examResultsModal.open}
+          examId={examResultsModal.examId}
+          examTitle={examResultsModal.title}
+          onClose={() => setExamResultsModal({ open: false, examId: null, title: '' })}
         />
       )}
     </div>

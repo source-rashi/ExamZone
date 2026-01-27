@@ -112,7 +112,8 @@ async function getExamAttempts(req, res) {
           id: exam._id,
           title: exam.title,
           totalMarks: actualTotalMarks,
-          duration: exam.duration
+          duration: exam.duration,
+          paperConfig: exam.paperConfig
         },
         attempts: attemptsWithRolls,
         totalAttempts,
