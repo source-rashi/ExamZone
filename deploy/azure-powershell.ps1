@@ -338,6 +338,6 @@ try {
     Main
 }
 catch {
-    Write-Error-Custom "Deployment failed: $_"
+    Write-Host "❌ Deployment failed: $_" -ForegroundColor Red
     exit 1
 }

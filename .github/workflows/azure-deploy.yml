@@ -1,0 +1,94 @@
+name: Deploy to Azure Container Apps
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  AZURE_RESOURCE_GROUP: examzone-rg
+  REGISTRY: ghcr.io
+  BACKEND_APP: examzone-backend
+  AI_GENERATOR_APP: examzone-ai-generator
+  AI_CHECKER_APP: examzone-ai-checker
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Build and push Backend image
+      run: |
+        cd backend
+        IMAGE_NAME=${{ env.REGISTRY }}/${{ github.repository_owner }}/examzone-backend
+        docker build -t $IMAGE_NAME:${{ github.sha }} .
+        docker tag $IMAGE_NAME:${{ github.sha }} $IMAGE_NAME:latest
+        docker push $IMAGE_NAME:${{ github.sha }}
+        docker push $IMAGE_NAME:latest
+
+    - name: Build and push AI Question Generator image
+      run: |
+        cd ai-services/question-generator
+        IMAGE_NAME=${{ env.REGISTRY }}/${{ github.repository_owner }}/examzone-ai-generator
+        docker build -t $IMAGE_NAME:${{ github.sha }} .
+        docker tag $IMAGE_NAME:${{ github.sha }} $IMAGE_NAME:latest
+        docker push $IMAGE_NAME:${{ github.sha }}
+        docker push $IMAGE_NAME:latest
+
+    - name: Build and push AI Answer Checker image
+      run: |
+        cd ai-services/answer-checker
+        IMAGE_NAME=${{ env.REGISTRY }}/${{ github.repository_owner }}/examzone-ai-checker
+        docker build -t $IMAGE_NAME:${{ github.sha }} .
+        docker tag $IMAGE_NAME:${{ github.sha }} $IMAGE_NAME:latest
+        docker push $IMAGE_NAME:${{ github.sha }}
+        docker push $IMAGE_NAME:latest
+
+    - name: Deploy Backend to Azure Container Apps
+      run: |
+        az containerapp update \
+          --name ${{ env.BACKEND_APP }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --image ${{ env.REGISTRY }}/${{ github.repository_owner }}/examzone-backend:${{ github.sha }}
+
+    - name: Deploy AI Question Generator to Azure Container Apps
+      run: |
+        az containerapp update \
+          --name ${{ env.AI_GENERATOR_APP }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --image ${{ env.REGISTRY }}/${{ github.repository_owner }}/examzone-ai-generator:${{ github.sha }}
+
+    - name: Deploy AI Answer Checker to Azure Container Apps
+      run: |
+        az containerapp update \
+          --name ${{ env.AI_CHECKER_APP }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --image ${{ env.REGISTRY }}/${{ github.repository_owner }}/examzone-ai-checker:${{ github.sha }}
+
+    - name: Get Backend URL
+      id: backend-url
+      run: |
+        BACKEND_URL=$(az containerapp show \
+          --name ${{ env.BACKEND_APP }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --query properties.configuration.ingress.fqdn -o tsv)
+        echo "Backend deployed at: https://$BACKEND_URL"
+        echo "::notice title=Deployment Complete::Backend URL: https://$BACKEND_URL"
