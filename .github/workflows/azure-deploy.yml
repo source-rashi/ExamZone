@@ -62,32 +62,25 @@ jobs:
         docker push $IMAGE_NAME:${{ github.sha }}
         docker push $IMAGE_NAME:latest
 
-    - name: Deploy Backend to Azure Container Apps
+    - name: Deploy Backend to Azure Web App
       run: |
-        az containerapp update \
-          --name ${{ env.BACKEND_APP }} \
+        az webapp config container set \
+          --name examzone-backend-app \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --image ${{ env.REGISTRY }}/${{ github.repository_owner }}/examzone-backend:${{ github.sha }}
+          --docker-custom-image-name ${{ env.REGISTRY }}/${{ github.repository_owner }}/examzone-backend:${{ github.sha }} \
+          --docker-registry-server-url https://${{ env.REGISTRY }}
+        
+        az webapp restart \
+          --name examzone-backend-app \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
 
-    - name: Deploy AI Question Generator to Azure Container Apps
+    # AI services deployment skipped - not deployed to Azure yet (running in mock mode)
+    
+    - name: Deployment Complete
       run: |
-        az containerapp update \
-          --name ${{ env.AI_GENERATOR_APP }} \
-          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --image ${{ env.REGISTRY }}/${{ github.repository_owner }}/examzone-ai-generator:${{ github.sha }}
-
-    - name: Deploy AI Answer Checker to Azure Container Apps
-      run: |
-        az containerapp update \
-          --name ${{ env.AI_CHECKER_APP }} \
-          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --image ${{ env.REGISTRY }}/${{ github.repository_owner }}/examzone-ai-checker:${{ github.sha }}
-
-    - name: Get Backend URL
-      id: backend-url
-      run: |
-        BACKEND_URL=$(az containerapp show \
-          --name ${{ env.BACKEND_APP }} \
+        echo "✅ Backend deployed to Azure Web App: examzone-backend-app"
+        echo "✅ Backend URL: https://examzone-backend-app.azurewebsites.net"
+        echo "⚠️ AI services are in mock mode (GEMINI API used instead)"
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --query properties.configuration.ingress.fqdn -o tsv)
         echo "Backend deployed at: https://$BACKEND_URL"
