@@ -35,39 +35,16 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Build and push Backend image
+    # Skip Docker builds - use pre-built images from GHCR
+    # Images are already built and available from initial setup
+    
+    - name: Deploy Backend to Azure Web App (using existing image)
       run: |
-        cd backend
-        IMAGE_NAME=${{ env.REGISTRY }}/${{ github.repository_owner }}/examzone-backend
-        docker build -t $IMAGE_NAME:${{ github.sha }} .
-        docker tag $IMAGE_NAME:${{ github.sha }} $IMAGE_NAME:latest
-        docker push $IMAGE_NAME:${{ github.sha }}
-        docker push $IMAGE_NAME:latest
-
-    - name: Build and push AI Question Generator image
-      run: |
-        cd ai-services/question-generator
-        IMAGE_NAME=${{ env.REGISTRY }}/${{ github.repository_owner }}/examzone-ai-generator
-        docker build -t $IMAGE_NAME:${{ github.sha }} .
-        docker tag $IMAGE_NAME:${{ github.sha }} $IMAGE_NAME:latest
-        docker push $IMAGE_NAME:${{ github.sha }}
-        docker push $IMAGE_NAME:latest
-
-    - name: Build and push AI Answer Checker image
-      run: |
-        cd ai-services/answer-checker
-        IMAGE_NAME=${{ env.REGISTRY }}/${{ github.repository_owner }}/examzone-ai-checker
-        docker build -t $IMAGE_NAME:${{ github.sha }} .
-        docker tag $IMAGE_NAME:${{ github.sha }} $IMAGE_NAME:latest
-        docker push $IMAGE_NAME:${{ github.sha }}
-        docker push $IMAGE_NAME:latest
-
-    - name: Deploy Backend to Azure Web App
-      run: |
+        # Use the latest pre-built image
         az webapp config container set \
           --name examzone-backend-app \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --docker-custom-image-name ${{ env.REGISTRY }}/${{ github.repository_owner }}/examzone-backend:${{ github.sha }} \
+          --docker-custom-image-name ${{ env.REGISTRY }}/${{ github.repository_owner }}/examzone-backend:latest \
           --docker-registry-server-url https://${{ env.REGISTRY }}
         
         az webapp restart \
