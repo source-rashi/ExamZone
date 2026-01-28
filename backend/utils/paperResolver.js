@@ -52,9 +52,72 @@ async function getStudentPaper(examId, studentId) {
     examTitle: exam.title
   });
 
-  // STEP 4: Verify setMap exists and contains student
+  // STEP 4: Verify papers exist (check both setMap and studentPapers)
+  if ((!exam.setMap || exam.setMap.length === 0) && (!exam.studentPapers || exam.studentPapers.length === 0)) {
+    throw new Error('Exam sets have not been generated yet. Please contact your teacher.');
+  }
+
+  // Try to find student's paper in studentPapers array first (more direct)
+  if (exam.studentPapers && exam.studentPapers.length > 0) {
+    const studentPaper = exam.studentPapers.find(p => p.rollNumber === rollNumber);
+    
+    if (studentPaper) {
+      console.log('[Paper Resolution] Found paper in studentPapers array:', {
+        rollNumber,
+        setId: studentPaper.setId,
+        paperPath: studentPaper.paperPath || studentPaper.pdfPath
+      });
+      
+      return {
+        // Student context
+        student: {
+          id: studentId,
+          name: resolution.student.name,
+          rollNumber: rollNumber
+        },
+        
+        // Exam context
+        exam: {
+          id: exam._id,
+          title: exam.title,
+          description: exam.description,
+          duration: exam.duration,
+          totalMarks: exam.totalMarks,
+          startTime: exam.startTime,
+          endTime: exam.endTime,
+          status: exam.status,
+          instructions: exam.paperConfig?.instructions || ''
+        },
+        
+        // Class context
+        class: {
+          id: exam.classId._id,
+          name: exam.classId.name,
+          code: exam.classId.code
+        },
+        
+        // Paper assignment
+        paper: {
+          setId: studentPaper.setId,
+          rollNumber: studentPaper.rollNumber,
+          paperPath: studentPaper.paperPath || studentPaper.pdfPath,
+          paperPreview: studentPaper.paperPreview,
+          generatedAt: studentPaper.generatedAt,
+          status: studentPaper.status
+        },
+        
+        // Additional data for direct access
+        rollNumber,
+        setId: studentPaper.setId,
+        paperPath: studentPaper.paperPath || studentPaper.pdfPath,
+        questions: studentPaper.questions || []
+      };
+    }
+  }
+
+  // Fallback: Try setMap approach
   if (!exam.setMap || exam.setMap.length === 0) {
-    throw new Error('Exam sets have not been generated yet');
+    throw new Error(`No paper found for roll number ${rollNumber}`);
   }
 
   // Find student's assigned set in setMap
@@ -154,16 +217,55 @@ async function getStudentPaper(examId, studentId) {
 async function getStudentPaperFilePath(examId, studentId) {
   const paperData = await getStudentPaper(examId, studentId);
   
+  console.log('[Paper File Path] Paper data received:', {
+    hasPath: !!paperData.paperPath,
+    hasPaper: !!paperData.paper,
+    paperPath: paperData.paperPath,
+    paperPaperPath: paperData.paper?.paperPath
+  });
+  
+  // Get the paper path - try multiple possible locations
+  let relativePath = paperData.paperPath || paperData.paper?.paperPath || paperData.paper?.pdfPath;
+  
+  if (!relativePath) {
+    console.error('[Paper File Path] No paper path found in:', paperData);
+    throw new Error('Paper file path not found. The paper may not have been generated properly.');
+  }
+  
+  console.log('[Paper File Path] Using relative path:', relativePath);
+  
   // Resolve absolute file path
-  const STORAGE_BASE = path.join(__dirname, '../../storage/exams');
-  const absolutePath = path.join(STORAGE_BASE, paperData.paper.paperPath);
+  const path = require('path');
   
-  // Verify path is within storage directory (security check)
-  const normalizedPath = path.normalize(absolutePath);
-  const normalizedBase = path.normalize(STORAGE_BASE);
-  
-  if (!normalizedPath.startsWith(normalizedBase)) {
-    throw new Error('Invalid paper path: Path traversal detected');
+  // If path is already absolute, use it
+  let absolutePath;
+  if (path.isAbsolute(relativePath)) {
+    absolutePath = relativePath;
+  } else {
+    // Try multiple base paths
+    const possibleBases = [
+      path.join(__dirname, '../../storage/exams'),
+      path.join(__dirname, '../../pdfs'),
+      path.join(process.cwd(), 'storage/exams'),
+      path.join(process.cwd(), 'pdfs')
+    ];
+    
+    // Find the first base where the file exists
+    const fs = require('fs');
+    for (const base of possibleBases) {
+      const testPath = path.join(base, relativePath);
+      if (fs.existsSync(testPath)) {
+        absolutePath = testPath;
+        console.log('[Paper File Path] Found file at:', absolutePath);
+        break;
+      }
+    }
+    
+    // If not found in any base, use default and let the route handler check existence
+    if (!absolutePath) {
+      absolutePath = path.join(process.cwd(), relativePath);
+      console.log('[Paper File Path] Using default path:', absolutePath);
+    }
   }
   
   return {

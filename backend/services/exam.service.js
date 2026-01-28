@@ -547,22 +547,27 @@ async function prepareExam(examId, teacherId) {
     throw new Error(`Cannot prepare exam with status: ${exam.status}`);
   }
 
-  // TASK 2 - Validate question source
-  if (!exam.questionSource || !exam.questionSource.type) {
-    throw new Error('Question source is required. Please add questions before preparation.');
-  }
+  // TASK 2 - Validate question source (skip for AI-generated mode)
+  // If questionMode is 'ai_generated', we don't need a question source
+  if (exam.questionMode !== 'ai_generated') {
+    if (!exam.questionSource || !exam.questionSource.type) {
+      throw new Error('Question source is required. Please add questions before preparation.');
+    }
 
-  const { type, content, filePath } = exam.questionSource;
+    const { type, content, filePath } = exam.questionSource;
 
-  if (type === 'pdf') {
-    if (!filePath || filePath.trim() === '') {
-      throw new Error('PDF file path is required for PDF question source');
+    if (type === 'pdf') {
+      if (!filePath || filePath.trim() === '') {
+        throw new Error('PDF file path is required for PDF question source');
+      }
+    } else {
+      // text or latex
+      if (!content || content.trim() === '') {
+        throw new Error('Question content cannot be empty');
+      }
     }
   } else {
-    // text or latex
-    if (!content || content.trim() === '') {
-      throw new Error('Question content cannot be empty');
-    }
+    console.log('[Prepare Exam] AI generation mode - skipping question source validation');
   }
 
   // Validation passed

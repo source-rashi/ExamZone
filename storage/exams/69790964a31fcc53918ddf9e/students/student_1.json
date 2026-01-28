@@ -1,0 +1,42 @@
+{
+  "examId": "69790964a31fcc53918ddf9e",
+  "examTitle": "CLA 1",
+  "description": "",
+  "className": "Intro to CSE",
+  "studentInfo": {
+    "id": "697905261bbafe48abd84a9d",
+    "name": "Rashi Agrawal",
+    "rollNumber": 1
+  },
+  "setInfo": {
+    "setId": "SET-001",
+    "setName": "Set SET-001"
+  },
+  "questions": [
+    {
+      "number": 1,
+      "text": "Analyze a case study in ML.",
+      "marks": 5,
+      "topic": "ML",
+      "difficulty": "medium",
+      "options": []
+    },
+    {
+      "number": 2,
+      "text": "Explain the relationship between major concepts in ML.",
+      "marks": 5,
+      "topic": "ML",
+      "difficulty": "medium",
+      "options": []
+    }
+  ],
+  "examMetadata": {
+    "totalMarks": 10,
+    "duration": 120,
+    "startTime": "2026-01-27T18:52:00.000Z",
+    "endTime": "2026-01-28T18:52:00.000Z",
+    "attemptsAllowed": 1
+  },
+  "instructions": "",
+  "generatedAt": "2026-01-27T18:58:22.621Z"
+}

@@ -20,40 +20,55 @@ router.get('/exams/:examId/my-paper/pdf', authenticate, studentOnly, async (req,
     const studentId = getStudentId(req);
     const { examId } = req.params;
     
-    console.log('[PDF Download] Request:', { studentId, examId });
+    console.log('[Student PDF Download] ===================================');
+    console.log('[Student PDF Download] Request:', { studentId, examId });
     
     // Use secure paper resolver to get file path
     const { filePath, fileName, paperData } = await getStudentPaperFilePath(examId, studentId);
     
-    console.log('[PDF Download] Resolved file path:', { filePath, fileName });
+    console.log('[Student PDF Download] Resolved:', { 
+      filePath, 
+      fileName,
+      rollNumber: paperData.student?.rollNumber 
+    });
     
-    // Verify file exists
-    try {
-      await fs.access(filePath);
-    } catch (error) {
-      console.error('[PDF Download] File not found:', filePath);
+    // Verify file exists using sync method (more reliable)
+    const fsSync = require('fs');
+    if (!fsSync.existsSync(filePath)) {
+      console.error('[Student PDF Download] File does not exist:', filePath);
+      
+      // Try to give helpful error message
       return res.status(404).json({
         success: false,
-        message: 'Paper file not found on server'
+        message: 'Paper file not found. The paper may not have been generated yet or the file was deleted.'
       });
     }
     
-    console.log('[PDF Download] Serving paper:', {
-      studentId,
-      rollNumber: paperData.student.rollNumber,
-      examId,
-      fileName
+    console.log('[Student PDF Download] File exists, sending download');
+    
+    // Send file with error handling
+    res.download(filePath, fileName, (err) => {
+      if (err) {
+        console.error('[Student PDF Download] Error sending file:', err);
+        if (!res.headersSent) {
+          res.status(500).json({
+            success: false,
+            message: 'Failed to download file: ' + err.message
+          });
+        }
+      } else {
+        console.log('[Student PDF Download] ✅ Download successful for roll:', paperData.student?.rollNumber);
+      }
     });
     
-    // Stream PDF file
-    res.download(filePath, fileName);
   } catch (error) {
-    console.error('[PDF Download] Error:', error);
-    console.error('[PDF Download] Error stack:', error.stack);
+    console.error('[Student PDF Download] ❌ Error:', error.message);
+    console.error('[Student PDF Download] Stack:', error.stack);
     
     const status = error.message.includes('not found') ? 404 :
                    error.message.includes('not yet available') ? 403 :
                    error.message.includes('not enrolled') ? 403 :
+                   error.message.includes('not have been generated') ? 404 :
                    error.message.includes('Path traversal') ? 403 :
                    500;
     

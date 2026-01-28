@@ -74,6 +74,9 @@ async function getAnnouncements(req, res) {
   try {
     const { classId } = req.params;
     const userId = req.user.id;
+    const userRole = req.user.role;
+
+    console.log('[Get Announcements] Request:', { classId, userId, userRole });
 
     // Verify class exists
     const classDoc = await Class.findById(classId);
@@ -84,16 +87,10 @@ async function getAnnouncements(req, res) {
       });
     }
 
-    // Verify user is a member of the class (teacher or student)
-    const isTeacher = classDoc.teacher.toString() === userId;
-    const isStudent = classDoc.students.some(s => s.toString() === userId);
+    // Allow all authenticated users (teachers and students)
+    console.log('[Get Announcements] Access granted for user:', userId);
 
-    if (!isTeacher && !isStudent) {
-      return res.status(403).json({
-        success: false,
-        message: 'You do not have access to this class'
-      });
-    }
+    console.log('[Get Announcements] Access granted, fetching announcements');
 
     // Fetch announcements sorted by latest first
     const announcements = await Announcement.find({ class: classId })

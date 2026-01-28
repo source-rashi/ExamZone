@@ -1,0 +1,50 @@
+{
+  "examId": "6979c1a86cea011a829d1e60",
+  "examTitle": "MID",
+  "description": "",
+  "className": "ABCD",
+  "studentInfo": {
+    "id": "6979051b1bbafe48abd84a94",
+    "name": "Rashi Agrawal",
+    "rollNumber": 1
+  },
+  "setInfo": {
+    "setId": "SET-001",
+    "setName": "Set SET-001"
+  },
+  "questions": [
+    {
+      "number": 1,
+      "text": "Explain the causes of the French Revolution.",
+      "marks": 7,
+      "topic": "History",
+      "difficulty": "medium",
+      "options": []
+    },
+    {
+      "number": 2,
+      "text": "Discuss the impact of the Industrial Revolution on society.",
+      "marks": 7,
+      "topic": "History",
+      "difficulty": "medium",
+      "options": []
+    },
+    {
+      "number": 3,
+      "text": "What were the main provisions of the Treaty of Versailles?",
+      "marks": 6,
+      "topic": "History",
+      "difficulty": "medium",
+      "options": []
+    }
+  ],
+  "examMetadata": {
+    "totalMarks": 20,
+    "duration": 10,
+    "startTime": "2026-01-28T07:58:00.000Z",
+    "endTime": "2026-01-29T07:58:00.000Z",
+    "attemptsAllowed": 1
+  },
+  "instructions": "",
+  "generatedAt": "2026-01-28T08:10:02.460Z"
+}

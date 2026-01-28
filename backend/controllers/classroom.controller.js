@@ -40,26 +40,17 @@ async function createAnnouncement(req, res) {
 async function getAnnouncements(req, res) {
   try {
     const { id: classId } = req.params;
-    const userId = req.user.id;
 
-    // Verify user has access to this class
-    const classDoc = await Class.findById(classId);
-    if (!classDoc) {
+    // The middleware verifyClassEnrollment already verified access
+    // req.classDoc is set by middleware
+    // req.isTeacher indicates if user is teacher
+    // req.enrollment is set if user is student
+    
+    if (!req.classDoc) {
       return res.status(404).json({ success: false, message: 'Class not found' });
     }
 
-    // Check if user is teacher or student in this class
-    const isTeacher = classDoc.teacherId?.toString() === userId || classDoc.teacher?.toString() === userId;
-    
-    // PHASE 7.0: Use enrollment resolver for students
-    let hasAccess = isTeacher;
-    if (!isTeacher && req.user.role === 'student') {
-      hasAccess = await isStudentInClass(classId, userId);
-    }
-
-    if (!hasAccess) {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
-    }
+    console.log('[Get Announcements] User has access via middleware');
 
     const announcements = await Announcement.find({ classId })
       .sort({ createdAt: -1 })
@@ -265,25 +256,13 @@ async function createAssignment(req, res) {
 async function getAssignments(req, res) {
   try {
     const { id: classId } = req.params;
-    const userId = req.user.id;
 
-    // Verify user has access to this class
-    const classDoc = await Class.findById(classId);
-    if (!classDoc) {
+    // The middleware verifyClassEnrollment already verified access
+    if (!req.classDoc) {
       return res.status(404).json({ success: false, message: 'Class not found' });
     }
 
-    const isTeacher = classDoc.teacherId?.toString() === userId || classDoc.teacher?.toString() === userId;
-    
-    // PHASE 7.0: Use enrollment resolver for students
-    let hasAccess = isTeacher;
-    if (!isTeacher && req.user.role === 'student') {
-      hasAccess = await isStudentInClass(classId, userId);
-    }
-
-    if (!hasAccess) {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
-    }
+    console.log('[Get Assignments] User has access via middleware');
 
     const assignments = await Assignment.find({ classId })
       .sort({ deadline: 1 })
@@ -301,31 +280,45 @@ async function getAssignments(req, res) {
 async function getMembers(req, res) {
   try {
     const { id: classId } = req.params;
-    const userId = req.user.id;
 
-    // Verify user has access to this class
-    const classDoc = await Class.findById(classId).populate('teacherId', 'name email');
-    if (!classDoc) {
+    console.log('[Get Members] Request for class:', classId);
+
+    // Verify user has access (already done by middleware)
+    if (!req.classDoc) {
       return res.status(404).json({ success: false, message: 'Class not found' });
     }
 
-    const isTeacher = classDoc.teacherId?._id?.toString() === userId || classDoc.teacher?.toString() === userId;
-    const isStudent = classDoc.students.some(s => s.email === req.user.email);
+    const classDoc = req.classDoc;
 
-    if (!isTeacher && !isStudent) {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
-    }
+    // Get teacher info
+    const teacher = classDoc.teacherId || classDoc.teacher;
+    const User = require('../models/User');
+    const teacherInfo = await User.findById(teacher).select('name email role');
 
-    const teacher = classDoc.teacherId || { name: classDoc.teacherName, email: 'N/A' };
-    const students = classDoc.students.map(s => ({
-      name: s.name,
-      email: s.email,
-      roll: s.roll
-    }));
+    // Get students from Enrollment table (source of truth)
+    const Enrollment = require('../models/Enrollment');
+    const enrollments = await Enrollment.find({
+      classId,
+      status: 'active'
+    }).populate('studentId', 'name email role');
+
+    console.log('[Get Members] Found enrollments:', enrollments.length);
+
+    const students = enrollments
+      .filter(e => e.studentId) // Filter out any null/deleted users
+      .map(e => ({
+        _id: e.studentId._id,
+        name: e.studentId.name,
+        email: e.studentId.email,
+        rollNumber: e.rollNumber,
+        joinedAt: e.joinedAt
+      }));
+
+    console.log('[Get Members] Returning:', { teacher: teacherInfo?.name, studentsCount: students.length });
 
     res.json({
       success: true,
-      teacher,
+      teacher: teacherInfo || { name: 'Teacher', email: 'N/A' },
       students,
       totalStudents: students.length
     });

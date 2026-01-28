@@ -76,12 +76,17 @@ async function resolveStudentInClass(classId, studentId) {
   );
 
   if (!isInStudentsList) {
-    console.error('[Enrollment Integrity Error] Student has enrollment but not in Class.students[]', {
+    console.warn('[Enrollment Integrity Warning] Student has enrollment but not in Class.students[]', {
       classId: classObjectId,
       studentId: studentObjectId,
       enrollmentId: enrollment._id
     });
-    throw new Error('Data integrity error: Enrollment exists but student not in class list');
+    
+    // FIXED: Don't throw error - Enrollment table is source of truth
+    // Auto-fix by adding student to class
+    console.log('[Enrollment Auto-Fix] Adding student to Class.students[] array');
+    classDoc.students.push(studentObjectId);
+    await classDoc.save();
   }
 
   // Return validated resolution

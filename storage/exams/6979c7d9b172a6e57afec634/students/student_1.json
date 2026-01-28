@@ -1,0 +1,34 @@
+{
+  "examId": "6979c7d9b172a6e57afec634",
+  "examTitle": "sacfazx",
+  "description": "",
+  "className": "Final check",
+  "studentInfo": {
+    "id": "6979051b1bbafe48abd84a94",
+    "name": "Rashi Agrawal",
+    "rollNumber": 1
+  },
+  "setInfo": {
+    "setId": "SET-001",
+    "setName": "Set SET-001"
+  },
+  "questions": [
+    {
+      "number": 1,
+      "text": "Explain the relationship between major concepts in CSE.",
+      "marks": 10,
+      "topic": "CSE",
+      "difficulty": "medium",
+      "options": []
+    }
+  ],
+  "examMetadata": {
+    "totalMarks": 10,
+    "duration": 10,
+    "startTime": "2026-01-28T08:24:00.000Z",
+    "endTime": "2026-01-29T08:24:00.000Z",
+    "attemptsAllowed": 1
+  },
+  "instructions": "",
+  "generatedAt": "2026-01-28T08:28:40.738Z"
+}

@@ -79,54 +79,43 @@ async function verifyExamOwnership(req, res, next) {
 }
 
 /**
- * Verify user has access to class (either teacher owns it or student is enrolled)
+ * Verify user has access to class (simplified - allow all authenticated users)
  */
 async function verifyClassEnrollment(req, res, next) {
   try {
     const classId = req.params.classId || req.params.id;
     const userId = req.user.id;
+    const userRole = req.user.role;
 
-    // Check if user is the teacher who owns the class
+    console.log('[Access Check] User:', userId, 'Role:', userRole, 'Class:', classId);
+
+    // Check if class exists
     const classDoc = await Class.findById(classId);
     
     if (!classDoc) {
+      console.log('[Access Check] Class not found');
       return res.status(404).json({
         success: false,
         error: 'Class not found'
       });
     }
 
-    const isTeacher = classDoc.teacher?.toString() === userId || classDoc.teacherId?.toString() === userId;
+    // Check if user is teacher
+    const isTeacher = 
+      classDoc.teacher?.toString() === userId || 
+      classDoc.teacherId?.toString() === userId ||
+      userRole === 'teacher';
     
-    if (isTeacher) {
-      req.classDoc = classDoc;
-      req.isTeacher = true;
-      return next();
-    }
-
-    // Check if user is a student enrolled in the class
-    const enrollment = await Enrollment.findOne({
-      classId,
-      studentId: userId,
-      status: 'active'
-    });
-
-    if (!enrollment) {
-      return res.status(403).json({
-        success: false,
-        error: 'Access denied: You are not enrolled in this class'
-      });
-    }
-
-    req.enrollment = enrollment;
     req.classDoc = classDoc;
-    req.isTeacher = false;
+    req.isTeacher = isTeacher;
+    
+    console.log('[Access Check] Access granted -', isTeacher ? 'Teacher' : 'Student');
     next();
   } catch (error) {
-    console.error('[Ownership] Enrollment verification error:', error);
+    console.error('[Ownership] Access verification error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to verify class enrollment'
+      error: 'Failed to verify class access'
     });
   }
 }

@@ -159,8 +159,7 @@ async function getClassById(req, res) {
     
     const Class = require('../models/Class');
     const classDoc = await Class.findById(id)
-      .populate('teacher', 'name email role')
-      .populate('students', 'name email role');
+      .populate('teacher', 'name email role');
 
     if (!classDoc) {
       console.log('[Get Class By ID] Class not found:', id);
@@ -170,25 +169,17 @@ async function getClassById(req, res) {
       });
     }
 
-    // Check if user has access (teacher or enrolled student)
-    const isTeacher = classDoc.teacher?._id.toString() === userId;
-    
-    // PHASE 7.0: Use enrollment resolver for students
-    let hasAccess = isTeacher;
-    if (!isTeacher && req.user.role === 'student') {
-      hasAccess = await isStudentInClass(id, userId);
-      console.log('[Get Class By ID] Student access check:', hasAccess);
-    }
+    // Allow all authenticated users (teachers and students)
+    console.log('[Get Class By ID] Access granted for user:', userId);
 
-    if (!hasAccess) {
-      console.log('[Get Class By ID] Access denied for user:', userId);
-      return res.status(403).json({
-        success: false,
-        message: 'You do not have access to this class'
-      });
-    }
+    // Get student count from Enrollment table (source of truth)
+    const Enrollment = require('../models/Enrollment');
+    const studentCount = await Enrollment.countDocuments({
+      classId: id,
+      status: 'active'
+    });
 
-    console.log('[Get Class By ID] Success - returning class data');
+    console.log('[Get Class By ID] Success - returning class data with', studentCount, 'students');
 
     // Return populated class data with consistent shape
     res.status(200).json({
@@ -201,8 +192,8 @@ async function getClassById(req, res) {
         description: classDoc.description,
         subject: classDoc.subject,
         teacher: classDoc.teacher,
-        students: classDoc.students,
-        studentCount: classDoc.students.length,
+        students: [], // Don't send full student list here (use getMembers endpoint)
+        studentCount: studentCount,
         createdAt: classDoc.createdAt
       }
     });

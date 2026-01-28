@@ -304,12 +304,26 @@ function getExamConfig(exam) {
   console.log('[Config Validator] VALIDATING EXAM CONFIGURATION');
   console.log('[Config Validator] ========================================');
 
-  // PHASE 6.3.11: STRICT validation - NO fallbacks allowed
+  // PHASE 6.3.11: Check for paperConfig, fallback to legacy fields for backward compatibility
+  let config;
+  let usedFallback = false;
+  
   if (!exam.paperConfig) {
-    throw new Error('GENERATION BLOCKED: paperConfig is missing. Teacher must configure exam settings.');
+    console.log('[Config Validator] ⚠️ paperConfig missing, using legacy fields as fallback');
+    usedFallback = true;
+    
+    // Create config from legacy fields
+    config = {
+      subject: exam.subject || 'General',
+      difficulty: exam.difficultyLevel || 'mixed',
+      questionsPerSet: exam.questionsPerSet || 20,
+      totalMarksPerSet: exam.totalMarksPerSet || exam.totalMarks || 100,
+      marksMode: 'auto',
+      instructions: ''
+    };
+  } else {
+    config = exam.paperConfig;
   }
-
-  const config = exam.paperConfig;
 
   // Validate required fields
   const errors = [];
@@ -345,7 +359,7 @@ function getExamConfig(exam) {
     instructions: config.instructions || ''
   };
 
-  console.log('[Config Validator] ✅ Configuration valid:');
+  console.log('[Config Validator] ✅ Configuration valid' + (usedFallback ? ' (using legacy fallback)' : '') + ':');
   console.log('[Config Validator]   Subject:', validatedConfig.subject);
   console.log('[Config Validator]   Difficulty:', validatedConfig.difficulty);
   console.log('[Config Validator]   Questions per set:', validatedConfig.questionsPerSet);

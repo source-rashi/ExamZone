@@ -39,7 +39,7 @@ const authLimiter = rateLimit({
  */
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX) || 100, // 100 requests per window
+  max: process.env.NODE_ENV === 'development' ? 1000 : (parseInt(process.env.RATE_LIMIT_MAX) || 100), // Much higher limit in dev
   message: {
     success: false,
     error: 'Too many requests. Please try again later.'
@@ -47,7 +47,10 @@ const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    // Skip rate limiting for health checks
+    // Skip rate limiting for health checks and in development mode
+    if (process.env.NODE_ENV === 'development' && process.env.DISABLE_RATE_LIMIT === 'true') {
+      return true;
+    }
     return req.path.startsWith('/api/health');
   },
   handler: (req, res) => {

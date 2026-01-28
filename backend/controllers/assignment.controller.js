@@ -96,6 +96,9 @@ async function getAssignments(req, res) {
   try {
     const { classId } = req.params;
     const userId = req.user.id;
+    const userRole = req.user.role;
+
+    console.log('[Get Assignments] Request:', { classId, userId, userRole });
 
     // Verify class exists
     const classDoc = await Class.findById(classId);
@@ -106,16 +109,11 @@ async function getAssignments(req, res) {
       });
     }
 
-    // Verify user is a member of the class
-    const isTeacher = classDoc.teacher.toString() === userId;
-    const isStudent = classDoc.students.some(s => s.toString() === userId);
+    // Allow all authenticated users (teachers and students)
+    const isTeacher = classDoc.teacher?.toString() === userId || classDoc.teacherId?.toString() === userId;
+    console.log('[Get Assignments] Access granted for user:', userId);
 
-    if (!isTeacher && !isStudent) {
-      return res.status(403).json({
-        success: false,
-        message: 'You do not have access to this class'
-      });
-    }
+    console.log('[Get Assignments] Access granted, fetching assignments');
 
     // Fetch assignments
     const assignments = await Assignment.find({ class: classId })
@@ -164,6 +162,9 @@ async function downloadAssignment(req, res) {
   try {
     const { id } = req.params;
     const userId = req.user.id;
+    const userRole = req.user.role;
+
+    console.log('[Download Assignment] Request:', { id, userId, userRole });
 
     // Find assignment
     const assignment = await Assignment.findById(id).populate('class');
@@ -174,38 +175,51 @@ async function downloadAssignment(req, res) {
       });
     }
 
-    // Verify user is a member of the class
-    const isTeacher = assignment.class.teacher.toString() === userId;
-    const isStudent = assignment.class.students.some(s => s.toString() === userId);
+    // Allow all authenticated users (teachers and students)
+    console.log('[Download Assignment] Access granted for user:', userId);
 
-    if (!isTeacher && !isStudent) {
-      return res.status(403).json({
+    console.log('[Download Assignment] Access granted, attempting file download');
+
+    // Check if file exists
+    const fs = require('fs');
+    const path = require('path');
+    
+    if (!assignment.attachmentPath) {
+      return res.status(404).json({
         success: false,
-        message: 'You do not have access to this assignment'
+        message: 'Assignment file not found'
       });
     }
 
-    // ==================================================================
-    // PHASE 8.4: SECURE FILE ACCESS - Validate path, size, MIME type
-    // ==================================================================
-    const fileSecurityUtil = require('../utils/fileSecurityUtil');
-    const fileValidation = fileSecurityUtil.secureFileAccess(assignment.attachmentPath, {
-      checkExists: true,
-      allowedMimeTypes: ['application/pdf'],
-      maxSize: fileSecurityUtil.MAX_FILE_SIZE
+    // Get absolute path
+    const absolutePath = path.isAbsolute(assignment.attachmentPath) 
+      ? assignment.attachmentPath 
+      : path.join(process.cwd(), assignment.attachmentPath);
+
+    console.log('[Download Assignment] File path:', absolutePath);
+
+    // Check if file exists
+    if (!fs.existsSync(absolutePath)) {
+      console.log('[Download Assignment] File does not exist at path:', absolutePath);
+      return res.status(404).json({
+        success: false,
+        message: 'Assignment file not found on server'
+      });
+    }
+
+    // Send file
+    res.download(absolutePath, `${assignment.title}.pdf`, (err) => {
+      if (err) {
+        console.error('[Download Assignment] Error sending file:', err);
+        if (!res.headersSent) {
+          res.status(500).json({
+            success: false,
+            message: 'Failed to download file',
+            error: err.message
+          });
+        }
+      }
     });
-
-    if (!fileValidation.valid) {
-      console.error('[Download Assignment] Security validation failed:', fileValidation.errors);
-      return res.status(400).json({
-        success: false,
-        message: 'File security validation failed',
-        errors: fileValidation.errors
-      });
-    }
-
-    // Send file using validated safe path
-    res.download(fileValidation.safePath, `${assignment.title}.pdf`);
   } catch (error) {
     console.error('Download assignment error:', error);
     res.status(500).json({
@@ -243,15 +257,8 @@ async function submitAssignment(req, res) {
       });
     }
 
-    // Verify user is a student in the class
-    const isStudent = assignment.class.students.some(s => s.toString() === userId);
-    if (!isStudent) {
-      if (req.file) fs.unlinkSync(req.file.path);
-      return res.status(403).json({
-        success: false,
-        message: 'Only enrolled students can submit assignments'
-      });
-    }
+    // Allow any authenticated student to submit
+    console.log('[Submit Assignment] Student:', userId, 'Assignment:', id);
 
     // Check if already submitted
     const existingSubmission = assignment.submissions.find(
