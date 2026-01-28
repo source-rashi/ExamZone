@@ -44,6 +44,22 @@ services:
     networks:
       - examzone-network
 
+  ai-answer-checker:
+    build:
+      context: ./ai-services/answer-checker
+      dockerfile: Dockerfile
+    container_name: examzone-ai-checker
+    ports:
+      - "5002:5002"
+    environment:
+      - PORT=5002
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      - ./ai-services/answer-checker/static:/app/static
+    restart: unless-stopped
+    networks:
+      - examzone-network
+
 networks:
   examzone-network:
     driver: bridge
