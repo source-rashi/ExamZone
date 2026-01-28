@@ -28,9 +28,9 @@ async function checkAttemptEligibility(examId, studentId) {
     throw new Error(`Exam is ${exam.status}. Cannot start attempt.`);
   }
 
-  // Check time window
+  // Check time window - but allow published exams to start immediately
   const now = new Date();
-  if (exam.startTime && now < exam.startTime) {
+  if (exam.startTime && now < exam.startTime && exam.status !== 'published') {
     throw new Error('Exam has not started yet');
   }
   if (exam.endTime && now > exam.endTime) {
