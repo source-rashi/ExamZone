@@ -57,8 +57,4 @@ jobs:
       run: |
         echo "✅ Backend deployed to Azure Web App: examzone-backend-app"
         echo "✅ Backend URL: https://examzone-backend-app.azurewebsites.net"
-        echo "⚠️ AI services are in mock mode (GEMINI API used instead)"
-          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --query properties.configuration.ingress.fqdn -o tsv)
-        echo "Backend deployed at: https://$BACKEND_URL"
-        echo "::notice title=Deployment Complete::Backend URL: https://$BACKEND_URL"
+        echo "⚠️  AI services are in mock mode - GEMINI API used instead"
