@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build:
@@ -45,6 +43,7 @@ services:
     environment:
       - PORT=5001
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GOOGLE_API_KEY=${GEMINI_API_KEY}
     volumes:
       - ./ai-services/question-generator/static:/app/static
     restart: unless-stopped
@@ -61,6 +60,7 @@ services:
     environment:
       - PORT=5002
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GOOGLE_API_KEY=${GEMINI_API_KEY}
     volumes:
       - ./ai-services/answer-checker/static:/app/static
     restart: unless-stopped

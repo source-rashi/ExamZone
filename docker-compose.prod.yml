@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Production Docker Compose Configuration for ExamZone
 # This configuration is optimized for cloud deployment (Azure Container Apps/App Service)
 
