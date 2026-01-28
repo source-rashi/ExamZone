@@ -7,9 +7,9 @@ services:
       dockerfile: Dockerfile
     container_name: examzone-backend
     ports:
-      - "3000:3000"
+      - "${BACKEND_PORT:-3000}:3000"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-development}
       - PORT=3000
       - MONGODB_URI=${MONGODB_URI}
       - JWT_SECRET=${JWT_SECRET}
@@ -20,10 +20,17 @@ services:
       - EMAIL_USER=${EMAIL_USER}
       - EMAIL_PASS=${EMAIL_PASS}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
+      - AI_QUESTION_GENERATOR_URL=http://ai-question-generator:5001
+      - AI_ANSWER_CHECKER_URL=http://ai-answer-checker:5002
+      - FASTAPI_AI_URL=http://ai-question-generator:5001
+      - GOOGLE_API_KEY=${GEMINI_API_KEY}
     volumes:
-      - ./backend/logs:/app/logs
-      - ./backend/pdfs:/app/pdfs
-      - ./backend/uploads:/app/uploads
+      - ./logs:/app/logs
+      - ./pdfs:/app/pdfs
+      - ./uploads:/app/uploads
+    depends_on:
+      - ai-question-generator
+      - ai-answer-checker
     restart: unless-stopped
     networks:
       - examzone-network
@@ -34,7 +41,7 @@ services:
       dockerfile: Dockerfile
     container_name: examzone-ai-generator
     ports:
-      - "5001:5001"
+      - "${AI_GENERATOR_PORT:-5001}:5001"
     environment:
       - PORT=5001
       - GEMINI_API_KEY=${GEMINI_API_KEY}
@@ -50,7 +57,7 @@ services:
       dockerfile: Dockerfile
     container_name: examzone-ai-checker
     ports:
-      - "5002:5002"
+      - "${AI_CHECKER_PORT:-5002}:5002"
     environment:
       - PORT=5002
       - GEMINI_API_KEY=${GEMINI_API_KEY}
@@ -63,3 +70,4 @@ services:
 networks:
   examzone-network:
     driver: bridge
+

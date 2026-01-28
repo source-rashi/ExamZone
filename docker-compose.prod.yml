@@ -1,0 +1,76 @@
+version: '3.8'
+
+# Production Docker Compose Configuration for ExamZone
+# This configuration is optimized for cloud deployment (Azure Container Apps/App Service)
+
+services:
+  backend:
+    image: ${DOCKER_REGISTRY}/examzone-backend:${IMAGE_TAG:-latest}
+    container_name: examzone-backend-prod
+    ports:
+      - "${BACKEND_PORT:-80}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGODB_URI=${MONGODB_URI}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - AI_QUESTION_GENERATOR_URL=${AI_QUESTION_GENERATOR_URL:-http://ai-question-generator:5001}
+      - AI_ANSWER_CHECKER_URL=${AI_ANSWER_CHECKER_URL:-http://ai-answer-checker:5002}
+      - FASTAPI_AI_URL=${AI_QUESTION_GENERATOR_URL:-http://ai-question-generator:5001}
+      - GOOGLE_API_KEY=${GEMINI_API_KEY}
+    depends_on:
+      - ai-question-generator
+      - ai-answer-checker
+    restart: always
+    networks:
+      - examzone-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  ai-question-generator:
+    image: ${DOCKER_REGISTRY}/examzone-ai-generator:${IMAGE_TAG:-latest}
+    container_name: examzone-ai-generator-prod
+    ports:
+      - "${AI_GENERATOR_PORT:-5001}:5001"
+    environment:
+      - PORT=5001
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    restart: always
+    networks:
+      - examzone-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  ai-answer-checker:
+    image: ${DOCKER_REGISTRY}/examzone-ai-checker:${IMAGE_TAG:-latest}
+    container_name: examzone-ai-checker-prod
+    ports:
+      - "${AI_CHECKER_PORT:-5002}:5002"
+    environment:
+      - PORT=5002
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    restart: always
+    networks:
+      - examzone-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  examzone-network:
+    driver: bridge
