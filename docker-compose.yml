@@ -28,6 +28,22 @@ services:
     networks:
       - examzone-network
 
+  ai-question-generator:
+    build:
+      context: ./ai-services/question-generator
+      dockerfile: Dockerfile
+    container_name: examzone-ai-generator
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      - ./ai-services/question-generator/static:/app/static
+    restart: unless-stopped
+    networks:
+      - examzone-network
+
 networks:
   examzone-network:
     driver: bridge

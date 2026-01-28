@@ -1,0 +1,55 @@
+# Python cache
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv
+env
+ENV
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov
+
+# Logs
+*.log
+
+# Generated files (runtime only)
+static/generated_papers/*
+static/uploads/*
+
+# Documentation
+README.md
+*.md
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Temporary files
+tmp
+temp
+.tmp
+
+# Git
+.git
+.gitignore
+abc.txt
