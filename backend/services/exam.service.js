@@ -605,11 +605,37 @@ async function getExamById(examId, userId, userRole) {
   return exam;
 }
 
+/**
+ * Delete an exam
+ */
+async function deleteExam(examId, teacherId) {
+  const exam = await Exam.findById(examId);
+
+  if (!exam) {
+    throw new Error('Exam not found');
+  }
+
+  // Verify teacher owns the exam
+  if (exam.createdBy.toString() !== teacherId) {
+    throw new Error('Only the exam creator can delete it');
+  }
+
+  // Prevent deleting published/running exams
+  if (['published', 'running'].includes(exam.status)) {
+    throw new Error('Cannot delete published or running exams. Close the exam first.');
+  }
+
+  await Exam.findByIdAndDelete(examId);
+
+  return { success: true, message: 'Exam deleted successfully' };
+}
+
 module.exports = {
   createExam,
   updateExam,
   publishExam,
   closeExam,
+  deleteExam,
   getClassExams,
   getStudentExams,
   generateQuestionSets,

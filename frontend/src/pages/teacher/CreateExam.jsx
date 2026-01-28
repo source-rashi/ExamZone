@@ -79,10 +79,19 @@ export default function CreateExam() {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : (type === 'number' ? Number(value) : value)
-    }));
+    
+    // For datetime-local inputs, keep the value as-is (local time string)
+    if (type === 'datetime-local') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value // Store exactly what user selected
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : (type === 'number' ? Number(value) : value)
+      }));
+    }
   };
 
   const validateStep = (step) => {

@@ -8,7 +8,8 @@ const router = express.Router();
 const { 
   createExam,
   updateExam,
-  publishExam, 
+  publishExam,
+  deleteExam,
   generateQuestionPapers,
   generateStudentPapers,
   triggerEvaluation,
@@ -56,6 +57,13 @@ router.get('/:id', authenticate, getExamById);
  * @access Teacher only (creator only)
  */
 router.patch('/:id', authenticate, teacherOnly, verifyExamOwnership, updateExam);
+
+/**
+ * @route DELETE /api/v2/exams/:id
+ * @desc Delete an exam
+ * @access Teacher only (creator only)
+ */
+router.delete('/:id', authenticate, teacherOnly, verifyExamOwnership, deleteExam);
 
 /**
  * @route PATCH /api/v2/exams/:examId/publish

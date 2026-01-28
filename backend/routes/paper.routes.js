@@ -85,9 +85,9 @@ router.get('/exam/:examId/student/:rollNumber',
         });
       }
       
-      // Find student's paper
+      // Find student's paper - handle both string and number formats
       const paper = exam.studentPapers.find(p => 
-        p.rollNumber === parseInt(rollNumber)
+        p.rollNumber == rollNumber || p.rollNumber === parseInt(rollNumber)
       );
       
       if (!paper) {

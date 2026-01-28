@@ -1140,10 +1140,63 @@ async function listStudentFiles(req, res) {
   }
 }
 
+/**
+ * Delete an exam
+ * @route DELETE /api/v2/exams/:id
+ */
+async function deleteExam(req, res) {
+  try {
+    const { id } = req.params;
+    const teacherId = req.user?.id;
+
+    if (!teacherId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    const result = await examService.deleteExam(id, teacherId);
+
+    res.status(200).json({
+      success: true,
+      message: result.message
+    });
+  } catch (error) {
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('Only the exam creator') || error.message.includes('not authorized')) {
+      return res.status(403).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('Cannot delete')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete exam',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   createExam,
   updateExam,
   publishExam,
+  deleteExam,
   generateQuestionPapers,
   generateStudentPapers,
   triggerEvaluation,
