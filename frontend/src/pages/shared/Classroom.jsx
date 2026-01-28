@@ -889,6 +889,27 @@ function ExamsTab({ classId, isTeacher }) {
     }
   };
 
+  const handleDeleteExam = async (examId, examTitle) => {
+    const confirm = window.confirm(`Delete exam "${examTitle}"?\n\nThis action cannot be undone. You can only delete draft or closed exams.`);
+    if (!confirm) return;
+
+    try {
+      console.log('🗑️ Deleting exam:', examId);
+      await examAPI.deleteExam(examId);
+      
+      console.log('✅ Exam deleted');
+      
+      // Remove from state
+      setExams(prev => prev.filter(e => e._id !== examId));
+      
+      alert('Exam deleted successfully!');
+    } catch (error) {
+      console.error('❌ Failed to delete exam:', error);
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to delete exam';
+      alert(`Error: ${errorMsg}`);
+    }
+  };
+
   const getStatusBadge = (exam) => {
     if (exam.status === 'draft') {
       return <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded-full">Draft</span>;
@@ -1045,6 +1066,13 @@ function ExamsTab({ classId, isTeacher }) {
                             </>
                           )}
                         </button>
+                        <button 
+                          onClick={() => handleDeleteExam(exam._id, exam.title)}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium flex items-center gap-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
+                        </button>
                       </>
                     )}
 
@@ -1145,6 +1173,15 @@ function ExamsTab({ classId, isTeacher }) {
                             <GraduationCap className="w-4 h-4" />
                             View Marks
                           </button>
+                          {exam.status === 'closed' && (
+                            <button 
+                              onClick={() => handleDeleteExam(exam._id, exam.title)}
+                              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium flex items-center gap-2"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Delete
+                            </button>
+                          )}
                         </>
                       );
                     })()}
