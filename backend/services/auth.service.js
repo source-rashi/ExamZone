@@ -14,15 +14,16 @@ const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 /**
  * Login with Google OAuth token
  * @param {String} googleToken - Google ID token from client
+ * @param {String} selectedRole - User selected role (teacher or student)
  * @returns {Object} { token, user }
  */
-async function loginWithGoogle(googleToken) {
+async function loginWithGoogle(googleToken, selectedRole = null) {
   try {
     // Verify Google token and extract profile
     const googleProfile = await verifyGoogleToken(googleToken);
     
     // Find or create user
-    const user = await findOrCreateUser(googleProfile);
+    const user = await findOrCreateUser(googleProfile, selectedRole);
     
     // Issue JWT
     const token = issueJwt(user);
@@ -70,9 +71,10 @@ async function verifyGoogleToken(token) {
 /**
  * Find existing user or create new one from Google profile
  * @param {Object} googleProfile - { email, name, picture, emailVerified }
+ * @param {String} selectedRole - User selected role (teacher or student)
  * @returns {Object} User document
  */
-async function findOrCreateUser(googleProfile) {
+async function findOrCreateUser(googleProfile, selectedRole = null) {
   const { email, name, picture, emailVerified } = googleProfile;
   
   // Check if email is verified
@@ -92,8 +94,13 @@ async function findOrCreateUser(googleProfile) {
     return user;
   }
   
-  // Create new user
-  const role = determineRole(email);
+  // Create new user - use selected role if provided, otherwise determine from email
+  let role;
+  if (selectedRole && (selectedRole === ROLES.TEACHER || selectedRole === ROLES.STUDENT)) {
+    role = selectedRole;
+  } else {
+    role = determineRole(email);
+  }
   
   user = await User.create({
     email,

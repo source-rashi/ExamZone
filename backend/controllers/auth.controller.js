@@ -164,7 +164,7 @@ async function login(req, res, next) {
  */
 async function loginWithGoogle(req, res, next) {
   try {
-    const { token } = req.body;
+    const { token, role } = req.body;
     
     if (!token) {
       return res.status(400).json({
@@ -173,7 +173,8 @@ async function loginWithGoogle(req, res, next) {
       });
     }
     
-    const result = await authService.loginWithGoogle(token);
+    // Pass selected role to auth service (only used for new users)
+    const result = await authService.loginWithGoogle(token, role);
     
     // Return token and user directly (frontend expects this format)
     res.status(200).json({

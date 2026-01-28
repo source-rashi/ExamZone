@@ -40,10 +40,10 @@ export const AuthProvider = ({ children }) => {
     restoreSession();
   }, []);
 
-  const loginWithGoogle = async (googleToken) => {
+  const loginWithGoogle = async (googleToken, role = null) => {
     try {
       setLoading(true);
-      const data = await authAPI.googleLogin(googleToken);
+      const data = await authAPI.googleLogin(googleToken, role);
       
       // Store token and user
       localStorage.setItem('token', data.token);

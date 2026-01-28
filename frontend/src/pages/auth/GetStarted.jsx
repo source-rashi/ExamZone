@@ -36,7 +36,8 @@ export default function GetStarted() {
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
-      const user = await loginWithGoogle(credentialResponse.credential);
+      // Pass the selected role to loginWithGoogle
+      const user = await loginWithGoogle(credentialResponse.credential, role);
       
       // Redirect based on role
       if (user.role === 'teacher') {
