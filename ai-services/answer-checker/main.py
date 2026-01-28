@@ -601,4 +601,12 @@ if __name__ == "__main__":
     import uvicorn
     import os
     port = int(os.getenv("PORT", 5002))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    host = os.getenv("HOST", "0.0.0.0")
+    
+    logger.info("🚀 ExamZone AI Answer Checker Service")
+    logger.info(f"📍 Environment: {os.getenv('NODE_ENV', 'development')}")
+    logger.info(f"🌐 Starting server on: http://{host}:{port}")
+    logger.info(f"🤖 Gemini API configured: {'Yes' if os.getenv('GEMINI_API_KEY') else 'No'}")
+    logger.info("✅ Service is ready to check answers")
+    
+    uvicorn.run(app, host=host, port=port)

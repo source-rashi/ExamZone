@@ -849,5 +849,14 @@ async def generate_papers_json(request: GeneratePapersRequest):
 if __name__ == "__main__":
     import uvicorn
     # PHASE 6.3 - Run on port 5001 (separate from answer-checker on 5002)
+    # PHASE 10 - Bind to 0.0.0.0 for container networking
     port = int(os.getenv("PORT", 5001))
-    uvicorn.run(app, host="127.0.0.1", port=port)
+    host = os.getenv("HOST", "0.0.0.0")
+    
+    logger.info("🚀 ExamZone AI Question Generator Service")
+    logger.info(f"📍 Environment: {os.getenv('NODE_ENV', 'development')}")
+    logger.info(f"🌐 Starting server on: http://{host}:{port}")
+    logger.info(f"🤖 Gemini API configured: {'Yes' if os.getenv('GEMINI_API_KEY') else 'No'}")
+    logger.info("✅ Service is ready to generate questions")
+    
+    uvicorn.run(app, host=host, port=port)
