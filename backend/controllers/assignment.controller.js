@@ -286,6 +286,11 @@ async function submitAssignment(req, res) {
 
     await assignment.save();
 
+    // Return updated submission status
+    const newSubmission = assignment.submissions.find(
+      sub => sub.student.toString() === userId
+    );
+
     res.status(200).json({
       success: true,
       message: 'Assignment submitted successfully',

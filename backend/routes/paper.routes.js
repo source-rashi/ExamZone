@@ -97,15 +97,56 @@ router.get('/exam/:examId/student/:rollNumber',
         });
       }
       
-      // Check file exists (paperPath is already absolute)
-      const filePath = paper.paperPath;
+      // Resolve file path - handle both relative and absolute paths
+      let filePath = paper.paperPath || paper.pdfPath;
       
-      try {
-        await fs.access(filePath);
-      } catch (error) {
+      if (!filePath) {
         return res.status(404).json({ 
           success: false, 
-          message: 'Paper file not found on server' 
+          message: 'Paper file path not found' 
+        });
+      }
+      
+      // Convert to absolute path if relative
+      if (!path.isAbsolute(filePath)) {
+        // Try multiple possible base paths
+        const possibleBases = [
+          path.join(process.cwd(), 'storage/exams'),
+          path.join(process.cwd()),
+          path.join(__dirname, '../../storage/exams'),
+          path.join(__dirname, '../../')
+        ];
+        
+        let found = false;
+        for (const base of possibleBases) {
+          const testPath = path.join(base, filePath);
+          try {
+            await fs.access(testPath);
+            filePath = testPath;
+            found = true;
+            console.log('[Paper Download] Found file at:', filePath);
+            break;
+          } catch (err) {
+            // Continue to next base
+          }
+        }
+        
+        if (!found) {
+          // Use default path
+          filePath = path.join(process.cwd(), filePath);
+        }
+      }
+      
+      // Verify file exists
+      try {
+        await fs.access(filePath);
+        console.log('[Paper Download] ✓ File verified:', filePath);
+      } catch (error) {
+        console.error('[Paper Download] File not found:', filePath);
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Paper file not found on server',
+          debug: process.env.NODE_ENV === 'development' ? { attemptedPath: filePath } : undefined
         });
       }
       
@@ -149,23 +190,52 @@ router.get('/exam/:examId/set/:setId',
         });
       }
       
-      // Verify set exists
-      const set = exam.generatedSets.find(s => s.setId === setId);
-      if (!set) {
-        return res.status(404).json({ 
-          success: false, 
-          message: 'Set not found' 
-        });
-      }
+      // Find set master paper
+      const setMaster = exam.setMasterPapers?.find(s => s.setId === setId);
       
-      // Construct file path
-      const filePath = path.join(
-        process.cwd(), 
-        'storage/exams', 
-        examId, 
-        'sets', 
-        `${setId}.pdf`
-      );
+      let filePath;
+      
+      if (setMaster && setMaster.pdfPath) {
+        // Use stored path from setMasterPapers
+        filePath = setMaster.pdfPath;
+        
+        // Convert to absolute path if relative
+        if (!path.isAbsolute(filePath)) {
+          const possibleBases = [
+            path.join(process.cwd(), 'storage/exams'),
+            path.join(process.cwd()),
+            path.join(__dirname, '../../storage/exams'),
+            path.join(__dirname, '../../')
+          ];
+          
+          let found = false;
+          for (const base of possibleBases) {
+            const testPath = path.join(base, filePath);
+            try {
+              await fs.access(testPath);
+              filePath = testPath;
+              found = true;
+              console.log('[Paper Download] Found set master at:', filePath);
+              break;
+            } catch (err) {
+              // Continue to next base
+            }
+          }
+          
+          if (!found) {
+            filePath = path.join(process.cwd(), filePath);
+          }
+        }
+      } else {
+        // Fallback: construct path manually
+        filePath = path.join(
+          process.cwd(), 
+          'storage/exams', 
+          examId, 
+          'sets', 
+          `${setId}.pdf`
+        );
+      }
       
       try {
         await fs.access(filePath);

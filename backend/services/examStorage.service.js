@@ -82,6 +82,34 @@ function getStudentPdfPath(examId, rollNumber) {
 }
 
 /**
+ * Get relative path for a student paper PDF (for database storage)
+ * @param {string} examId - Exam ID
+ * @param {number} rollNumber - Student roll number
+ * @returns {string} Relative path from project root
+ */
+function getStudentPdfRelativePath(examId, rollNumber) {
+  if (typeof rollNumber !== 'number' && typeof rollNumber !== 'string') {
+    throw new Error('Invalid roll number');
+  }
+  const filename = `student_${rollNumber}.pdf`;
+  return `storage/exams/${examId}/students/${filename}`;
+}
+
+/**
+ * Get relative path for a set PDF (for database storage)
+ * @param {string} examId - Exam ID
+ * @param {string} setId - Set ID
+ * @returns {string} Relative path from project root
+ */
+function getSetPdfRelativePath(examId, setId) {
+  if (!setId || !setId.endsWith) {
+    throw new Error('Invalid set ID');
+  }
+  const filename = `${setId}.pdf`;
+  return `storage/exams/${examId}/sets/${filename}`;
+}
+
+/**
  * Ensure exam directory structure exists
  * Creates all necessary subdirectories
  * @param {string} examId - Exam ID
@@ -256,6 +284,8 @@ module.exports = {
   getStudentsDirectory,
   getSetPdfPath,
   getStudentPdfPath,
+  getStudentPdfRelativePath,
+  getSetPdfRelativePath,
   
   // Directory management
   ensureExamDirectories,

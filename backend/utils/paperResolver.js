@@ -236,27 +236,30 @@ async function getStudentPaperFilePath(examId, studentId) {
   
   // Resolve absolute file path
   const path = require('path');
+  const fs = require('fs');
   
   // If path is already absolute, use it
   let absolutePath;
   if (path.isAbsolute(relativePath)) {
     absolutePath = relativePath;
   } else {
-    // Try multiple base paths
+    // Try multiple base paths in order of likelihood
     const possibleBases = [
-      path.join(__dirname, '../../storage/exams'),
-      path.join(__dirname, '../../pdfs'),
       path.join(process.cwd(), 'storage/exams'),
-      path.join(process.cwd(), 'pdfs')
+      path.join(__dirname, '../../storage/exams'),
+      path.join(process.cwd()),
+      path.join(__dirname, '../../'),
+      path.join(process.cwd(), 'pdfs'),
+      path.join(__dirname, '../../pdfs')
     ];
     
     // Find the first base where the file exists
-    const fs = require('fs');
     for (const base of possibleBases) {
       const testPath = path.join(base, relativePath);
+      console.log('[Paper File Path] Testing:', testPath);
       if (fs.existsSync(testPath)) {
         absolutePath = testPath;
-        console.log('[Paper File Path] Found file at:', absolutePath);
+        console.log('[Paper File Path] ✓ Found file at:', absolutePath);
         break;
       }
     }
@@ -264,7 +267,7 @@ async function getStudentPaperFilePath(examId, studentId) {
     // If not found in any base, use default and let the route handler check existence
     if (!absolutePath) {
       absolutePath = path.join(process.cwd(), relativePath);
-      console.log('[Paper File Path] Using default path:', absolutePath);
+      console.log('[Paper File Path] File not found, using default path:', absolutePath);
     }
   }
   

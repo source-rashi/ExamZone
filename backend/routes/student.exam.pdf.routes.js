@@ -29,27 +29,33 @@ router.get('/exams/:examId/my-paper/pdf', authenticate, studentOnly, async (req,
     console.log('[Student PDF Download] Resolved:', { 
       filePath, 
       fileName,
-      rollNumber: paperData.student?.rollNumber 
+      rollNumber: paperData.student?.rollNumber,
+      paperPath: paperData.paperPath || paperData.paper?.paperPath 
     });
     
     // Verify file exists using sync method (more reliable)
     const fsSync = require('fs');
     if (!fsSync.existsSync(filePath)) {
-      console.error('[Student PDF Download] File does not exist:', filePath);
+      console.error('[Student PDF Download] ❌ File does not exist:', filePath);
+      console.error('[Student PDF Download] Paper data:', JSON.stringify(paperData.paper, null, 2));
       
       // Try to give helpful error message
       return res.status(404).json({
         success: false,
-        message: 'Paper file not found. The paper may not have been generated yet or the file was deleted.'
+        message: 'Paper file not found. The paper may not have been generated yet or the file was deleted.',
+        debug: process.env.NODE_ENV === 'development' ? {
+          attemptedPath: filePath,
+          storedPath: paperData.paperPath || paperData.paper?.paperPath
+        } : undefined
       });
     }
     
-    console.log('[Student PDF Download] File exists, sending download');
+    console.log('[Student PDF Download] ✓ File exists, sending download');
     
     // Send file with error handling
     res.download(filePath, fileName, (err) => {
       if (err) {
-        console.error('[Student PDF Download] Error sending file:', err);
+        console.error('[Student PDF Download] ❌ Error sending file:', err);
         if (!res.headersSent) {
           res.status(500).json({
             success: false,
@@ -74,7 +80,8 @@ router.get('/exams/:examId/my-paper/pdf', authenticate, studentOnly, async (req,
     
     res.status(status).json({
       success: false,
-      message: error.message
+      message: error.message,
+      debug: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });

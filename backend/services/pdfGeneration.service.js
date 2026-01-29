@@ -214,8 +214,11 @@ async function generateStudentPaper(exam, student) {
     // Create storage directory using examStorage service
     await examStorage.ensureExamDirectories(exam._id.toString());
     
-    // Generate PDF path using examStorage service
+    // Generate absolute PDF path for writing
     const pdfPath = examStorage.getStudentPdfPath(exam._id.toString(), student.rollNumber);
+    
+    // Generate relative PDF path for database storage
+    const relativePdfPath = examStorage.getStudentPdfRelativePath(exam._id.toString(), student.rollNumber);
     
     await createPDF({
       outputPath: pdfPath,
@@ -245,7 +248,8 @@ async function generateStudentPaper(exam, student) {
     
     console.log(`[PDF Gen] ✓ Student paper: ${pdfPath}`);
     
-    return pdfPath;
+    // Return relative path for database storage
+    return relativePdfPath;
     
   } catch (error) {
     console.error(`[PDF Gen] Error for roll ${student.rollNumber}:`, error);
@@ -271,8 +275,11 @@ async function generateSetMasterPaper(exam, set) {
     // Create storage directory using examStorage service
     await examStorage.ensureExamDirectories(exam._id.toString());
     
-    // Generate PDF path using examStorage service
+    // Generate absolute PDF path for writing
     const pdfPath = examStorage.getSetPdfPath(exam._id.toString(), set.setId);
+    
+    // Generate relative PDF path for database storage
+    const relativePdfPath = examStorage.getSetPdfRelativePath(exam._id.toString(), set.setId);
     
     await createPDF({
       outputPath: pdfPath,
@@ -298,7 +305,8 @@ async function generateSetMasterPaper(exam, set) {
     
     console.log(`[PDF Gen] ✓ Master PDF: ${pdfPath}`);
     
-    return pdfPath;
+    // Return relative path for database storage
+    return relativePdfPath;
     
   } catch (error) {
     console.error(`[PDF Gen] Error for set ${set.setId}:`, error);
