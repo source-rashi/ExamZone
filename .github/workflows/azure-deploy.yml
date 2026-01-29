@@ -35,18 +35,27 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # Skip Docker builds - use pre-built images from GHCR
-    # Images are already built and available from initial setup
+    # Build and push Backend Docker image
+    - name: Build and push Backend image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend
+        file: ./backend/Dockerfile
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/${{ github.repository_owner }}/examzone-backend:latest
+          ${{ env.REGISTRY }}/${{ github.repository_owner }}/examzone-backend:${{ github.sha }}
     
-    - name: Deploy Backend to Azure Web App (using existing image)
+    - name: Deploy Backend to Azure Web App
       run: |
-        # Use the latest pre-built image
+        # Deploy the newly built image
         az webapp config container set \
           --name examzone-backend-app \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --docker-custom-image-name ${{ env.REGISTRY }}/${{ github.repository_owner }}/examzone-backend:latest \
+          --docker-custom-image-name ${{ env.REGISTRY }}/${{ github.repository_owner }}/examzone-backend:${{ github.sha }} \
           --docker-registry-server-url https://${{ env.REGISTRY }}
         
+        # Restart to pull new image
         az webapp restart \
           --name examzone-backend-app \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
