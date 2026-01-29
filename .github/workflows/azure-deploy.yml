@@ -1,75 +1,40 @@
-name: Deploy to Azure Container Apps
+name: Deploy Backend to Azure
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
 
-env:
-  AZURE_RESOURCE_GROUP: examzone-rg
-  REGISTRY: ghcr.io
-  BACKEND_APP: examzone-backend
-  AI_GENERATOR_APP: examzone-ai-generator
-  AI_CHECKER_APP: examzone-ai-checker
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v3
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
       with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        node-version: '20'
+
+    - name: Install dependencies
+      run: |
+        cd backend
+        npm ci
 
     - name: Login to Azure
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # Build and push Backend Docker image
-    - name: Build and push Backend image
-      uses: docker/build-push-action@v5
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v2
       with:
-        context: ./backend
-        file: ./backend/Dockerfile
-        push: true
-        tags: |
-          ghcr.io/source-rashi/examzone-backend:latest
-          ghcr.io/source-rashi/examzone-backend:${{ github.sha }}
-    
-    - name: Deploy Backend to Azure Web App
-      run: |
-        # Deploy the newly built image
-        az webapp config container set \
-          --name examzone-backend-app \
-          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --docker-custom-image-name ghcr.io/source-rashi/examzone-backend:${{ github.sha }} \
-          --docker-registry-server-url https://${{ env.REGISTRY }} \
-          --docker-registry-server-user ${{ github.repository_owner }} \
-          --docker-registry-server-password ${{ secrets.GITHUB_TOKEN }}
-        
-        # Restart to pull new image
-        az webapp restart \
-          --name examzone-backend-app \
-          --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
+        app-name: examzone-backend-app
+        package: ./backend
 
-    # AI services deployment skipped - not deployed to Azure yet (running in mock mode)
-    
     - name: Deployment Complete
       run: |
         echo "✅ Backend deployed to Azure Web App: examzone-backend-app"
         echo "✅ Backend URL: https://examzone-backend-app.azurewebsites.net"
-        echo "⚠️  AI services are in mock mode - GEMINI API used instead"
