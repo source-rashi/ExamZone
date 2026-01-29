@@ -13,10 +13,18 @@ const winston = require('winston');
 const path = require('path');
 const fs = require('fs');
 
-// Create logs directory if it doesn't exist
+// Create logs directory if it doesn't exist (only in development)
 const logsDir = path.join(__dirname, '../../logs');
-if (!fs.existsSync(logsDir)) {
-  fs.mkdirSync(logsDir, { recursive: true });
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (!isProduction) {
+  try {
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true });
+    }
+  } catch (error) {
+    console.error('Could not create logs directory:', error.message);
+  }
 }
 
 // Define log levels
@@ -63,29 +71,37 @@ const consoleFormat = winston.format.combine(
   )
 );
 
-// Define transports
-const transports = [
-  // Error log file - only errors
-  new winston.transports.File({
-    filename: path.join(logsDir, 'error.log'),
-    level: 'error',
-    maxsize: 5242880, // 5MB
-    maxFiles: 5,
-    format: logFormat
-  }),
-  
-  // Combined log file - all logs
-  new winston.transports.File({
-    filename: path.join(logsDir, 'combined.log'),
-    maxsize: 5242880, // 5MB
-    maxFiles: 5,
-    format: logFormat
-  })
-];
+// Define transports based on environment
+const transports = [];
 
-// Add console transport in development
-if (process.env.NODE_ENV !== 'production') {
+// In production, only use console transport
+if (isProduction) {
   transports.push(
+    new winston.transports.Console({
+      format: consoleFormat
+    })
+  );
+} else {
+  // In development, use both file and console transports
+  transports.push(
+    // Error log file - only errors
+    new winston.transports.File({
+      filename: path.join(logsDir, 'error.log'),
+      level: 'error',
+      maxsize: 5242880, // 5MB
+      maxFiles: 5,
+      format: logFormat
+    }),
+    
+    // Combined log file - all logs
+    new winston.transports.File({
+      filename: path.join(logsDir, 'combined.log'),
+      maxsize: 5242880, // 5MB
+      maxFiles: 5,
+      format: logFormat
+    }),
+    
+    // Console transport
     new winston.transports.Console({
       format: consoleFormat
     })
